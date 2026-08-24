@@ -1,0 +1,106 @@
+{
+  "name": "cheap",
+  "title": "Budget lane - full pipeline on low-cost models",
+  "titleAr": "المسار الاقتصادي — بايبلاين كامل بموديلات رخيصة",
+  "description": "The full think -> code -> test -> ship shape, but every stage runs on the cheapest capable model (Luna / Gemini Flash / GLM). Deterministic scripts do the heavy scanning so the models read less.",
+  "defaultGate": "auto",
+  "stages": [
+    {
+      "id": "think",
+      "title": "Think & plan",
+      "titleAr": "التفكير والتخطيط",
+      "agent": "thinker",
+      "model": "gpt-5-6-luna-high",
+      "prompt": "Task: {TASK}\n\nProject root: {PROJECT}. Repository context is in .workbench/artifacts/context.md - read it instead of scanning the repo yourself. Produce a SHORT plan per your role contract (max 20 lines) and write it to .workbench/artifacts/plan.md.",
+      "pre": [
+        "scripts/collect-context.mjs"
+      ],
+      "post": [],
+      "gate": "default",
+      "gateQuestion": "Review the budget plan in plan.md - proceed?",
+      "gateQuestionAr": "راجع الخطة المختصرة في plan.md — نكمل؟",
+      "artifact": "plan.md",
+      "done": [
+        "plan.md exists with Task, Steps, Acceptance criteria",
+        "Every step names concrete files/modules"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "code",
+      "title": "Implementation",
+      "titleAr": "كتابة الكود",
+      "agent": "coder",
+      "model": "gpt-5-6-luna-max",
+      "prompt": "Implement the approved plan (.workbench/artifacts/plan.md) in the project at {PROJECT}. Read only the files the plan names. Write code-notes.md per your role contract.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "code-notes.md",
+      "done": [
+        "Every plan step is implemented or its omission is justified in code-notes.md",
+        "code-notes.md lists changed files and how-to-verify commands"
+      ],
+      "effort": "max"
+    },
+    {
+      "id": "test",
+      "title": "Verify",
+      "titleAr": "التحقق",
+      "agent": "tester",
+      "model": "gemini-3-7-flash-medium",
+      "prompt": "Verify the change in the project at {PROJECT}. Checks output (if any) is in .workbench/artifacts/checks.md. Write a short review.md against the plan's acceptance criteria and lead your reply with VERDICT: PASS or VERDICT: FAIL.",
+      "pre": [
+        "scripts/run-checks.mjs"
+      ],
+      "post": [],
+      "gate": "auto",
+      "artifact": "review.md",
+      "onFail": "debug",
+      "maxLoops": 2,
+      "done": [
+        "review.md exists with an explicit Verdict line",
+        "Each acceptance criterion is marked MET / NOT MET / NOT TESTABLE"
+      ],
+      "effort": "medium"
+    },
+    {
+      "id": "debug",
+      "title": "Debug & root-cause",
+      "titleAr": "التصحيح وتحليل الأعطال",
+      "agent": "debugger",
+      "model": "glm-5-2-max",
+      "prompt": "The tester issued FAIL. Fix the failures per .workbench/artifacts/review.md in the project at {PROJECT}. Reproduce first, fix root causes only. Write/append debug.md per your role contract.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "debug.md",
+      "runOnlyWhenJumpedTo": true,
+      "next": "test",
+      "done": [
+        "Every blocking finding from review.md is addressed or refuted with evidence",
+        "All previously failing commands now pass (shown in debug.md)"
+      ],
+      "effort": "max"
+    },
+    {
+      "id": "ship",
+      "title": "Ship & deliver",
+      "titleAr": "الرفع والتسليم",
+      "agent": "shipper",
+      "model": "swe-1-7-lightning-medium",
+      "prompt": "The change PASSED review. Package it for the project at {PROJECT} per your role contract. Mode: {SHIP_MODE}. Write ship.md.",
+      "pre": [],
+      "post": [],
+      "gate": "dashboard",
+      "gateQuestion": "Budget run finished - commit the change?",
+      "gateQuestionAr": "الجولة الاقتصادية خلصت — أعمل commit؟",
+      "artifact": "ship.md",
+      "done": [
+        "ship.md exists with summary, file list, commit message, and actions taken",
+        "No .workbench/ or local-only files staged"
+      ],
+      "effort": "medium"
+    }
+  ]
+}

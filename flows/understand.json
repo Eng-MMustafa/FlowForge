@@ -1,0 +1,76 @@
+{
+  "name": "understand",
+  "title": "Understand flow - engineer-grade project understanding and rules",
+  "description": "Understand any project like an engineer: scan facts, map architecture, extract conventions, then generate project rules (AGENTS.md draft) and knowledge.json.",
+  "defaultGate": "terminal",
+  "stages": [
+    {
+      "id": "scan",
+      "title": "Project scan (no AI)",
+      "agent": null,
+      "prompt": null,
+      "pre": [
+        "scripts/collect-context.mjs"
+      ],
+      "post": [],
+      "gate": "auto",
+      "artifact": "context.md",
+      "done": [
+        "context.md exists with git state, file tree, and manifest contents"
+      ],
+      "titleAr": "مسح المشروع (بدون AI)"
+    },
+    {
+      "id": "architecture",
+      "title": "Architecture analysis",
+      "agent": "analyst",
+      "model": "claude-sonnet-5-high",
+      "effort": "high",
+      "prompt": "Mode 2 (understand flow) for the project at {PROJECT}: produce the ARCHITECTURE part of .workbench/artifacts/understanding.md — purpose, modules and responsibilities, entry points, end-to-end request/data flow, external integrations, configuration surface. Ground everything in files you opened, with citations.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "understanding.md",
+      "done": [
+        "understanding.md contains an Architecture section with entry points and data flow backed by real paths"
+      ],
+      "titleAr": "تحليل المعمارية"
+    },
+    {
+      "id": "conventions",
+      "title": "Convention extraction",
+      "agent": "analyst",
+      "model": "claude-sonnet-5-high",
+      "effort": "high",
+      "prompt": "Mode 2 (understand flow) for the project at {PROJECT}: extend .workbench/artifacts/understanding.md with a CONVENTIONS section — actual code style, naming, error handling, typing, test framework and layout, verified build/run/test commands, directory meaning. Verify commands against manifests (package.json etc.); on Windows note npm.cmd usage where relevant.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "understanding.md",
+      "done": [
+        "understanding.md contains a Conventions section with verified commands"
+      ],
+      "titleAr": "استخراج الأعراف الهندسية"
+    },
+    {
+      "id": "rules",
+      "title": "Rules & knowledge output",
+      "agent": "thinker",
+      "model": "claude-opus-5-high",
+      "effort": "high",
+      "prompt": "From .workbench/artifacts/understanding.md for the project at {PROJECT}, produce: (1) .workbench/artifacts/agents-draft.md — a concise draft AGENTS.md for this project (working rules an AI agent needs: commands, conventions, gotchas, verification steps; keep it under 60 lines, no fluff); (2) .workbench/knowledge.json with the shape {\"stack\": [], \"commands\": {\"install\": \"\", \"build\": \"\", \"test\": \"\", \"lint\": \"\", \"run\": \"\"}, \"conventions\": [], \"entryPoints\": [], \"gotchas\": []} filled from verified findings only.",
+      "pre": [],
+      "post": [],
+      "gate": "default",
+      "gateQuestion": "Write/update AGENTS.md in the project root from agents-draft.md?",
+      "artifact": "agents-draft.md",
+      "done": [
+        "agents-draft.md exists, concise and grounded in understanding.md",
+        "knowledge.json exists and parses as valid JSON with verified commands"
+      ],
+      "titleAr": "توليد القواعد والمعرفة",
+      "gateQuestionAr": "أكتب/أحدّث AGENTS.md في جذر المشروع من المسودة agents-draft.md؟"
+    }
+  ],
+  "titleAr": "فلو الفهم — يفهم المشروع كمهندس ويولّد القواعد"
+}

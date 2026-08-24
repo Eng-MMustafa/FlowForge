@@ -1,0 +1,124 @@
+{
+  "name": "quality",
+  "title": "Quality max - deepest thinking on every stage",
+  "titleAr": "أقصى جودة — أعمق تفكير في كل خطوة",
+  "description": "Same shape as the task pipeline but every stage is pinned to the strongest model at its highest thinking level. Slowest and most expensive; use it for architecture-level or risky changes.",
+  "defaultGate": "dashboard",
+  "stages": [
+    {
+      "id": "think",
+      "title": "Think & plan",
+      "titleAr": "التفكير والتخطيط",
+      "agent": "thinker",
+      "model": "claude-opus-5-max",
+      "effort": "max",
+      "prompt": "Task: {TASK}\n\nProduce the plan per your role contract. Enumerate at least two viable approaches with trade-offs before choosing. Write it to .workbench/artifacts/plan.md in the project at {PROJECT}.",
+      "pre": [
+        "scripts/collect-context.mjs"
+      ],
+      "post": [],
+      "gate": "default",
+      "gateQuestion": "Review the plan in plan.md - proceed with this plan?",
+      "gateQuestionAr": "راجع الخطة في plan.md — نكمل على الخطة دي؟",
+      "artifact": "plan.md",
+      "done": [
+        "plan.md exists and contains all required sections (Task, Requirements, Chosen approach, Steps, Acceptance criteria, Risks)",
+        "At least two approaches were compared with an explicit reason for the chosen one",
+        "Acceptance criteria are testable statements"
+      ]
+    },
+    {
+      "id": "analyze",
+      "title": "Code analysis",
+      "titleAr": "تحليل الكود",
+      "agent": "analyst",
+      "model": "claude-opus-5-high",
+      "prompt": "Analyze the codebase for the approved plan (.workbench/artifacts/plan.md) in the project at {PROJECT}. Mode 1 (task analysis). Cite file:line for every claim. Write analysis.md per your role contract.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "analysis.md",
+      "done": [
+        "analysis.md exists with impacted files, data flow with citations, patterns to follow, test landscape, and notes for coder",
+        "Every claim about existing behavior carries a file:line citation"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "code",
+      "title": "Implementation",
+      "titleAr": "كتابة الكود",
+      "agent": "coder",
+      "model": "claude-opus-5-xhigh",
+      "prompt": "Implement the approved plan (.workbench/artifacts/plan.md) guided by .workbench/artifacts/analysis.md in the project at {PROJECT}. Write code-notes.md per your role contract.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "code-notes.md",
+      "done": [
+        "Every plan step is implemented or its omission is explicitly justified in code-notes.md",
+        "code-notes.md exists with steps completed, deviations, and how-to-verify commands"
+      ],
+      "effort": "xhigh"
+    },
+    {
+      "id": "test",
+      "title": "Test & review",
+      "titleAr": "الاختبار والمراجعة",
+      "agent": "tester",
+      "model": "claude-sonnet-5-high",
+      "prompt": "Verify and review the implemented change in the project at {PROJECT}. Checks output (if any) is in .workbench/artifacts/checks.md. Write review.md per your role contract and lead your reply with VERDICT: PASS or VERDICT: FAIL.",
+      "pre": [
+        "scripts/run-checks.mjs"
+      ],
+      "post": [],
+      "gate": "auto",
+      "artifact": "review.md",
+      "onFail": "debug",
+      "maxLoops": 3,
+      "done": [
+        "review.md exists with an explicit Verdict line",
+        "Every acceptance criterion is marked MET / NOT MET / NOT TESTABLE with evidence"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "debug",
+      "title": "Debug & root-cause",
+      "titleAr": "التصحيح وتحليل الأعطال",
+      "agent": "debugger",
+      "model": "claude-opus-5-max",
+      "effort": "max",
+      "prompt": "The tester issued FAIL. Fix the failures per .workbench/artifacts/review.md in the project at {PROJECT}. Reproduce first, fix root causes only, re-verify everything. Write/append debug.md per your role contract.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "debug.md",
+      "runOnlyWhenJumpedTo": true,
+      "next": "test",
+      "done": [
+        "Every blocking finding from review.md is addressed or refuted with evidence",
+        "debug.md names the root cause, not just the symptom",
+        "All previously failing commands now pass (shown in debug.md)"
+      ]
+    },
+    {
+      "id": "ship",
+      "title": "Ship & deliver",
+      "titleAr": "الرفع والتسليم",
+      "agent": "shipper",
+      "model": "swe-1-7",
+      "prompt": "The change PASSED review. Package it for the project at {PROJECT} per your role contract. Mode: {SHIP_MODE}. Write ship.md.",
+      "pre": [],
+      "post": [],
+      "gate": "default",
+      "gateQuestion": "The change passed review - commit it? (and push if requested)",
+      "gateQuestionAr": "الشغل عدى المراجعة — أعمل commit؟ (والـ push لو مطلوب)",
+      "artifact": "ship.md",
+      "done": [
+        "ship.md exists with summary, file list, commit message, and actions taken",
+        "No .workbench/ or local-only files staged"
+      ]
+    }
+  ]
+}

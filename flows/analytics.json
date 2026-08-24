@@ -1,0 +1,84 @@
+{
+  "name": "analytics",
+  "title": "Business & data analysis - measure, interpret, recommend (no code)",
+  "titleAr": "تحليل بيزنس وبيانات — قياس ← تفسير ← توصيات (من غير كود)",
+  "description": "Answers a product/business question with evidence taken from the repository itself: data model, metrics, usage paths and history. Produces report.md with numbers and ranked recommendations. Nothing is implemented.",
+  "defaultGate": "dashboard",
+  "stages": [
+    {
+      "id": "scan",
+      "title": "Collect context",
+      "titleAr": "تجميع السياق",
+      "agent": null,
+      "prompt": "",
+      "pre": [
+        "scripts/collect-context.mjs"
+      ],
+      "post": [],
+      "gate": "auto",
+      "artifact": "context.md",
+      "done": [
+        "context.md exists"
+      ]
+    },
+    {
+      "id": "analyze",
+      "title": "Data & flow grounding",
+      "titleAr": "تأصيل البيانات والمسارات",
+      "agent": "analyst",
+      "model": "claude-sonnet-5-high",
+      "prompt": "Question: {TASK}\n\nProject root: {PROJECT} (inventory in .workbench/artifacts/context.md). Map what this repository can actually tell us about that question: the data model (schemas, migrations, entities), where the numbers live (metrics, counters, logs, telemetry calls), the user-facing entry points involved, and any pricing/limit/config constants. Cite file:line for everything. Write analysis.md per your role contract, and add a `## Measurable here` section listing exactly which quantities can be computed from this repo and how.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "analysis.md",
+      "done": [
+        "analysis.md maps the data model and where measurable numbers come from, with file:line citations",
+        "analysis.md contains a Measurable here section naming concrete quantities and how to obtain each"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "research",
+      "title": "Measure & interpret",
+      "titleAr": "القياس والتفسير",
+      "agent": "researcher",
+      "model": "gpt-5-6-sol-high",
+      "prompt": "Question: {TASK}\n\nProject root: {PROJECT}. Grounding is in .workbench/artifacts/analysis.md. Compute the quantities it marked measurable using read-only commands, then interpret them. Write report.md per your role contract: evidence with citations, a numbers table with the exact command behind each value, insights, and ranked recommendations with impact/effort/risk.",
+      "pre": [],
+      "post": [],
+      "gate": "default",
+      "gateQuestion": "The analysis report is ready - review the numbers and recommendations?",
+      "gateQuestionAr": "تقرير التحليل جاهز — تراجع الأرقام والتوصيات؟",
+      "artifact": "report.md",
+      "done": [
+        "report.md contains a Numbers table where every value names the command or file it came from",
+        "Every insight points at evidence, and inference is never presented as measurement",
+        "Recommendations are ranked with impact, effort, risk and a first concrete step",
+        "Unknowns section states what this repository cannot answer"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "review",
+      "title": "Challenge the findings",
+      "titleAr": "مراجعة النتائج",
+      "agent": "tester",
+      "model": "claude-opus-5-high",
+      "prompt": "Audit .workbench/artifacts/report.md for the project at {PROJECT}. Re-run or re-derive the numbers you can, check every citation resolves to real code, and flag any claim that is inference dressed as data or any recommendation not supported by the evidence. Write review.md and lead your reply with VERDICT: PASS (the report holds) or VERDICT: FAIL (it does not).",
+      "pre": [],
+      "post": [],
+      "gate": "default",
+      "gateQuestion": "Audit of the report is done - accept the findings?",
+      "gateQuestionAr": "مراجعة التقرير خلصت — نقبل النتائج؟",
+      "artifact": "review.md",
+      "onFail": "research",
+      "maxLoops": 2,
+      "done": [
+        "review.md exists with an explicit Verdict line",
+        "Each spot-checked number is confirmed or corrected with evidence"
+      ],
+      "effort": "high"
+    }
+  ]
+}

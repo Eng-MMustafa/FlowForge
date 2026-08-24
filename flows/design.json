@@ -1,0 +1,84 @@
+{
+  "name": "design",
+  "title": "Design & decide - research, options, decision record (no code)",
+  "titleAr": "تخطيط وقرار — بحث ← بدائل ← قرار موثّق (من غير كود)",
+  "description": "Planning-only pipeline. Nothing is implemented: you get a researched plan, an options comparison grounded in the real codebase, and a decision record you can hand to the task flow later.",
+  "defaultGate": "dashboard",
+  "stages": [
+    {
+      "id": "scan",
+      "title": "Collect context",
+      "titleAr": "تجميع السياق",
+      "agent": null,
+      "prompt": "",
+      "pre": [
+        "scripts/collect-context.mjs"
+      ],
+      "post": [],
+      "gate": "auto",
+      "artifact": "context.md",
+      "done": [
+        "context.md exists"
+      ]
+    },
+    {
+      "id": "analyze",
+      "title": "Ground the problem",
+      "titleAr": "تأصيل المشكلة",
+      "agent": "analyst",
+      "model": "claude-sonnet-5-high",
+      "prompt": "Question: {TASK}\n\nProject root: {PROJECT} (inventory in .workbench/artifacts/context.md). Establish the CURRENT reality relevant to this question: which modules own it today, how data flows, which constraints (build, deps, conventions, policies) any solution must respect. Cite file:line for every claim. Write analysis.md per your role contract.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "analysis.md",
+      "done": [
+        "analysis.md describes the current implementation with file:line citations",
+        "analysis.md lists the hard constraints a solution must satisfy"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "think",
+      "title": "Options & decision",
+      "titleAr": "البدائل والقرار",
+      "agent": "thinker",
+      "model": "claude-opus-5-max",
+      "effort": "max",
+      "prompt": "Question: {TASK}\n\nGrounding: .workbench/artifacts/analysis.md (project {PROJECT}). Produce a decision record in .workbench/artifacts/plan.md containing: Problem, Constraints, at least three candidate approaches each with cost/risk/effort and why it fits or not, the Recommended approach with justification, a step-by-step implementation plan for it, testable acceptance criteria, and what would make you change your mind. Do NOT write any product code.",
+      "pre": [],
+      "post": [],
+      "gate": "default",
+      "gateQuestion": "Read the decision record in plan.md - approve this direction?",
+      "gateQuestionAr": "اقرا القرار في plan.md — توافق على الاتجاه ده؟",
+      "artifact": "plan.md",
+      "done": [
+        "plan.md compares at least three approaches with cost/risk/effort",
+        "plan.md states one recommendation with explicit justification",
+        "plan.md ends with testable acceptance criteria and a step-by-step plan",
+        "No source file outside .workbench/ was modified"
+      ]
+    },
+    {
+      "id": "review",
+      "title": "Devil's advocate",
+      "titleAr": "مراجعة معاكسة",
+      "agent": "tester",
+      "model": "gpt-5-6-sol-high",
+      "prompt": "Review the decision record .workbench/artifacts/plan.md for the project at {PROJECT} as a hostile reviewer: attack every assumption, check each claim against the actual code, and hunt for a cheaper or simpler option the author missed. Write review.md with your findings and lead your reply with VERDICT: PASS (the plan holds) or VERDICT: FAIL (it does not).",
+      "pre": [],
+      "post": [],
+      "gate": "default",
+      "gateQuestion": "Review of the plan is ready - is the plan good to keep?",
+      "gateQuestionAr": "مراجعة الخطة جاهزة — الخطة تمام كده؟",
+      "artifact": "review.md",
+      "onFail": "think",
+      "maxLoops": 2,
+      "done": [
+        "review.md exists with an explicit Verdict line",
+        "Every challenged claim is checked against the code with a citation"
+      ],
+      "effort": "high"
+    }
+  ]
+}

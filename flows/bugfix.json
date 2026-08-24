@@ -1,0 +1,102 @@
+{
+  "name": "bugfix",
+  "title": "Bug hunt - reproduce, root-cause, fix, prove",
+  "titleAr": "صيد الباجات — إعادة إنتاج ← سبب جذري ← إصلاح ← إثبات",
+  "description": "Debugger-first pipeline for a reported bug. No feature planning: reproduce it, find the root cause, fix it, and prove the fix with a regression test.",
+  "defaultGate": "dashboard",
+  "stages": [
+    {
+      "id": "analyze",
+      "title": "Locate the bug",
+      "titleAr": "تحديد مكان الباج",
+      "agent": "analyst",
+      "model": "claude-sonnet-5-high",
+      "prompt": "Reported bug: {TASK}\n\nProject root: {PROJECT}. Trace the failing behavior through the code and narrow it to the smallest set of suspect files/functions, each with file:line citations. State the shortest reproduction command you can find. Write analysis.md per your role contract.",
+      "pre": [
+        "scripts/collect-context.mjs"
+      ],
+      "post": [],
+      "gate": "auto",
+      "artifact": "analysis.md",
+      "done": [
+        "analysis.md lists suspect locations with file:line citations",
+        "analysis.md states a concrete reproduction command or the reason none exists"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "debug",
+      "title": "Reproduce & fix",
+      "titleAr": "إعادة الإنتاج والإصلاح",
+      "agent": "debugger",
+      "model": "claude-opus-5-high",
+      "prompt": "Bug: {TASK}\n\nSuspect locations are in .workbench/artifacts/analysis.md. In the project at {PROJECT}: reproduce the bug FIRST and record the exact failing output, then fix the root cause only - no symptom patches, no unrelated refactors. Write debug.md per your role contract.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "debug.md",
+      "done": [
+        "debug.md shows the failing output before the fix and the passing output after",
+        "debug.md names the root cause explicitly",
+        "No unrelated files were changed"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "regress",
+      "title": "Regression test",
+      "titleAr": "اختبار انحدار",
+      "agent": "coder",
+      "model": "claude-opus-5-high",
+      "prompt": "A bug was just fixed (see .workbench/artifacts/debug.md) in the project at {PROJECT}. Add the smallest regression test that fails on the old behavior and passes now, following the repository's existing test conventions. If the project has no test setup, say so in code-notes.md instead of inventing one. Write code-notes.md.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "code-notes.md",
+      "done": [
+        "A regression test exists (or code-notes.md explains why the project cannot host one)",
+        "code-notes.md gives the command that runs the new test"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "test",
+      "title": "Verify the fix",
+      "titleAr": "التأكد من الإصلاح",
+      "agent": "tester",
+      "model": "claude-sonnet-5-high",
+      "prompt": "Verify the bug fix in the project at {PROJECT}. Checks output (if any) is in .workbench/artifacts/checks.md; the fix story is in debug.md. Confirm the original symptom is gone, the regression test covers it, and nothing else broke. Write review.md and lead your reply with VERDICT: PASS or VERDICT: FAIL.",
+      "pre": [
+        "scripts/run-checks.mjs"
+      ],
+      "post": [],
+      "gate": "auto",
+      "artifact": "review.md",
+      "onFail": "debug",
+      "maxLoops": 4,
+      "done": [
+        "review.md exists with an explicit Verdict line",
+        "review.md confirms the reported symptom no longer reproduces"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "ship",
+      "title": "Ship the fix",
+      "titleAr": "رفع الإصلاح",
+      "agent": "shipper",
+      "model": "swe-1-7",
+      "prompt": "The fix PASSED review. Package it for the project at {PROJECT} per your role contract. Mode: {SHIP_MODE}. The commit message must describe the root cause, not the symptom. Write ship.md.",
+      "pre": [],
+      "post": [],
+      "gate": "default",
+      "gateQuestion": "Bug fixed and verified - commit it?",
+      "gateQuestionAr": "الباج اتصلح واتأكدنا منه — أعمل commit؟",
+      "artifact": "ship.md",
+      "done": [
+        "ship.md exists with summary, file list, commit message, and actions taken",
+        "The commit message references the root cause"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "name": "fast",
+  "title": "Fast lane - code, verify, ship with no gates",
+  "titleAr": "المسار السريع — كود ← تحقق ← رفع بدون وقفات",
+  "description": "Skips planning. A fast agentic coder implements straight from the task text, checks run automatically, and a cheap fast model reviews. Use it for small, well-understood changes.",
+  "defaultGate": "auto",
+  "stages": [
+    {
+      "id": "scan",
+      "title": "Collect context",
+      "titleAr": "تجميع السياق",
+      "agent": null,
+      "prompt": "",
+      "pre": [
+        "scripts/collect-context.mjs"
+      ],
+      "post": [],
+      "gate": "auto",
+      "artifact": "context.md",
+      "done": [
+        "context.md exists"
+      ]
+    },
+    {
+      "id": "code",
+      "title": "Implementation",
+      "titleAr": "كتابة الكود",
+      "agent": "coder",
+      "model": "swe-1-7",
+      "prompt": "Task: {TASK}\n\nProject root: {PROJECT}. Repository context is in .workbench/artifacts/context.md. There is no plan file for this flow - implement the task directly, following the conventions you see in the touched files. Keep the change minimal and focused. Write code-notes.md per your role contract.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "code-notes.md",
+      "done": [
+        "The task is implemented or the blocker is stated explicitly in code-notes.md",
+        "code-notes.md lists changed files and how-to-verify commands"
+      ]
+    },
+    {
+      "id": "test",
+      "title": "Verify",
+      "titleAr": "التحقق",
+      "agent": "tester",
+      "model": "gemini-3-7-flash-high",
+      "prompt": "Verify the change in the project at {PROJECT}. Checks output (if any) is in .workbench/artifacts/checks.md. Focus on: does it build, do the checks pass, does the change do what {TASK} asked. Write review.md and lead your reply with VERDICT: PASS or VERDICT: FAIL.",
+      "pre": [
+        "scripts/run-checks.mjs"
+      ],
+      "post": [],
+      "gate": "auto",
+      "artifact": "review.md",
+      "onFail": "debug",
+      "maxLoops": 2,
+      "done": [
+        "review.md exists with an explicit Verdict line",
+        "The checks result (PASS / FAIL / SKIPPED) is quoted in review.md"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "debug",
+      "title": "Debug & root-cause",
+      "titleAr": "التصحيح وتحليل الأعطال",
+      "agent": "debugger",
+      "model": "claude-sonnet-5-high",
+      "prompt": "The tester issued FAIL. Fix the failures per .workbench/artifacts/review.md in the project at {PROJECT}. Reproduce first, fix root causes only. Write/append debug.md per your role contract.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "debug.md",
+      "runOnlyWhenJumpedTo": true,
+      "next": "test",
+      "done": [
+        "Every blocking finding from review.md is addressed or refuted with evidence",
+        "All previously failing commands now pass (shown in debug.md)"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "ship",
+      "title": "Ship & deliver",
+      "titleAr": "الرفع والتسليم",
+      "agent": "shipper",
+      "model": "swe-1-7-lightning",
+      "prompt": "The change PASSED review. Package it for the project at {PROJECT} per your role contract. Mode: {SHIP_MODE}. Write ship.md.",
+      "pre": [],
+      "post": [],
+      "gate": "dashboard",
+      "gateQuestion": "Fast lane finished - commit the change?",
+      "gateQuestionAr": "المسار السريع خلص — أعمل commit؟",
+      "artifact": "ship.md",
+      "done": [
+        "ship.md exists with summary, file list, commit message, and actions taken",
+        "No .workbench/ or local-only files staged"
+      ]
+    }
+  ]
+}

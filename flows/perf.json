@@ -1,0 +1,125 @@
+{
+  "name": "perf",
+  "title": "Performance - baseline, hotspot, optimize, prove the delta",
+  "titleAr": "الأداء — قياس ← نقطة الاختناق ← تحسين ← إثبات الفرق",
+  "description": "Measurement-driven optimization. Nothing is optimized before a baseline exists, and nothing is kept unless the same benchmark shows the gain.",
+  "defaultGate": "dashboard",
+  "stages": [
+    {
+      "id": "baseline",
+      "title": "Benchmark & baseline",
+      "titleAr": "المعيار والقياس المبدئي",
+      "agent": "optimizer",
+      "model": "claude-sonnet-5-high",
+      "prompt": "Performance goal: {TASK}\n\nProject root: {PROJECT}. Do NOT optimize anything in this stage. Find or write the smallest reproducible benchmark for the named goal, run it enough times to see the noise, and record the baseline numbers in .workbench/artifacts/perf.md (Benchmark + Baseline sections only). If the project cannot be benchmarked here, say exactly what is missing instead of guessing.",
+      "pre": [
+        "scripts/collect-context.mjs"
+      ],
+      "post": [],
+      "gate": "default",
+      "gateQuestion": "Baseline measured - review the numbers before optimizing?",
+      "gateQuestionAr": "القياس المبدئي جاهز — تراجع الأرقام قبل التحسين؟",
+      "artifact": "perf.md",
+      "done": [
+        "perf.md contains the exact benchmark command and how many runs were used",
+        "perf.md contains a baseline table with run-to-run spread",
+        "No product code was modified in this stage"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "analyze",
+      "title": "Find the hotspot",
+      "titleAr": "تحديد نقطة الاختناق",
+      "agent": "analyst",
+      "model": "claude-sonnet-5-high",
+      "prompt": "Performance goal: {TASK}\n\nBaseline is in .workbench/artifacts/perf.md (project {PROJECT}). Trace where the time or memory actually goes: hot call paths, N+1 patterns, repeated IO, missing caches, accidental O(n^2), oversized payloads. Rank candidates by expected gain per unit of effort and cite file:line for each. Write analysis.md per your role contract.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "analysis.md",
+      "done": [
+        "analysis.md ranks hotspot candidates by expected gain vs effort",
+        "Every candidate carries a file:line citation and the evidence it is hot"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "optimize",
+      "title": "Optimize",
+      "titleAr": "التحسين",
+      "agent": "optimizer",
+      "model": "claude-opus-5-xhigh",
+      "prompt": "Apply the ranked optimizations from .workbench/artifacts/analysis.md in the project at {PROJECT}. One change at a time, re-running the baseline benchmark after each: keep what wins, revert what does not and list it under Rejected. Behavior must not change. Append the Changes / After / Rejected / Trade-offs sections to perf.md.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "perf.md",
+      "done": [
+        "perf.md After section reports the SAME benchmark with a delta per metric",
+        "Every kept change is justified by a measured improvement",
+        "Reverted attempts are listed under Rejected"
+      ],
+      "effort": "xhigh"
+    },
+    {
+      "id": "test",
+      "title": "Verify behavior & gain",
+      "titleAr": "التأكد من السلوك والمكسب",
+      "agent": "tester",
+      "model": "claude-sonnet-5-high",
+      "prompt": "Verify the optimization in the project at {PROJECT}. Checks output (if any) is in .workbench/artifacts/checks.md; the measurement story is in perf.md. Confirm two things: (1) behavior is unchanged - the suite passes and no semantics shifted, (2) the reported gain is real - re-run the benchmark yourself. Write review.md and lead your reply with VERDICT: PASS or VERDICT: FAIL.",
+      "pre": [
+        "scripts/run-checks.mjs"
+      ],
+      "post": [],
+      "gate": "auto",
+      "artifact": "review.md",
+      "onFail": "debug",
+      "maxLoops": 3,
+      "done": [
+        "review.md exists with an explicit Verdict line",
+        "review.md quotes its own benchmark re-run, not the optimizer's numbers",
+        "review.md confirms no behavioral change and no weakened test"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "debug",
+      "title": "Fix regressions",
+      "titleAr": "إصلاح الانحدارات",
+      "agent": "debugger",
+      "model": "claude-opus-5-high",
+      "prompt": "The tester issued FAIL after an optimization in the project at {PROJECT} (details in .workbench/artifacts/review.md). Decide per failure whether to fix the optimization or revert it - a slower correct system beats a faster wrong one. Write/append debug.md per your role contract.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "debug.md",
+      "runOnlyWhenJumpedTo": true,
+      "next": "test",
+      "done": [
+        "Each failure is fixed or the offending optimization is reverted, stated explicitly",
+        "debug.md shows the failing output before and the passing output after"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "ship",
+      "title": "Ship the optimization",
+      "titleAr": "رفع التحسين",
+      "agent": "shipper",
+      "model": "swe-1-7",
+      "prompt": "The optimization PASSED review. Package it for the project at {PROJECT} per your role contract. Mode: {SHIP_MODE}. The commit message must carry the measured delta. Write ship.md.",
+      "pre": [],
+      "post": [],
+      "gate": "default",
+      "gateQuestion": "Optimization verified - commit it?",
+      "gateQuestionAr": "التحسين اتأكد — أعمل commit؟",
+      "artifact": "ship.md",
+      "done": [
+        "ship.md exists with summary, file list, commit message, and actions taken",
+        "The commit message states the measured before/after numbers"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,921 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>·</title>
+<style>
+  /* Studio - icon-only flow builder. Pure white surface, soft elevation,
+     zero visible typography: every affordance is an inline stroke SVG. */
+  :root{
+    --paper:#ffffff; --ink:#101828; --line:#eaecf0; --mute:#98a2b3;
+    --accent:#2563eb; --ok:#12b76a; --warn:#f79009; --bad:#f04438;
+    --sh-1:0 1px 2px rgba(16,24,40,.06);
+    --sh-2:0 12px 32px rgba(16,24,40,.08);
+    --r-s:16px; --r-m:20px; --r-l:28px;
+    --gap:8px; --hit:44px;
+    --c-thinker:#7a5af8; --c-analyst:#2563eb; --c-coder:#0ea5e9;
+    --c-tester:#12b76a; --c-debugger:#f79009; --c-shipper:#ef4899;
+  }
+  *,*::before,*::after{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  svg{display:block;}
+  .ic{width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; pointer-events:none;}
+  .ic.xs{width:16px; height:16px;}
+  .ic.sm{width:20px; height:20px;}
+  .ic.lg{width:40px; height:40px;}
+  .ic.xl{width:56px; height:56px;}
+  .ic.dots{stroke-width:2.4;}
+
+  button,a.btn{
+    -webkit-appearance:none; appearance:none; background:var(--paper);
+    border:1px solid var(--line); color:var(--ink); cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:var(--hit); min-height:var(--hit); padding:0;
+    border-radius:var(--r-s); box-shadow:var(--sh-1);
+    transition:transform .16s ease, box-shadow .16s ease, background-color .16s ease, color .16s ease, border-color .16s ease;
+    text-decoration:none;
+  }
+  button:hover,a.btn:hover{transform:translateY(-2px); box-shadow:var(--sh-2);}
+  button:active,a.btn:active{transform:none;}
+  button:disabled{color:var(--mute); cursor:default; transform:none; box-shadow:var(--sh-1);}
+  :focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:var(--r-s);}
+
+  /* ---------- top rail ---------- */
+  .rail{
+    position:sticky; top:0; z-index:6;
+    display:flex; align-items:center; gap:var(--gap);
+    padding:calc(var(--gap)*1.5) calc(var(--gap)*3);
+    background:var(--paper); border-block-end:1px solid var(--line);
+  }
+  .rail .spacer{flex:1;}
+  #projChips{display:flex; align-items:center; gap:var(--gap); flex-wrap:wrap;}
+  .chip{
+    inline-size:var(--hit); block-size:var(--hit); border-radius:999px;
+    border:1px solid var(--line); background:var(--paper); box-shadow:var(--sh-1);
+    display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
+    padding:0; min-width:0; min-height:0;
+  }
+  .chip i{display:block; inline-size:16px; block-size:16px; border-radius:999px; background:currentColor;}
+  .chip[data-on="1"]{box-shadow:var(--sh-1),0 0 0 3px rgba(37,99,235,.18); border-color:var(--accent);}
+  #execDot{color:var(--mute);}
+  #execDot[data-st="ready"]{color:var(--ok);}
+  #execDot[data-st="queue"]{color:var(--warn);}
+  #execDot[data-st="none"]{color:var(--bad);}
+
+  /* ---------- layout ---------- */
+  main{
+    max-inline-size:1160px; margin:0 auto;
+    padding:calc(var(--gap)*3) calc(var(--gap)*3) calc(var(--gap)*12);
+    display:flex; flex-direction:column; gap:calc(var(--gap)*3);
+  }
+  .card{
+    background:var(--paper); border:1px solid var(--line);
+    border-radius:var(--r-l); box-shadow:var(--sh-1);
+    padding:calc(var(--gap)*3);
+  }
+
+  /* ---------- intents ---------- */
+  #intentRow{display:flex; gap:calc(var(--gap)*2); flex-wrap:wrap; justify-content:center;}
+  .intent{
+    inline-size:132px; block-size:132px; border-radius:var(--r-l);
+    flex-direction:column; gap:var(--gap); color:var(--mute);
+  }
+  .intent[data-on="1"]{
+    color:var(--accent); border-color:var(--accent);
+    background:rgba(37,99,235,.06);
+    box-shadow:var(--sh-2),0 0 0 3px rgba(37,99,235,.14);
+  }
+  .intent .ic{width:72px; height:72px;}
+
+  /* ---------- chain ---------- */
+  #chain{
+    display:flex; align-items:flex-start; justify-content:center;
+    gap:0; flex-wrap:wrap; overflow:visible;
+  }
+  .slot{display:flex; align-items:flex-start;}
+  .link{
+    align-self:center; inline-size:28px; block-size:2px;
+    background:var(--line); border-radius:2px; margin-block-start:-34px;
+  }
+  .link[data-on="1"]{background:var(--accent);}
+  .node{
+    display:flex; flex-direction:column; align-items:center; gap:var(--gap);
+    inline-size:96px;
+  }
+  .dot{
+    inline-size:64px; block-size:64px; border-radius:999px;
+    border:1px solid var(--line); background:var(--paper); box-shadow:var(--sh-1);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--mute); cursor:pointer; min-width:0; min-height:0;
+    position:relative;
+  }
+  .node[data-hex="1"] .dot{border-radius:var(--r-s); transform:rotate(45deg);}
+  .node[data-hex="1"] .dot .ic{transform:rotate(-45deg);}
+  .node[data-hex="1"] .dot:hover{transform:rotate(45deg) translateY(-2px);}
+  .node[data-on="1"] .dot{color:var(--role); border-color:var(--role); background:color-mix(in srgb, var(--role) 8%, #fff);}
+  .node[data-st="running"] .dot{color:var(--accent); border-color:var(--accent); animation:pulse 1.4s ease-in-out infinite;}
+  .node[data-st="waiting_gate"] .dot{color:var(--warn); border-color:var(--warn); animation:pulse 1.4s ease-in-out infinite;}
+  .node[data-st="done"] .dot{color:#fff; background:var(--ok); border-color:var(--ok);}
+  .node[data-st="failed"] .dot{color:#fff; background:var(--bad); border-color:var(--bad);}
+  .node[data-st="skipped"] .dot{color:var(--mute); border-style:dashed;}
+  .node[data-drag="1"]{opacity:.4;}
+  @keyframes pulse{0%,100%{box-shadow:var(--sh-1),0 0 0 0 rgba(37,99,235,.28);} 50%{box-shadow:var(--sh-1),0 0 0 10px rgba(37,99,235,0);}}
+  .grip{color:var(--mute); border:0; box-shadow:none; background:none; min-width:0; min-height:24px; inline-size:24px; cursor:grab;}
+  .grip:hover{transform:none; box-shadow:none;}
+
+  /* ---------- segmented control ---------- */
+  .seg{
+    display:inline-flex; position:relative; padding:3px; gap:2px;
+    background:var(--paper); border:1px solid var(--line);
+    border-radius:999px; box-shadow:var(--sh-1);
+  }
+  /* The pill is placed by JS in physical px (offsetLeft) so it tracks the
+     active button identically in LTR and RTL. */
+  .seg .pill{
+    position:absolute; inset-block:3px; left:3px; width:30px;
+    border-radius:999px; background:rgba(37,99,235,.10);
+    transition:left .2s ease, width .2s ease; pointer-events:none;
+  }
+  .seg button{
+    inline-size:30px; block-size:30px; min-width:0; min-height:0;
+    border:0; box-shadow:none; border-radius:999px; color:var(--mute);
+    background:none; position:relative;
+  }
+  .seg button:hover{transform:none; box-shadow:none;}
+  .seg button[data-on="1"]{color:var(--accent);}
+  .seg.big button{inline-size:var(--hit); block-size:var(--hit);}
+
+  /* ---------- switch ---------- */
+  .sw{
+    inline-size:56px; block-size:32px; border-radius:999px;
+    border:1px solid var(--line); background:var(--paper);
+    box-shadow:var(--sh-1); position:relative; cursor:pointer;
+    min-width:0; min-height:0; padding:0;
+  }
+  .sw i{
+    position:absolute; inset-block-start:4px; inset-inline-start:4px;
+    inline-size:22px; block-size:22px; border-radius:999px;
+    background:var(--mute); transition:transform .18s ease, background-color .18s ease;
+  }
+  .sw[data-on="1"]{border-color:var(--accent); background:rgba(37,99,235,.08);}
+  .sw[data-on="1"] i{background:var(--accent); transform:translateX(24px);}
+  html[dir="rtl"] .sw[data-on="1"] i{transform:translateX(-24px);}
+  .swrow{display:flex; align-items:center; gap:calc(var(--gap)*2); min-block-size:var(--hit);}
+  .swrow .ic{color:var(--mute);}
+  .swrow[data-on="1"] .ic{color:var(--accent);}
+
+  /* ---------- controls ---------- */
+  #controls{display:flex; flex-wrap:wrap; gap:calc(var(--gap)*4); align-items:center; justify-content:space-between;}
+  #controls[data-hide="1"]{display:none;}
+  .ctl{display:flex; align-items:center; gap:calc(var(--gap)*2); min-block-size:var(--hit);}
+  .loops{display:flex; align-items:center; gap:calc(var(--gap)*2);}
+  #loopDots{display:flex; gap:6px;}
+  #loopDots i{inline-size:10px; block-size:10px; border-radius:999px; background:var(--line);}
+  #loopDots i[data-on="1"]{background:var(--accent);}
+  input[type=range]{
+    -webkit-appearance:none; appearance:none; inline-size:140px; block-size:var(--hit);
+    background:none; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{block-size:4px; border-radius:999px; background:var(--line);}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none; inline-size:24px; block-size:24px;
+    margin-block-start:-10px; border-radius:999px; background:var(--paper);
+    border:1px solid var(--accent); box-shadow:var(--sh-1);
+  }
+  input[type=range]::-moz-range-track{block-size:4px; border-radius:999px; background:var(--line);}
+  input[type=range]::-moz-range-thumb{
+    inline-size:22px; block-size:22px; border-radius:999px; background:var(--paper);
+    border:1px solid var(--accent); box-shadow:var(--sh-1);
+  }
+
+  /* ---------- actions ---------- */
+  #actions{display:flex; align-items:center; justify-content:center; gap:calc(var(--gap)*4);}
+  #btnSave{inline-size:72px; block-size:var(--hit); border-radius:999px; color:var(--mute);}
+  #btnSave[data-st="ok"]{color:var(--ok); border-color:var(--ok);}
+  #btnSave[data-st="bad"]{color:var(--bad); border-color:var(--bad); animation:shake .3s ease;}
+  .runwrap{position:relative; inline-size:88px; block-size:88px;}
+  #runArc{position:absolute; inset:0; inline-size:88px; block-size:88px; transform:rotate(-90deg); pointer-events:none;}
+  #runArc circle{fill:none; stroke-width:3; stroke-linecap:round;}
+  #runArc .trk{stroke:var(--line);}
+  #runArc .val{stroke:var(--accent); transition:stroke-dashoffset .4s ease;}
+  #btnRun{
+    position:absolute; inset:0; inline-size:88px; block-size:88px;
+    border-radius:999px; color:var(--accent); box-shadow:var(--sh-2);
+  }
+  #btnRun[data-st="active"]{color:#fff; background:var(--accent); border-color:var(--accent);}
+  #btnRun[data-st="none"]{color:var(--bad); border-color:var(--bad);}
+  #btnRun[data-st="bad"]{animation:shake .3s ease;}
+  @keyframes shake{25%{transform:translateX(-4px);} 75%{transform:translateX(4px);}}
+
+  /* ---------- gate card ---------- */
+  #gateCard{
+    display:none; align-items:center; justify-content:center;
+    gap:calc(var(--gap)*3); border-color:var(--warn);
+    box-shadow:var(--sh-2);
+  }
+  #gateCard[data-show="1"]{display:flex;}
+  #gateCard .ic{color:var(--warn);}
+  #btnGateOk{color:var(--ok); border-color:var(--ok);}
+  #btnGateNo{color:var(--bad); border-color:var(--bad);}
+
+  /* ---------- sheets ---------- */
+  .sheet{
+    position:fixed; inset-inline:0; inset-block-end:0; z-index:8;
+    display:flex; align-items:center; justify-content:center; gap:calc(var(--gap)*2);
+    flex-wrap:wrap;
+    padding:calc(var(--gap)*3);
+    background:var(--paper); border-block-start:1px solid var(--line);
+    border-start-start-radius:var(--r-l); border-start-end-radius:var(--r-l);
+    box-shadow:var(--sh-2);
+    transform:translateY(110%); transition:transform .24s ease;
+  }
+  .sheet[data-open="1"]{transform:none;}
+  .sheet .pal{
+    inline-size:64px; block-size:64px; border-radius:var(--r-m); color:var(--mute);
+  }
+  .sheet .pal[data-on="1"]{color:var(--accent); border-color:var(--accent);}
+
+  /* ---------- responsive / motion ---------- */
+  @media (max-width:900px){
+    main{padding-inline:calc(var(--gap)*2);}
+    #chain{flex-direction:column; align-items:center;}
+    .slot{flex-direction:column; align-items:center;}
+    .link{inline-size:2px; block-size:28px; margin:0;}
+    #controls{flex-direction:column; align-items:stretch;}
+    .intent{inline-size:104px; block-size:104px;}
+    .intent .ic{width:48px; height:48px;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation:none !important; transition:none !important;}
+    button:hover,a.btn:hover{transform:none;}
+  }
+</style>
+</head>
+<body>
+
+<svg style="display:none" aria-hidden="true" focusable="false"><defs>
+  <symbol id="ic-brain" viewBox="0 0 24 24"><path d="M12 4.5a3 3 0 0 0-3 3 2.5 2.5 0 0 0-1.4 4.4A2.5 2.5 0 0 0 9 16.4a3 3 0 0 0 3 3z"/><path d="M12 4.5a3 3 0 0 1 3 3 2.5 2.5 0 0 1 1.4 4.4A2.5 2.5 0 0 1 15 16.4a3 3 0 0 1-3 3z"/><path d="M12 4.5v15"/></symbol>
+  <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M15.5 15.5 20 20"/></symbol>
+  <symbol id="ic-code" viewBox="0 0 24 24"><path d="M9 7.5 4.5 12 9 16.5"/><path d="M15 7.5 19.5 12 15 16.5"/></symbol>
+  <symbol id="ic-shield-check" viewBox="0 0 24 24"><path d="M12 3.2 19 6v5.8c0 4.2-3 6.9-7 8.4-4-1.5-7-4.2-7-8.4V6z"/><path d="M9 12.2 11.4 14.6 15.4 10"/></symbol>
+  <symbol id="ic-bug" viewBox="0 0 24 24"><path d="M9 6.5a3 3 0 0 1 6 0"/><rect x="8" y="8" width="8" height="10.5" rx="4"/><path d="M8 11.5H4.5M16 11.5H19.5M8 15.5H5.5M16 15.5H18.5M9.8 18.2 8.2 21M14.2 18.2 15.8 21"/></symbol>
+  <symbol id="ic-rocket" viewBox="0 0 24 24"><path d="M12 3.2c3 2.2 4.8 5.6 4.8 9.1L14 15.2h-4l-2.8-2.9c0-3.5 1.8-6.9 4.8-9.1z"/><circle cx="12" cy="10" r="1.6"/><path d="M10 15.2 7.6 20.6 12 18.4 16.4 20.6 14 15.2"/></symbol>
+  <symbol id="ic-spark" viewBox="0 0 24 24"><path d="M10.5 3.2 12.3 7.9 17 9.7 12.3 11.5 10.5 16.2 8.7 11.5 4 9.7 8.7 7.9z"/><path d="M18 15.2 18.8 17.4 21 18.2 18.8 19 18 21.2 17.2 19 15 18.2 17.2 17.4z"/></symbol>
+  <symbol id="ic-wrench" viewBox="0 0 24 24"><path d="M15.6 3.4a4.6 4.6 0 0 0-4.1 6.9L4.6 17.2a2 2 0 0 0 2.8 2.8l6.9-6.9a4.6 4.6 0 0 0 5.5-6.4l-2.8 2.8-2.6-.7-.7-2.6z"/><path d="M6.4 17.6h.01"/></symbol>
+  <symbol id="ic-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M14.9 9.1 13.1 13.1 9.1 14.9 10.9 10.9z"/></symbol>
+  <symbol id="ic-broom" viewBox="0 0 24 24"><path d="M14.2 3.8 20.2 9.8"/><path d="M13.4 8.6 8 14l2 2 5.4-5.4z"/><path d="M8 14 3.8 20.2 10 16"/></symbol>
+  <symbol id="ic-ship" viewBox="0 0 24 24"><path d="M4.6 12 12 9.2 19.4 12l-1.6 5.9a3 3 0 0 1-2.9 2.2H9.1a3 3 0 0 1-2.9-2.2z"/><path d="M12 9.2V3.8h4.2"/></symbol>
+  <symbol id="ic-play" viewBox="0 0 24 24"><path d="M8.4 5.4 18 12 8.4 18.6z"/></symbol>
+  <symbol id="ic-stop" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2.4"/></symbol>
+  <symbol id="ic-save" viewBox="0 0 24 24"><path d="M5 5h10.6L19 8.4V19H5z"/><path d="M9 5v5h6V5"/><path d="M8 19v-5h8v5"/></symbol>
+  <symbol id="ic-plus" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></symbol>
+  <symbol id="ic-trash" viewBox="0 0 24 24"><path d="M5 8h14"/><path d="M9.5 8V5.5h5V8"/><path d="M7 8l1 11h8l1-11"/></symbol>
+  <symbol id="ic-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 4v2.4M12 17.6V20M4 12h2.4M17.6 12H20M6.3 6.3 8 8M16 16 17.7 17.7M17.7 6.3 16 8M8 16 6.3 17.7"/></symbol>
+  <symbol id="ic-home" viewBox="0 0 24 24"><path d="M4 11 12 4.6 20 11v8.4H4z"/><path d="M10 19.4v-5h4v5"/></symbol>
+  <symbol id="ic-chevron" viewBox="0 0 24 24"><path d="M10 7l5 5-5 5"/></symbol>
+  <symbol id="ic-bolt" viewBox="0 0 24 24"><path d="M13 3.2 6 13.2h4.6l-1 7.6L17 10.8h-5z"/></symbol>
+  <symbol id="ic-monitor" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="11.6" rx="2.4"/><path d="M9 20.6h6M12 16.6v4"/></symbol>
+  <symbol id="ic-terminal" viewBox="0 0 24 24"><rect x="3" y="4.2" width="18" height="15.6" rx="2.4"/><path d="M7 9.4 9.6 12 7 14.6M12.4 14.8H17"/></symbol>
+  <symbol id="ic-tick" viewBox="0 0 24 24"><path d="M5 12.6 9.6 17.2 19 7.4"/></symbol>
+  <symbol id="ic-cross" viewBox="0 0 24 24"><path d="M6.4 6.4 17.6 17.6M17.6 6.4 6.4 17.6"/></symbol>
+  <symbol id="ic-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/></symbol>
+  <symbol id="ic-folder" viewBox="0 0 24 24"><path d="M4 6.6h5L11 9h9v8.4H4z"/></symbol>
+  <symbol id="ic-drag" viewBox="0 0 24 24"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"/></symbol>
+  <symbol id="ic-loop" viewBox="0 0 24 24"><path d="M4.6 12a7.4 7.4 0 0 1 12.6-5.2L20 9.4"/><path d="M20 4.6v4.8h-4.8"/><path d="M19.4 12a7.4 7.4 0 0 1-12.6 5.2L4 14.6"/><path d="M4 19.4v-4.8h4.8"/></symbol>
+  <symbol id="ic-layers" viewBox="0 0 24 24"><path d="M12 3.4 20 7.4 12 11.4 4 7.4z"/><path d="M4 12.4 12 16.4 20 12.4"/><path d="M4 17 12 21 20 17"/></symbol>
+  <symbol id="ic-check-list" viewBox="0 0 24 24"><path d="M4.4 7.6 6.2 9.4 9.4 6.2"/><path d="M4.4 16.6 6.2 18.4 9.4 15.2"/><path d="M12.6 7.8H20M12.6 16.8H20"/></symbol>
+</defs></svg>
+
+<div class="rail">
+  <a class="btn" id="lnkHome" href="/" aria-label="dashboard"><svg class="ic sm"><use href="#ic-home"/></svg></a>
+  <span id="projChips"></span>
+  <span class="spacer"></span>
+  <span class="chip" id="execDot" data-st="unknown" aria-hidden="true"><svg class="ic sm"><use href="#ic-dot"/></svg></span>
+  <button id="btnSheet" aria-label="settings" aria-expanded="true"><svg class="ic sm"><use href="#ic-gear"/></svg></button>
+</div>
+
+<main>
+
+  <section class="card" id="gateCard" data-show="0" role="group" aria-label="approval gate">
+    <svg class="ic lg"><use href="#ic-monitor"/></svg>
+    <button id="btnGateOk" aria-label="approve"><svg class="ic"><use href="#ic-tick"/></svg></button>
+    <button id="btnGateNo" aria-label="reject"><svg class="ic"><use href="#ic-cross"/></svg></button>
+  </section>
+
+  <section id="intentRow" role="radiogroup" aria-label="intent"></section>
+
+  <section class="card" id="chain" role="list" aria-label="pipeline"></section>
+
+  <section class="card" id="controls">
+    <div class="ctl loops">
+      <svg class="ic sm"><use href="#ic-loop"/></svg>
+      <input type="range" id="rngLoops" min="1" max="5" step="1" value="3" aria-label="retry loops">
+      <span id="loopDots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+    </div>
+    <div class="ctl swrow" id="rowCtx" data-on="1">
+      <svg class="ic sm"><use href="#ic-layers"/></svg>
+      <button class="sw" id="swCtx" data-on="1" role="switch" aria-checked="true" aria-label="collect context script"><i></i></button>
+    </div>
+    <div class="ctl swrow" id="rowChecks" data-on="1">
+      <svg class="ic sm"><use href="#ic-check-list"/></svg>
+      <button class="sw" id="swChecks" data-on="1" role="switch" aria-checked="true" aria-label="run checks script"><i></i></button>
+    </div>
+    <div class="ctl">
+      <span class="seg big" id="segGateMode" role="radiogroup" aria-label="global gate mode">
+        <span class="pill"></span>
+        <button data-v="default" aria-label="gate mode default"><svg class="ic sm"><use href="#ic-dot"/></svg></button>
+        <button data-v="auto" aria-label="gate mode auto"><svg class="ic sm"><use href="#ic-bolt"/></svg></button>
+        <button data-v="dashboard" aria-label="gate mode dashboard"><svg class="ic sm"><use href="#ic-monitor"/></svg></button>
+        <button data-v="terminal" aria-label="gate mode terminal"><svg class="ic sm"><use href="#ic-terminal"/></svg></button>
+      </span>
+    </div>
+  </section>
+
+  <section id="actions">
+    <button id="btnSave" data-st="idle" aria-label="save flow"><svg class="ic"><use href="#ic-save"/></svg></button>
+    <span class="runwrap">
+      <svg id="runArc" viewBox="0 0 88 88" aria-hidden="true"><circle class="trk" cx="44" cy="44" r="41"/><circle class="val" cx="44" cy="44" r="41"/></svg>
+      <button id="btnRun" data-st="idle" aria-label="run"><svg class="ic xl"><use href="#ic-play"/></svg></button>
+    </span>
+  </section>
+
+</main>
+
+<div class="sheet" id="palette" data-open="0" role="group" aria-label="role palette"></div>
+
+<script>
+/* ============================== presets ==============================
+   These English/Arabic strings are baked into the generated flow JSON and
+   are NEVER rendered on this page - the surface stays typography-free. */
+const ROLES = {
+  thinker: {
+    icon: 'ic-brain', color: 'var(--c-thinker)', hex: false,
+    stage: 'think', agent: 'thinker', gate: 'dashboard',
+    title: 'Think & plan', titleAr: 'التفكير والتخطيط',
+    prompt: 'Task: {TASK}\n\nProduce the plan per your role contract. Write it to .workbench/artifacts/plan.md in the project at {PROJECT}.',
+    artifact: 'plan.md',
+    gateQuestion: 'Review the plan in plan.md - proceed with this plan?',
+    gateQuestionAr: 'راجع الخطة في plan.md — نكمل على الخطة دي؟',
+    done: [
+      'plan.md exists and contains all required sections (Task, Requirements, Chosen approach, Steps, Acceptance criteria, Risks)',
+      'Every step names concrete files/modules',
+      'Acceptance criteria are testable statements',
+    ],
+  },
+  analyst: {
+    icon: 'ic-search', color: 'var(--c-analyst)', hex: false,
+    stage: 'analyze', agent: 'analyst', gate: 'auto',
+    title: 'Code analysis', titleAr: 'تحليل الكود',
+    prompt: 'Analyze the codebase for the approved plan (.workbench/artifacts/plan.md) in the project at {PROJECT}. Mode 1 (task analysis). Write analysis.md per your role contract.',
+    artifact: 'analysis.md',
+    gateQuestion: 'Review analysis.md - proceed to implementation?',
+    gateQuestionAr: 'راجع analysis.md — نكمل على التنفيذ؟',
+    done: [
+      'analysis.md exists with impacted files, data flow with citations, patterns to follow, test landscape, and notes for coder',
+      'If analysis found plan corrections, they were surfaced to the user before proceeding',
+    ],
+  },
+  coder: {
+    icon: 'ic-code', color: 'var(--c-coder)', hex: false,
+    stage: 'code', agent: 'coder', gate: 'auto',
+    title: 'Implementation', titleAr: 'كتابة الكود',
+    prompt: 'Implement the approved plan (.workbench/artifacts/plan.md) guided by .workbench/artifacts/analysis.md in the project at {PROJECT}. Write code-notes.md per your role contract.',
+    artifact: 'code-notes.md',
+    gateQuestion: 'Review code-notes.md - proceed to testing?',
+    gateQuestionAr: 'راجع code-notes.md — نكمل على الاختبار؟',
+    done: [
+      'Every plan step is implemented or its omission is explicitly justified in code-notes.md',
+      'code-notes.md exists with steps completed, deviations, and how-to-verify commands',
+    ],
+  },
+  tester: {
+    icon: 'ic-shield-check', color: 'var(--c-tester)', hex: true,
+    stage: 'test', agent: 'tester', gate: 'auto',
+    title: 'Test & review', titleAr: 'الاختبار والمراجعة',
+    prompt: 'Verify and review the implemented change in the project at {PROJECT}. Checks output (if any) is in .workbench/artifacts/checks.md. Write review.md per your role contract and lead your reply with VERDICT: PASS or VERDICT: FAIL.',
+    artifact: 'review.md',
+    gateQuestion: 'Review review.md - accept this verdict?',
+    gateQuestionAr: 'راجع review.md — تقبل الحكم ده؟',
+    done: [
+      'review.md exists with an explicit Verdict line',
+      'Every acceptance criterion is marked MET / NOT MET / NOT TESTABLE with evidence',
+    ],
+  },
+  debugger: {
+    icon: 'ic-bug', color: 'var(--c-debugger)', hex: true,
+    stage: 'debug', agent: 'debugger', gate: 'auto',
+    title: 'Debug & root-cause', titleAr: 'التصحيح وتحليل الأعطال',
+    prompt: 'The tester issued FAIL. Fix the failures per .workbench/artifacts/review.md in the project at {PROJECT}. Write/append debug.md per your role contract. Reproduce first, fix root causes only, re-verify everything.',
+    artifact: 'debug.md',
+    gateQuestion: 'Review debug.md - re-run the tester?',
+    gateQuestionAr: 'راجع debug.md — أعيد الاختبار؟',
+    done: [
+      'Every blocking finding from review.md is addressed or refuted with evidence',
+      'All previously failing commands now pass (shown in debug.md)',
+    ],
+  },
+  shipper: {
+    icon: 'ic-rocket', color: 'var(--c-shipper)', hex: false,
+    stage: 'ship', agent: 'shipper', gate: 'dashboard',
+    title: 'Ship & deliver', titleAr: 'الرفع والتسليم',
+    prompt: 'The change PASSED review. Package it for the project at {PROJECT} per your role contract. Mode: {SHIP_MODE}. Write ship.md.',
+    artifact: 'ship.md',
+    gateQuestion: 'The change passed review - commit it? (and push if requested)',
+    gateQuestionAr: 'الشغل عدى المراجعة — أعمل commit؟ (والـ push لو مطلوب)',
+    done: [
+      'ship.md exists with summary, file list, commit message, and actions taken',
+      'No .workbench/ or local-only files staged',
+    ],
+  },
+};
+const ORDER = ['thinker', 'analyst', 'coder', 'tester', 'debugger', 'shipper'];
+
+/* Task sentences are composed here, never typed by the user. Every intent
+   carries a NON-EMPTY task because Studio flows are never named
+   'understand' and POST /api/run rejects a blank task for any other name. */
+const INTENTS = {
+  feature: {
+    icon: 'ic-spark',
+    roles: ['thinker', 'analyst', 'coder', 'tester', 'debugger', 'shipper'],
+    title: 'Studio pipeline - new capability',
+    titleAr: 'فلو الاستوديو — ميزة جديدة',
+    description: 'Studio-authored pipeline: build a new capability end to end, nothing ships without a PASS verdict.',
+    task: 'Build the new capability requested in .workbench/inbox.md: design it, implement it, verify it, then ship it.',
+  },
+  fix: {
+    icon: 'ic-wrench',
+    roles: ['analyst', 'coder', 'tester', 'debugger', 'shipper'],
+    title: 'Studio pipeline - bug fix',
+    titleAr: 'فلو الاستوديو — إصلاح عطل',
+    description: 'Studio-authored pipeline: reproduce and fix the reported defect at its root cause, then verify and ship.',
+    task: 'Fix the defect reported in .workbench/inbox.md: reproduce it first, fix the root cause only, then re-verify everything.',
+  },
+  understand: {
+    icon: 'ic-compass',
+    roles: ['analyst', 'thinker'],
+    title: 'Studio pipeline - project understanding',
+    titleAr: 'فلو الاستوديو — فهم المشروع',
+    description: 'Studio-authored pipeline: understand the project like an engineer and write down its rules.',
+    task: 'Understand this project like an engineer: map the architecture, extract the real conventions and verified commands, then write down the rules an agent needs.',
+  },
+  refactor: {
+    icon: 'ic-broom',
+    roles: ['thinker', 'analyst', 'coder', 'tester', 'debugger'],
+    title: 'Studio pipeline - refactor',
+    titleAr: 'فلو الاستوديو — إعادة هيكلة',
+    description: 'Studio-authored pipeline: restructure the code named in the inbox note without changing behavior.',
+    task: 'Refactor the code area named in .workbench/inbox.md without changing any observable behavior: improve the structure and keep every check green.',
+  },
+  ship: {
+    icon: 'ic-ship',
+    roles: ['tester', 'shipper'],
+    title: 'Studio pipeline - verify and ship',
+    titleAr: 'فلو الاستوديو — تحقق ورفع',
+    description: 'Studio-authored pipeline: verify the pending change already in the working tree, then package and deliver it.',
+    task: 'Verify the change already present in the working tree, then package and deliver it per the shipper contract.',
+  },
+};
+const GATES = ['auto', 'dashboard', 'terminal'];
+const GATE_ICONS = { auto: 'ic-bolt', dashboard: 'ic-monitor', terminal: 'ic-terminal' };
+const GATE_MODES = ['default', 'auto', 'terminal', 'dashboard'];
+
+/* ============================== state ============================== */
+const SCHEMA = 1;
+const $ = (id) => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
+
+function fresh(intent) {
+  const S = { v: SCHEMA, intent, order: ORDER.slice(), on: {}, gate: {}, loops: 3, preCtx: true, preChecks: true, gateMode: 'default', lastFlow: null };
+  for (const r of ORDER) { S.on[r] = INTENTS[intent].roles.includes(r); S.gate[r] = ROLES[r].gate; }
+  return S;
+}
+/* Hydrate defensively: any shape mismatch discards the stored blob. */
+function load() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('ff.studio') || 'null');
+    if (!raw || raw.v !== SCHEMA || !INTENTS[raw.intent]) return fresh('feature');
+    const S = fresh(raw.intent);
+    if (Array.isArray(raw.order) && raw.order.length === ORDER.length && ORDER.every((r) => raw.order.includes(r))) S.order = raw.order.slice();
+    for (const r of ORDER) {
+      if (raw.on && typeof raw.on[r] === 'boolean') S.on[r] = raw.on[r];
+      if (raw.gate && GATES.includes(raw.gate[r])) S.gate[r] = raw.gate[r];
+    }
+    if (Number.isInteger(raw.loops) && raw.loops >= 1 && raw.loops <= 5) S.loops = raw.loops;
+    if (typeof raw.preCtx === 'boolean') S.preCtx = raw.preCtx;
+    if (typeof raw.preChecks === 'boolean') S.preChecks = raw.preChecks;
+    if (GATE_MODES.includes(raw.gateMode)) S.gateMode = raw.gateMode;
+    if (typeof raw.lastFlow === 'string') S.lastFlow = raw.lastFlow;
+    return S;
+  } catch { return fresh('feature'); }
+}
+let S = load();
+const save = () => { try { localStorage.setItem('ff.studio', JSON.stringify(S)); } catch {} };
+
+/* ============================== helpers ============================== */
+const api = async (path, opts) => {
+  const r = await fetch(path, opts);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+};
+const post = (u, b) => api(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
+
+function icon(id, cls) {
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('class', 'ic' + (cls ? ' ' + cls : ''));
+  const use = document.createElementNS(NS, 'use');
+  use.setAttribute('href', '#' + id);
+  svg.appendChild(use);
+  return svg;
+}
+function el(tag, cls, attrs) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  for (const k in (attrs || {})) n.setAttribute(k, attrs[k]);
+  return n;
+}
+function flash(node, st) {
+  const prev = node.dataset.st;
+  node.dataset.st = st;
+  setTimeout(() => { node.dataset.st = prev === st ? 'idle' : (prev || 'idle'); }, 1200);
+}
+/* Stable color per project path - the only text-free project identity. */
+function hashHue(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+  return h;
+}
+/* Position a segmented control's sliding pill (physical px, RTL-safe). */
+function segSelect(seg, value) {
+  const pill = seg.querySelector('.pill');
+  let target = null;
+  seg.querySelectorAll('button').forEach((b) => {
+    const on = b.dataset.v === value;
+    b.dataset.on = on ? '1' : '0';
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+    if (on) target = b;
+  });
+  if (target && pill) { pill.style.left = target.offsetLeft + 'px'; pill.style.width = target.offsetWidth + 'px'; }
+}
+function makeSeg(values, current, cls, onPick, labelPrefix) {
+  const seg = el('span', 'seg' + (cls ? ' ' + cls : ''), { role: 'radiogroup', 'aria-label': labelPrefix });
+  seg.appendChild(el('span', 'pill'));
+  for (const v of values) {
+    const b = el('button', null, { 'data-v': v, role: 'radio', 'aria-label': labelPrefix + ' ' + v });
+    b.appendChild(icon(GATE_ICONS[v], 'sm'));
+    b.onclick = () => { onPick(v); segSelect(seg, v); };
+    seg.appendChild(b);
+  }
+  requestAnimationFrame(() => segSelect(seg, current));
+  return seg;
+}
+
+/* ============================== language / direction ============================== */
+{
+  const lang = localStorage.getItem('ff.lang') || 'ar';
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+}
+
+/* ============================== intents ============================== */
+function renderIntents() {
+  const row = $('intentRow');
+  if (!row.dataset.built) {
+    for (const key of Object.keys(INTENTS)) {
+      const b = el('button', 'intent', { 'data-k': key, role: 'radio', 'aria-label': 'intent ' + key });
+      b.appendChild(icon(INTENTS[key].icon));
+      b.onclick = () => {
+        S = Object.assign(fresh(key), { gateMode: S.gateMode, loops: S.loops, preCtx: S.preCtx, preChecks: S.preChecks });
+        save();
+        renderIntents(); renderChain(); renderControls(); renderPalette();
+      };
+      row.appendChild(b);
+    }
+    row.dataset.built = '1';
+  }
+  row.querySelectorAll('.intent').forEach((b) => {
+    const on = b.dataset.k === S.intent;
+    b.dataset.on = on ? '1' : '0';
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+}
+
+/* ============================== pipeline chain ============================== */
+let dragRole = null;
+
+function move(role, delta) {
+  const i = S.order.indexOf(role);
+  const j = i + delta;
+  if (i < 0 || j < 0 || j >= S.order.length) return;
+  S.order.splice(i, 1);
+  S.order.splice(j, 0, role);
+  save();
+  renderChain();
+  const n = document.querySelector('.node[data-role="' + role + '"]');
+  if (n) n.focus();
+}
+function placeBefore(role, target) {
+  if (role === target) return;
+  S.order.splice(S.order.indexOf(role), 1);
+  S.order.splice(S.order.indexOf(target), 0, role);
+  save();
+  renderChain();
+}
+function toggleRole(role) {
+  S.on[role] = !S.on[role];
+  /* Auto-include the debug loop as soon as code + test are both in. */
+  if (S.on.coder && S.on.tester && (role === 'coder' || role === 'tester')) S.on.debugger = true;
+  save();
+  renderChain(); renderPalette();
+}
+
+function renderChain() {
+  const chain = $('chain');
+  chain.textContent = '';
+  S.order.forEach((role, idx) => {
+    const R = ROLES[role];
+    const slot = el('div', 'slot');
+    if (idx > 0) slot.appendChild(el('div', 'link', { 'data-on': S.on[role] ? '1' : '0', 'aria-hidden': 'true' }));
+    const node = el('div', 'node', {
+      'data-role': role, 'data-on': S.on[role] ? '1' : '0', 'data-st': '',
+      'data-hex': R.hex ? '1' : '0', role: 'listitem', draggable: 'true',
+      tabindex: '0', 'aria-label': 'stage ' + role,
+    });
+    node.style.setProperty('--role', R.color);
+    const dot = el('button', 'dot', { 'aria-pressed': S.on[role] ? 'true' : 'false', 'aria-label': 'toggle ' + role });
+    dot.appendChild(icon(R.icon, 'lg'));
+    dot.onclick = () => toggleRole(role);
+    node.appendChild(dot);
+    node.appendChild(makeSeg(GATES, S.gate[role], 'gateSeg', (v) => { S.gate[role] = v; save(); }, 'gate ' + role));
+    const grip = el('button', 'grip', { 'aria-hidden': 'true', tabindex: '-1' });
+    grip.appendChild(icon('ic-drag', 'sm dots'));
+    node.appendChild(grip);
+    node.addEventListener('dragstart', (e) => { dragRole = role; node.dataset.drag = '1'; if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'; });
+    node.addEventListener('dragend', () => { dragRole = null; delete node.dataset.drag; });
+    node.addEventListener('dragover', (e) => { if (dragRole) e.preventDefault(); });
+    node.addEventListener('drop', (e) => { e.preventDefault(); if (dragRole) placeBefore(dragRole, role); dragRole = null; });
+    node.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); move(role, -1); }
+      else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); move(role, 1); }
+      else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleRole(role); }
+    });
+    slot.appendChild(node);
+    chain.appendChild(slot);
+  });
+  const addSlot = el('div', 'slot');
+  addSlot.appendChild(el('div', 'link', { 'data-on': '0', 'aria-hidden': 'true' }));
+  const add = el('div', 'node');
+  const plus = el('button', 'dot', { id: 'btnAddRole', 'aria-label': 'add stage', 'aria-expanded': 'false' });
+  plus.appendChild(icon('ic-plus', 'lg'));
+  plus.onclick = () => {
+    const open = $('palette').dataset.open !== '1';
+    $('palette').dataset.open = open ? '1' : '0';
+    plus.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  add.appendChild(plus);
+  addSlot.appendChild(add);
+  chain.appendChild(addSlot);
+}
+
+/* ============================== palette ============================== */
+function renderPalette() {
+  const pal = $('palette');
+  pal.textContent = '';
+  for (const role of ORDER) {
+    const b = el('button', 'pal', { 'data-on': S.on[role] ? '1' : '0', 'aria-label': 'append ' + role, 'aria-pressed': S.on[role] ? 'true' : 'false' });
+    b.appendChild(icon(ROLES[role].icon));
+    b.onclick = () => {
+      S.order.splice(S.order.indexOf(role), 1);
+      S.order.push(role);
+      S.on[role] = true;
+      save();
+      renderChain(); renderPalette();
+    };
+    pal.appendChild(b);
+  }
+}
+
+/* ============================== controls ============================== */
+function renderControls() {
+  $('rngLoops').value = String(S.loops);
+  $('loopDots').querySelectorAll('i').forEach((d, i) => { d.dataset.on = i < S.loops ? '1' : '0'; });
+  for (const [swId, rowId, key] of [['swCtx', 'rowCtx', 'preCtx'], ['swChecks', 'rowChecks', 'preChecks']]) {
+    const on = S[key];
+    $(swId).dataset.on = on ? '1' : '0';
+    $(swId).setAttribute('aria-checked', on ? 'true' : 'false');
+    $(rowId).dataset.on = on ? '1' : '0';
+  }
+  segSelect($('segGateMode'), S.gateMode);
+}
+$('rngLoops').oninput = () => { S.loops = Number($('rngLoops').value); save(); renderControls(); };
+$('swCtx').onclick = () => { S.preCtx = !S.preCtx; save(); renderControls(); };
+$('swChecks').onclick = () => { S.preChecks = !S.preChecks; save(); renderControls(); };
+$('segGateMode').querySelectorAll('button').forEach((b) => {
+  b.onclick = async () => {
+    S.gateMode = b.dataset.v; save(); renderControls();
+    try { await post('/api/settings', { gateMode: S.gateMode }); } catch { flash($('btnSave'), 'bad'); }
+  };
+});
+/* The gear collapses/expands the controls card (there is no second sheet:
+   every setting Studio owns is already on this one card). */
+$('btnSheet').onclick = () => {
+  const hide = $('controls').dataset.hide !== '1';
+  $('controls').dataset.hide = hide ? '1' : '0';
+  $('btnSheet').setAttribute('aria-expanded', hide ? 'false' : 'true');
+  if (!hide) renderControls();
+};
+
+/* ============================== flow builder ============================== */
+function buildFlow() {
+  const enabled = S.order.filter((r) => S.on[r]);
+  const linear = enabled.filter((r) => r !== 'debugger');
+  const withDebug = enabled.includes('debugger') && enabled.includes('tester');
+  const stage = (role, isFirst) => {
+    const R = ROLES[role];
+    const pre = [];
+    if (isFirst && S.preCtx) pre.push('scripts/collect-context.mjs');
+    if (role === 'tester' && S.preChecks) pre.push('scripts/run-checks.mjs');
+    const gate = S.gate[role] || R.gate;
+    const st = {
+      id: R.stage, title: R.title, titleAr: R.titleAr, agent: R.agent,
+      prompt: R.prompt, pre, post: [], gate, artifact: R.artifact, done: R.done.slice(),
+    };
+    if (gate !== 'auto') { st.gateQuestion = R.gateQuestion; st.gateQuestionAr = R.gateQuestionAr; }
+    return st;
+  };
+  const stages = linear.map((r, i) => stage(r, i === 0));
+  if (withDebug) {
+    const tester = stages.find((s) => s.id === ROLES.tester.stage);
+    if (tester) { tester.onFail = ROLES.debugger.stage; tester.maxLoops = S.loops; }
+    const dbg = stage('debugger', false);
+    dbg.runOnlyWhenJumpedTo = true;
+    dbg.next = ROLES.tester.stage;
+    stages.push(dbg);
+  }
+  const I = INTENTS[S.intent];
+  return {
+    name: 'studio-' + Date.now().toString(36),
+    title: I.title,
+    titleAr: I.titleAr,
+    description: I.description,
+    defaultGate: 'terminal',
+    stages,
+  };
+}
+
+async function doSave() {
+  const flow = buildFlow();
+  if (!flow.stages.length) { flash($('btnSave'), 'bad'); return null; }
+  try {
+    await post('/api/flow', { name: flow.name, content: JSON.stringify(flow, null, 2) });
+    S.lastFlow = flow.name; save();
+    flash($('btnSave'), 'ok');
+    return flow.name;
+  } catch {
+    flash($('btnSave'), 'bad');
+    return null;
+  }
+}
+$('btnSave').onclick = () => doSave();
+
+/* ============================== run ============================== */
+const ARC = 2 * Math.PI * 41;
+let runActive = false;
+let runCursor = 0;
+let execState = 'unknown';
+let cliReady = false;
+
+function setRunIcon(id) { $('btnRun').querySelector('use').setAttribute('href', '#' + id); }
+function setArc(frac) {
+  const v = $('runArc').querySelector('.val');
+  v.style.strokeDasharray = ARC.toFixed(1);
+  v.style.strokeDashoffset = (ARC * (1 - Math.max(0, Math.min(1, frac)))).toFixed(1);
+}
+setArc(0);
+
+$('btnRun').onclick = async () => {
+  if (runActive) {
+    try { await post('/api/run/stop', {}); } catch { flash($('btnRun'), 'bad'); }
+    return;
+  }
+  let name = S.lastFlow;
+  if (!name) name = await doSave();
+  if (!name) { flash($('btnRun'), 'bad'); return; }
+  try {
+    await post('/api/run', { flow: name, task: INTENTS[S.intent].task, gates: 'dashboard', permissionMode: 'dangerous' });
+    runCursor = 0;
+  } catch (e) {
+    if (e.message === 'no_executor' || e.message === 'cli_not_authenticated') { execState = 'none'; $('execDot').dataset.st = 'none'; $('btnRun').dataset.st = 'none'; }
+    flash($('btnRun'), 'bad');
+  }
+};
+
+$('btnGateOk').onclick = () => decide('approve');
+$('btnGateNo').onclick = () => decide('reject');
+let gateStage = null;
+async function decide(decision) {
+  if (!gateStage) return;
+  $('btnGateOk').disabled = $('btnGateNo').disabled = true;
+  try { await post('/api/command', { stage: gateStage, decision, note: '' }); }
+  catch { flash($('btnSave'), 'bad'); }
+  $('btnGateOk').disabled = $('btnGateNo').disabled = false;
+}
+
+/* ============================== polling ============================== */
+const POLL_MS = Number(localStorage.getItem('ff.poll') || 1500);
+
+function renderProjects(d) {
+  const box = $('projChips');
+  const sig = JSON.stringify([d.projects || [], d.project || '']);
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  box.textContent = '';
+  for (const p of (d.projects || [])) {
+    const active = d.project && p.toLowerCase() === d.project.toLowerCase();
+    const b = el('button', 'chip', { 'data-on': active ? '1' : '0', 'aria-label': p, 'aria-pressed': active ? 'true' : 'false' });
+    b.style.color = 'hsl(' + hashHue(p.toLowerCase()) + ' 62% 52%)';
+    b.appendChild(el('i'));
+    b.onclick = async () => { try { await post('/api/projects', { action: 'activate', path: p }); } catch { flash($('btnSave'), 'bad'); } };
+    box.appendChild(b);
+  }
+}
+
+function renderExec(d) {
+  if (d.queuePending) execState = 'queue';
+  else if ((d.executors && d.executors.acp) || (d.daemon && d.daemon.alive)) execState = 'ready';
+  else if (cliReady) execState = 'ready';
+  else execState = 'none';
+  $('execDot').dataset.st = execState;
+  if (!runActive) $('btnRun').dataset.st = execState === 'none' ? 'none' : 'idle';
+}
+
+function renderStages(d) {
+  const stages = (d.state && Array.isArray(d.state.stages)) ? d.state.stages : [];
+  const byId = {};
+  for (const s of stages) byId[s.id] = s.status || '';
+  document.querySelectorAll('#chain .node[data-role]').forEach((n) => {
+    const st = byId[ROLES[n.dataset.role].stage] || '';
+    n.dataset.st = st;
+  });
+  const total = stages.filter((s) => s.status !== 'skipped').length;
+  const done = stages.filter((s) => s.status === 'done').length;
+  setArc(total ? done / total : 0);
+}
+
+function renderGate(gate) {
+  const card = $('gateCard');
+  if (gate && gate.stage) { gateStage = gate.stage; card.dataset.show = '1'; }
+  else { gateStage = null; card.dataset.show = '0'; }
+}
+
+async function fetchCli() {
+  try { const c = await api('/api/cli'); cliReady = !!(c.found && c.authenticated); } catch { cliReady = false; }
+}
+
+async function fetchRun() {
+  try {
+    const d = await api('/api/run?since=' + runCursor);
+    if (!d.exists) { runActive = false; setRunIcon('ic-play'); return; }
+    if (d.lines && d.lines.length) runCursor = d.next;
+    runActive = !!d.active;
+    setRunIcon(runActive ? 'ic-stop' : 'ic-play');
+    $('btnRun').dataset.st = runActive ? 'active' : (execState === 'none' ? 'none' : 'idle');
+  } catch { /* server unreachable - keep the last known icon state */ }
+}
+
+async function poll() {
+  try {
+    const d = await api('/api/state');
+    renderProjects(d);
+    renderExec(d);
+    renderStages(d);
+    renderGate(d.gate);
+    if (d.settings && GATE_MODES.includes(d.settings.gateMode) && d.settings.gateMode !== S.gateMode) {
+      S.gateMode = d.settings.gateMode; save(); renderControls();
+    }
+  } catch { $('execDot').dataset.st = 'unknown'; }
+  await fetchRun();
+}
+
+/* ============================== boot ============================== */
+renderIntents();
+renderChain();
+renderControls();
+renderPalette();
+fetchCli().then(poll);
+setInterval(poll, POLL_MS);
+window.addEventListener('resize', () => {
+  segSelect($('segGateMode'), S.gateMode);
+  document.querySelectorAll('.gateSeg').forEach((seg) => {
+    const role = seg.closest('.node').dataset.role;
+    segSelect(seg, S.gate[role]);
+  });
+});
+</script>
+</body>
+</html>

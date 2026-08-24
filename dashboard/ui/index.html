@@ -1,0 +1,3350 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FlowForge</title>
+<style>
+  /* ---------- theme variables ---------- */
+  :root{
+    --bg:#0a0e16; --panel:#121822; --panel2:#19202c; --border:#252e3c;
+    --text:#eef2f8; --dim:#8b95a5; --accent:#6fb8ff; --accent2:#2b7cff;
+    --green:#3ecc6b; --red:#ff5d5d; --amber:#f0a92e; --blue:#6fb8ff; --gray:#6b7a8f;
+    --code-bg:#070b11; --shadow:rgba(0,0,0,.45);
+    --hairline:rgba(255,255,255,.05);
+    --radius-sm:8px; --radius-md:12px; --radius-lg:16px; --radius-xl:22px;
+    --space-xs:4px; --space-sm:8px; --space-md:12px; --space-lg:16px; --space-xl:24px;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.25);
+    --shadow-md:0 8px 24px var(--shadow);
+    --ring:0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+    --font: "Inter","Segoe UI",Tahoma,Arial,sans-serif;
+    --mono: ui-monospace,"Cascadia Mono",Consolas,"Courier New",monospace;
+  }
+  [data-theme="light"]{
+    --bg:#f4f6fa; --panel:#ffffff; --panel2:#f1f4f8; --border:#dde2ea;
+    --text:#161b22; --dim:#5a6675; --accent:#0b5dd4; --accent2:#0969da;
+    --green:#19733a; --red:#c8212e; --amber:#9a5f00; --blue:#0b5dd4; --gray:#6b7280;
+    --code-bg:#f7f9fc; --shadow:rgba(15,23,42,.10);
+    --hairline:rgba(15,23,42,.04);
+    --shadow-sm:0 1px 2px rgba(15,23,42,.06);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{-webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--font); min-height:100vh;
+    background-image:radial-gradient(1100px 420px at 50% -180px, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%);
+    background-attachment:fixed; transition:background-color .18s ease; line-height:1.45;
+  }
+  :focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:var(--radius-sm);}
+  ::-webkit-scrollbar{width:10px; height:10px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--border); border-radius:5px; border:2px solid var(--panel);}
+  ::-webkit-scrollbar-thumb:hover{background:var(--gray);}
+
+  /* ---------- top bar ---------- */
+  header{
+    display:flex; align-items:center; gap:var(--space-sm); padding:10px var(--space-lg);
+    border-bottom:1px solid var(--border); background:color-mix(in srgb, var(--panel) 88%, transparent);
+    backdrop-filter:saturate(140%) blur(10px); position:sticky; top:0; z-index:20; flex-wrap:wrap;
+  }
+  header h1{font-size:16px; font-weight:700; letter-spacing:.2px; margin-inline-end:var(--space-sm); white-space:nowrap;}
+  header h1 span{color:var(--accent);}
+  /* project select + browse button read as one control */
+  .projpill{display:flex; align-items:center; gap:0; min-width:0;}
+  .projpill > #projectSelect{border-start-end-radius:0; border-end-end-radius:0; border-inline-end-color:transparent;}
+  .projpill > .iconbtn{border-start-start-radius:0; border-end-start-radius:0;}
+  .badge{padding:3px 12px; border-radius:999px; font-size:12px; font-weight:500; border:1px solid var(--border); background:var(--panel2); white-space:nowrap; box-shadow:inset 0 1px 0 var(--hairline);}
+  .badge.running{color:var(--blue); border-color:color-mix(in srgb, var(--blue) 55%, var(--border)); background:color-mix(in srgb, var(--blue) 10%, var(--panel2));}
+  .badge.waiting_gate{color:var(--amber); border-color:color-mix(in srgb, var(--amber) 55%, var(--border)); background:color-mix(in srgb, var(--amber) 10%, var(--panel2)); animation:pulse 1.2s infinite;}
+  .badge.done{color:var(--green); border-color:color-mix(in srgb, var(--green) 55%, var(--border)); background:color-mix(in srgb, var(--green) 10%, var(--panel2));}
+  .badge.failed{color:var(--red); border-color:color-mix(in srgb, var(--red) 55%, var(--border)); background:color-mix(in srgb, var(--red) 10%, var(--panel2));}
+  .badge.stopped{color:var(--gray); border-color:var(--border); background:var(--panel2);}
+  @keyframes pulse{50%{opacity:.42;}}
+  select,input[type=text],input[type=number],input[type=password],textarea{
+    background:var(--panel2); color:var(--text); border:1px solid var(--border);
+    border-radius:var(--radius-sm); padding:7px 11px; font-size:13px; font-family:inherit; max-width:100%;
+    transition:border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+  }
+  select{cursor:pointer;}
+  select:hover,input:hover,textarea:hover{border-color:color-mix(in srgb, var(--accent) 35%, var(--border));}
+  select:focus,input:focus,textarea:focus{outline:none; border-color:var(--accent); box-shadow:var(--ring); background:var(--panel);}
+  #projectSelect{max-width:340px; direction:ltr;}
+  .spacer{margin-inline-start:auto;}
+  .iconbtn{border:1px solid var(--border); background:var(--panel2); color:var(--text); border-radius:var(--radius-sm); padding:6px 11px; cursor:pointer; font-size:13px; font-weight:500; line-height:1.4; transition:border-color .15s ease, background-color .15s ease, color .15s ease;}
+  .iconbtn:hover{border-color:var(--accent); color:var(--accent); background:color-mix(in srgb, var(--accent) 10%, var(--panel2));}
+  a.iconbtn{display:inline-flex; align-items:center; text-decoration:none;}
+
+  /* ---------- tabs ---------- */
+  nav{
+    display:flex; gap:2px; padding:var(--space-sm) var(--space-lg); flex-wrap:wrap;
+    background:color-mix(in srgb, var(--panel) 88%, transparent); backdrop-filter:saturate(140%) blur(10px);
+    border-bottom:1px solid var(--border);
+  }
+  nav .tab{
+    padding:7px 15px; border:1px solid transparent; border-radius:999px; cursor:pointer;
+    font-size:13px; font-weight:500; color:var(--dim); display:inline-flex; align-items:center;
+    transition:color .15s ease, background-color .15s ease, border-color .15s ease;
+  }
+  nav .tab:hover{color:var(--text); background:var(--panel2);}
+  nav .tab.active{color:var(--accent); border-color:color-mix(in srgb, var(--accent) 45%, var(--border)); background:color-mix(in srgb, var(--accent) 12%, transparent);}
+  nav .tab .livedot{margin-inline-start:6px;}
+
+  main{padding:var(--space-lg) var(--space-lg) 56px; max-width:1360px; margin:0 auto;}
+  .page{display:none;}
+  .page.active{display:block; animation:fadein .18s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+  section{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-lg); padding:var(--space-md) var(--space-lg) var(--space-lg); margin-bottom:var(--space-md); box-shadow:var(--shadow-sm);}
+  /* direct child only: markdown headings rendered inside a section keep their own style */
+  section > h2{
+    font-size:11.5px; color:var(--dim); font-weight:600; text-transform:uppercase; letter-spacing:.6px;
+    display:flex; align-items:center; gap:var(--space-sm); flex-wrap:wrap;
+    padding-bottom:var(--space-sm); margin-bottom:var(--space-md); border-bottom:1px solid var(--hairline);
+  }
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:var(--space-md); align-items:start;}
+  /* overview: pipeline is the main column, the side rail stays narrow */
+  .grid-main{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);}
+  @media (max-width:1000px){ .grid2,.grid-main{grid-template-columns:1fr;} }
+  .row{display:flex; gap:var(--space-sm); align-items:center; flex-wrap:wrap;}
+  .grow{flex:1; min-width:220px;}
+  /* run composer: what to run on the first line, how to run it on the second */
+  .runbar{display:flex; flex-direction:column; gap:var(--space-sm); margin-bottom:var(--space-md);}
+  /* The task box is the most-used field on the page: give it room to breathe,
+     grow it with the text (autoGrow) and never let it shrink below 3 lines. */
+  .runbar #runTask{padding:11px 13px; font-size:14px; line-height:1.7; min-height:76px;
+    max-height:340px; resize:vertical; overflow-y:auto; font-family:inherit;}
+  .runbar #runTask:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(88,166,255,.13);}
+  .promptbar{display:flex; align-items:flex-start; gap:var(--space-sm);}
+  .promptbar .btncol{display:flex; flex-direction:column; gap:6px; flex:0 0 auto;}
+  .promptbar .btncol .btn{white-space:nowrap; justify-content:flex-start;}
+  .runbar .btn.primary{padding:9px 20px;}
+  /* Settings > providers: one card per executor, active one accented. */
+  .provgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:var(--space-md);}
+  .provcard{border:1px solid var(--border); border-radius:var(--radius); background:var(--panel2); padding:12px 14px;}
+  .provcard.active{border-color:var(--accent2); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent2) 22%, transparent);}
+  .provcard h3{margin:0 0 8px; font-size:14.5px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .provcard .paths{font-size:11px; color:var(--dim); direction:ltr; text-align:start; word-break:break-all; margin:6px 0; line-height:1.6;}
+  .provcard .why{font-size:11.5px; color:var(--dim); line-height:1.7; margin:6px 0;}
+  .provcard .row{margin-top:10px;}
+  .livedot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--green); animation:pulse 1.2s infinite;}
+  .hint{font-size:11.5px; color:var(--dim); margin-top:var(--space-sm); line-height:1.6; padding-inline-start:10px; border-inline-start:2px solid var(--border);}
+  .btn{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--border); background:var(--panel2); color:var(--text); padding:7px 16px; border-radius:var(--radius-sm); cursor:pointer; font-size:13px; font-family:inherit; font-weight:500; white-space:nowrap; transition:border-color .15s ease, background-color .15s ease, color .15s ease, transform .12s ease, box-shadow .15s ease;}
+  .btn:hover{border-color:var(--accent); color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, var(--panel2)); transform:translateY(-1px);}
+  .btn:active{transform:translateY(0);}
+  .btn.primary{background:var(--accent2); border-color:var(--accent2); color:#fff; box-shadow:0 2px 10px color-mix(in srgb, var(--accent2) 35%, transparent);}
+  .btn.primary:hover{color:#fff; background:color-mix(in srgb, #fff 12%, var(--accent2)); border-color:color-mix(in srgb, #fff 12%, var(--accent2)); box-shadow:0 4px 16px color-mix(in srgb, var(--accent2) 45%, transparent);}
+  .btn.approve{background:transparent; border-color:var(--green); color:var(--green);}
+  .btn.approve:hover{color:var(--green); border-color:var(--green); background:color-mix(in srgb, var(--green) 12%, transparent);}
+  .btn.reject{background:transparent; border-color:var(--red); color:var(--red);}
+  .btn.reject:hover{color:var(--red); border-color:var(--red); background:color-mix(in srgb, var(--red) 12%, transparent);}
+  .btn.small{padding:5px 12px; font-size:12px;}
+  .btn.chip-active{border-color:var(--accent); color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, var(--panel2));}
+  .btn:disabled{opacity:.45; cursor:default; transform:none;}
+
+  /* ---------- pipeline ---------- */
+  #stages{display:flex; flex-direction:column; gap:6px;}
+  .stage{
+    display:flex; align-items:flex-start; gap:var(--space-md); padding:10px var(--space-md); padding-inline-start:10px;
+    border-radius:var(--radius-md); background:var(--panel2); border:1px solid transparent;
+    border-inline-start:3px solid var(--border);
+    transition:background-color .15s ease, border-color .15s ease;
+  }
+  .stage:hover{border-color:var(--border); border-inline-start-color:var(--gray); background:color-mix(in srgb, var(--panel) 55%, var(--panel2));}
+  .stage .dot{width:10px; height:10px; border-radius:50%; margin-top:6px; flex:none; background:var(--gray); box-shadow:0 0 0 3px color-mix(in srgb, var(--gray) 18%, transparent);}
+  .stage.running{border-color:color-mix(in srgb, var(--blue) 45%, var(--border)); border-inline-start-color:var(--blue); background:color-mix(in srgb, var(--blue) 8%, var(--panel2));}
+  .stage.running .dot{background:var(--blue); box-shadow:0 0 0 3px color-mix(in srgb, var(--blue) 22%, transparent); animation:pulse 1s infinite;}
+  .stage.waiting_gate{border-color:color-mix(in srgb, var(--amber) 45%, var(--border)); border-inline-start-color:var(--amber); background:color-mix(in srgb, var(--amber) 8%, var(--panel2));}
+  .stage.waiting_gate .dot{background:var(--amber); box-shadow:0 0 0 3px color-mix(in srgb, var(--amber) 22%, transparent); animation:pulse 1s infinite;}
+  .stage.done{border-inline-start-color:var(--green);}
+  .stage.done .dot{background:var(--green); box-shadow:0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent);}
+  .stage.failed{border-color:color-mix(in srgb, var(--red) 45%, var(--border)); border-inline-start-color:var(--red); background:color-mix(in srgb, var(--red) 8%, var(--panel2));}
+  .stage.failed .dot{background:var(--red); box-shadow:0 0 0 3px color-mix(in srgb, var(--red) 22%, transparent);}
+  .stage.skipped{opacity:.45;}
+  .stage .info{flex:1; min-width:0;}
+  .stage .t{font-size:13.5px; font-weight:600;}
+  .stage .t b{color:var(--accent); font-weight:500; font-family:var(--mono); font-size:11.5px; margin-inline-start:6px; opacity:.85;}
+  .stage .note{font-size:12px; color:var(--dim); margin-top:3px; overflow-wrap:anywhere; line-height:1.5;}
+  .stage .meta{text-align:end; font-size:11px; color:var(--dim); font-family:var(--mono); direction:ltr; white-space:nowrap; line-height:1.7; flex:none;}
+  .loops{font-size:11px; color:var(--amber); margin-inline-start:var(--space-xs);}
+
+  /* ---------- gate ---------- */
+  #gateBox{
+    border:1px solid color-mix(in srgb, var(--amber) 60%, var(--border));
+    background:color-mix(in srgb, var(--amber) 9%, var(--panel));
+    box-shadow:0 0 0 1px color-mix(in srgb, var(--amber) 12%, transparent), var(--shadow-md); display:none;
+  }
+  #gateBox > h2{color:var(--amber); border-bottom-color:color-mix(in srgb, var(--amber) 25%, transparent);}
+  #gateBox .q{font-size:14.5px; margin-bottom:var(--space-sm); line-height:1.6;}
+  #gateBox textarea{width:100%; min-height:56px; margin-bottom:var(--space-sm);}
+
+  /* ---------- code/content areas ---------- */
+  pre,.md, textarea.code{background:var(--code-bg); border:1px solid var(--border); border-radius:var(--radius-md); font-size:12.5px; line-height:1.65;}
+  pre{padding:var(--space-md); overflow:auto; max-height:540px; white-space:pre-wrap; overflow-wrap:anywhere; direction:ltr; text-align:left; font-family:var(--mono); color:var(--text);}
+  textarea.code{width:100%; padding:10px; resize:vertical; direction:ltr; text-align:left; font-family:var(--mono); color:var(--text);}
+  .md{padding:var(--space-md) var(--space-lg); overflow:auto; max-height:560px; direction:ltr; text-align:left;}
+  .md h1,.md h2,.md h3{margin:14px 0 7px; line-height:1.35;} .md h1{font-size:19px; font-weight:700;} .md h2{font-size:16px; color:var(--accent); font-weight:600;} .md h3{font-size:14px; font-weight:600;}
+  .md p{margin:7px 0;} .md li{margin:4px 0 4px 18px;}
+  .md code{background:var(--panel2); border:1px solid var(--border); border-radius:var(--space-xs); padding:1px 5px; font-family:var(--mono); font-size:12px;}
+  .md pre{max-height:320px; margin:8px 0;} .md pre code{background:none; border:none; padding:0;}
+  .filelist{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:var(--space-md); padding-bottom:var(--space-md); border-bottom:1px solid var(--hairline);}
+  #log{max-height:200px; overflow:auto; font-size:12px; color:var(--dim); direction:ltr; text-align:left; font-family:var(--mono); background:var(--code-bg); border-radius:var(--radius-md); padding:var(--space-sm) var(--space-md); border:1px solid var(--border); line-height:1.6;}
+  /* the copy-command line is a secondary affordance: quiet until hovered */
+  .cmdline{display:flex; gap:var(--space-sm); align-items:center; background:var(--code-bg); border:1px solid var(--border); border-radius:var(--radius-md); padding:8px 12px; direction:ltr; opacity:.75; transition:opacity .15s ease, border-color .15s ease;}
+  .cmdline:hover,.cmdline:focus-within{opacity:1; border-color:color-mix(in srgb, var(--accent) 35%, var(--border));}
+  .cmdline code{flex:1; font-family:var(--mono); font-size:12.5px; color:var(--dim); overflow-wrap:anywhere;}
+  .task-line{font-size:13.5px; margin-bottom:var(--space-sm); overflow-wrap:anywhere; line-height:1.6;}
+  .kv{display:grid; grid-template-columns:auto 1fr; gap:var(--space-sm) var(--space-md); align-items:center; font-size:13px;}
+  .kv label{color:var(--dim); white-space:nowrap; font-weight:500;}
+  .proj-item{display:flex; align-items:center; gap:var(--space-sm); padding:var(--space-sm) var(--space-md); border:1px solid var(--border); border-radius:var(--radius-md); margin-bottom:6px; background:var(--panel2); transition:background-color .15s ease, border-color .15s ease;}
+  .proj-item:hover{border-color:var(--accent);}
+  .proj-item .path{flex:1; direction:ltr; text-align:left; font-family:var(--mono); font-size:12px; overflow-wrap:anywhere;}
+  .proj-item.active{border-color:var(--green); background:color-mix(in srgb, var(--green) 8%, var(--panel2));}
+  #liveTail{max-height:260px;}
+  #liveSection{display:none;}
+
+  /* ---------- activity feed ---------- */
+  .feedbox{max-height:420px; overflow:auto; background:var(--code-bg); border:1px solid var(--border); border-radius:var(--radius-md); padding:var(--space-sm) var(--space-md); direction:ltr; text-align:left; font-family:var(--mono); font-size:12px;}
+  #actFeedHome{max-height:200px;}
+  .act-row{padding:3px 0; border-bottom:1px dashed color-mix(in srgb, var(--border) 50%, transparent);}
+  .act-row .t{color:var(--dim); margin-inline-end:8px;}
+  .act-row .ty{display:inline-block; min-width:56px; color:var(--amber); font-weight:500;}
+  .act-row .ty.change{color:var(--blue);} .act-row .ty.rename{color:var(--green);}
+
+  /* ---------- semantic badges in rendered docs ---------- */
+  .badge-ok,.badge-fail,.badge-warn{display:inline-block; padding:1px 8px; border-radius:999px; font-size:11px; font-weight:600; font-family:var(--mono); border:1px solid;}
+  .badge-ok{color:var(--green); border-color:var(--green); background:color-mix(in srgb, var(--green) 12%, transparent);}
+  .badge-fail{color:var(--red); border-color:var(--red); background:color-mix(in srgb, var(--red) 12%, transparent);}
+  .badge-warn{color:var(--amber); border-color:var(--amber); background:color-mix(in srgb, var(--amber) 12%, transparent);}
+  .md table{border-collapse:collapse; margin:8px 0; font-size:12.5px; width:100%;}
+  .md th,.md td{border:1px solid var(--border); padding:6px 10px; text-align:left;}
+  .md th{background:var(--panel2); color:var(--accent); font-weight:600;}
+  .md li.todo{list-style:none;} .md li.todo::before{content:'☐ '; color:var(--amber);}
+  .md li.donebox{list-style:none;} .md li.donebox::before{content:'☑ '; color:var(--green);}
+  .modelchip{display:inline-block; padding:1px 7px; border-radius:999px; font-size:10.5px; border:1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); background:color-mix(in srgb, var(--accent) 10%, transparent); color:var(--accent); font-family:var(--mono); margin-top:2px; font-weight:500;}
+  .task-raw{font-size:11.5px; color:var(--dim); margin:-4px 0 10px; overflow-wrap:anywhere; opacity:.75;}
+  .chg-file{cursor:pointer; padding:3px 8px; border-radius:var(--space-xs); transition:background-color .15s ease, color .15s ease;}
+  .chg-file:hover{background:var(--panel2); color:var(--accent);}
+  #diffView{display:none; margin-top:var(--space-sm);}
+  .filelist .btn.small{font-size:11.5px; padding:5px 10px;}
+
+  /* ---------- visual flow editor ---------- */
+  .ic{width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; pointer-events:none;}
+  .ic.xs{width:14px; height:14px;} .ic.sm{width:18px; height:18px;}
+  #flowPalette{
+    display:flex; gap:var(--space-lg); flex-wrap:wrap; margin-bottom:var(--space-md);
+    padding:var(--space-md); border:1px solid var(--border); border-radius:var(--radius-md);
+    background:color-mix(in srgb, var(--panel2) 60%, transparent);
+  }
+  .palgroup{display:flex; flex-direction:column; gap:var(--space-xs);}
+  .palgroup > .cap{font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.5px; font-weight:600;}
+  .palgroup > .items{display:flex; gap:var(--space-sm); flex-wrap:wrap;}
+  .palbtn{
+    width:78px; min-height:70px; padding:var(--space-xs) 4px; border-radius:var(--radius-md); border:1px solid var(--border);
+    background:var(--panel2); color:var(--dim); cursor:pointer;
+    display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+    font-family:inherit; font-size:10.5px; line-height:1.25; text-align:center;
+    transition:border-color .15s ease, background-color .15s ease, transform .12s ease, box-shadow .15s ease;
+  }
+  .palbtn .lbl{color:var(--dim); overflow-wrap:anywhere; font-weight:500;}
+  .palbtn:hover{color:var(--role); border-color:var(--role); background:color-mix(in srgb, var(--role) 12%, var(--panel2)); transform:translateY(-2px); box-shadow:0 4px 10px var(--shadow);}
+  .palbtn:hover .lbl{color:var(--text);}
+  #canvasWrap{
+    position:relative; direction:ltr; overflow:auto; resize:vertical;
+    height:460px; min-height:240px; border:1px solid var(--border); border-radius:var(--radius-md);
+    background:var(--code-bg);
+    background-image:radial-gradient(color-mix(in srgb, var(--border) 55%, transparent) 1px, transparent 1px);
+    background-size:20px 20px;
+  }
+  #flowCanvas{position:relative; width:2400px; height:1400px;}
+  #flowEdges{position:absolute; inset:0; width:100%; height:100%; overflow:visible;}
+  #flowEdges path.wire{fill:none; stroke:var(--accent); stroke-width:2.2;}
+  #flowEdges path.wire.fail{stroke:var(--amber); stroke-dasharray:6 5;}
+  #flowEdges path.hit{fill:none; stroke:transparent; stroke-width:16px; cursor:pointer; pointer-events:stroke;}
+  #flowEdges path.ghost{fill:none; stroke:var(--dim); stroke-width:2; stroke-dasharray:4 4;}
+  #flowNodes{position:absolute; inset:0;}
+  .fnode{
+    position:absolute; width:150px; min-height:170px; padding:12px 10px 10px; border-radius:var(--radius-lg);
+    border:1px solid var(--border); background:var(--panel); box-sizing:border-box;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    cursor:grab; user-select:none; touch-action:none; box-shadow:0 2px 8px var(--shadow);
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .fnode:hover{border-color:var(--role); box-shadow:0 6px 16px var(--shadow);}
+  .fnode[data-drag="1"]{cursor:grabbing; box-shadow:0 10px 26px var(--shadow); z-index:5;}
+  .fnode[data-sel="1"]{border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);}
+  .fnode .glyph{
+    width:40px; height:40px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center;
+    color:var(--role); border:1.5px solid var(--role); background:color-mix(in srgb, var(--role) 12%, transparent);
+  }
+  .fnode[data-jump="1"] .glyph{border-style:dashed;}
+  .fnode .name{
+    font-size:12px; color:var(--text); text-align:center; line-height:1.25; width:100%;
+    display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-weight:500;
+  }
+  .fnode .tag{font-size:10px; color:var(--dim); font-family:var(--mono); direction:ltr; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .fnode .tools{display:flex; gap:5px; margin-top:auto;}
+  .fnode .tool{
+    width:26px; height:26px; border-radius:var(--radius-sm); border:1px solid var(--border);
+    background:var(--panel2); color:var(--dim); cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center; padding:0;
+    transition:border-color .15s ease, color .15s ease, background-color .15s ease;
+  }
+  .fnode .tool:hover{color:var(--accent); border-color:var(--accent); background:var(--panel);}
+  .fnode .tool.del:hover{color:var(--red); border-color:var(--red); background:color-mix(in srgb, var(--red) 8%, var(--panel));}
+  .port{
+    position:absolute; width:15px; height:15px; border-radius:50%;
+    border:2px solid var(--accent); background:var(--panel); cursor:crosshair; touch-action:none;
+    transition:transform .12s ease, background-color .12s ease;
+  }
+  .port.next{inset-inline-end:-8px; top:50%; margin-top:-7px; inset-inline-start:auto; right:-8px; left:auto;}
+  .port.fail{border-color:var(--amber); left:50%; margin-left:-7px; bottom:-8px;}
+  .port:hover{transform:scale(1.25); background:var(--accent2);}
+  .fnode .startflag{position:absolute; left:-8px; top:50%; margin-top:-7px; width:14px; height:14px; border-radius:50%; background:var(--green); display:none;}
+  .fnode[data-start="1"] .startflag{display:block;}
+  #canvasEmpty{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:0 var(--space-xl); color:var(--dim); font-size:13px; line-height:1.6; pointer-events:none;}
+  .fnode .badges{display:flex; gap:4px; flex-wrap:wrap; justify-content:center; max-width:100%;}
+  .fnode .badges span{
+    font-size:9.5px; line-height:15px; font-family:var(--mono); padding:1px 6px; border-radius:999px;
+    border:1px solid var(--border); color:var(--dim); direction:ltr;
+    max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500;
+  }
+  .fnode .badges span.model{border-color:var(--accent); color:var(--accent);}
+  .fnode .badges span.effort{border-color:var(--green); color:var(--green);}
+  #canvasArea{display:grid; grid-template-columns:1fr 290px; gap:var(--space-md); align-items:start;}
+  @media (max-width:1100px){ #canvasArea{grid-template-columns:1fr;} }
+  #inspectorPane{
+    border:1px solid var(--border); border-radius:var(--radius-md); background:var(--panel2);
+    padding:var(--space-md); position:sticky; top:70px; max-height:460px; overflow:auto;
+  }
+  #nodeInspector{display:none;}
+  #nodeInspector .inshead{font-size:13px; margin-bottom:var(--space-sm); display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-weight:500;}
+  #nodeInspector .tag{font-family:var(--mono); font-size:11.5px; color:var(--dim); direction:ltr;}
+  .insgrid{display:grid; grid-template-columns:1fr; gap:4px; font-size:13px;}
+  .insgrid label{color:var(--dim); white-space:nowrap; margin-top:6px; font-weight:500;}
+  .insgrid select,.insgrid input{width:100%;}
+  #insEmpty{margin:0;}
+  .formgrid{display:grid; grid-template-columns:170px 1fr; gap:10px 14px; align-items:center; font-size:13px;}
+  .formgrid > label{color:var(--dim); font-weight:500;}
+  .formgrid > textarea{align-self:stretch;}
+  .formgrid > .tag{font-family:var(--mono); color:var(--accent); direction:ltr;}
+  @media (max-width:800px){ .formgrid{grid-template-columns:1fr;} }
+
+  /* ---------- folder picker ---------- */
+  #pickerBack{position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:50; display:none;}
+  #pickerBack.open{display:flex; align-items:center; justify-content:center;}
+  #picker{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-lg);
+    width:min(760px,94vw); max-height:82vh; display:flex; flex-direction:column; box-shadow:0 16px 48px var(--shadow);}
+  #picker header{position:static; background:var(--panel); backdrop-filter:none; border-bottom:1px solid var(--border); border-radius:var(--radius-lg) var(--radius-lg) 0 0;}
+  #picker header h1{font-size:14px;}
+  #pickerPath{font-family:var(--mono); font-size:12px; direction:ltr; color:var(--dim);
+    padding:var(--space-sm) var(--space-lg); border-bottom:1px solid var(--border); overflow-wrap:anywhere;}
+  #pickerList{overflow:auto; padding:var(--space-sm); flex:1; min-height:220px;}
+  .pickrow{display:flex; align-items:center; gap:var(--space-sm); padding:var(--space-sm) var(--space-md); border-radius:var(--radius-sm); cursor:pointer; font-size:13.5px; transition:background-color .15s ease;}
+  .pickrow:hover{background:var(--panel2);}
+  .pickrow .nm{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; direction:ltr; text-align:start;}
+  .pickrow .tags{display:flex; gap:var(--space-xs); flex:none;}
+  .pickrow .tag{font-size:10px; padding:1px 6px; border-radius:999px; border:1px solid var(--border); color:var(--dim);}
+  .pickrow .tag.hit{color:var(--green); border-color:var(--green);}
+  #pickerFoot{display:flex; gap:var(--space-sm); align-items:center; padding:var(--space-sm) var(--space-lg); border-top:1px solid var(--border); flex-wrap:wrap;}
+
+  /* ---------- toasts ---------- */
+  #toasts{position:fixed; bottom:18px; inset-inline-start:18px; z-index:99; display:flex; flex-direction:column; gap:var(--space-sm);}
+  .toast{background:var(--panel); border:1px solid var(--border); border-inline-start:4px solid var(--accent); border-radius:var(--radius-md); padding:10px var(--space-md); font-size:13px; max-width:min(420px,90vw); box-shadow:var(--shadow-md); animation:slidein .2s ease;}
+  .toast.ok{border-inline-start-color:var(--green);}
+  .toast.err{border-inline-start-color:var(--red);}
+  @keyframes slidein{from{transform:translateY(10px); opacity:0;} to{transform:none; opacity:1;}}
+  .empty{display:block; color:var(--dim); font-size:12.5px; line-height:1.6; padding:var(--space-md) 2px;}
+</style>
+</head>
+<body>
+
+<svg style="display:none" aria-hidden="true" focusable="false"><defs>
+  <symbol id="ic-brain" viewBox="0 0 24 24"><path d="M12 4.5a3 3 0 0 0-3 3 2.5 2.5 0 0 0-1.4 4.4A2.5 2.5 0 0 0 9 16.4a3 3 0 0 0 3 3z"/><path d="M12 4.5a3 3 0 0 1 3 3 2.5 2.5 0 0 1 1.4 4.4A2.5 2.5 0 0 1 15 16.4a3 3 0 0 1-3 3z"/><path d="M12 4.5v15"/></symbol>
+  <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M15.5 15.5 20 20"/></symbol>
+  <symbol id="ic-code" viewBox="0 0 24 24"><path d="M9 7.5 4.5 12 9 16.5"/><path d="M15 7.5 19.5 12 15 16.5"/></symbol>
+  <symbol id="ic-shield-check" viewBox="0 0 24 24"><path d="M12 3.2 19 6v5.8c0 4.2-3 6.9-7 8.4-4-1.5-7-4.2-7-8.4V6z"/><path d="M9 12.2 11.4 14.6 15.4 10"/></symbol>
+  <symbol id="ic-bug" viewBox="0 0 24 24"><path d="M9 6.5a3 3 0 0 1 6 0"/><rect x="8" y="8" width="8" height="10.5" rx="4"/><path d="M8 11.5H4.5M16 11.5H19.5M8 15.5H5.5M16 15.5H18.5M9.8 18.2 8.2 21M14.2 18.2 15.8 21"/></symbol>
+  <symbol id="ic-rocket" viewBox="0 0 24 24"><path d="M12 3.2c3 2.2 4.8 5.6 4.8 9.1L14 15.2h-4l-2.8-2.9c0-3.5 1.8-6.9 4.8-9.1z"/><circle cx="12" cy="10" r="1.6"/><path d="M10 15.2 7.6 20.6 12 18.4 16.4 20.6 14 15.2"/></symbol>
+  <symbol id="ic-bolt" viewBox="0 0 24 24"><path d="M13 3.2 6 13.2h4.6l-1 7.6L17 10.8h-5z"/></symbol>
+  <symbol id="ic-monitor" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="11.6" rx="2.4"/><path d="M9 20.6h6M12 16.6v4"/></symbol>
+  <symbol id="ic-terminal" viewBox="0 0 24 24"><rect x="3" y="4.2" width="18" height="15.6" rx="2.4"/><path d="M7 9.4 9.6 12 7 14.6M12.4 14.8H17"/></symbol>
+  <symbol id="ic-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/></symbol>
+  <symbol id="ic-cross" viewBox="0 0 24 24"><path d="M6.4 6.4 17.6 17.6M17.6 6.4 6.4 17.6"/></symbol>
+  <symbol id="ic-loop" viewBox="0 0 24 24"><path d="M4.6 12a7.4 7.4 0 0 1 12.6-5.2L20 9.4"/><path d="M20 4.6v4.8h-4.8"/><path d="M19.4 12a7.4 7.4 0 0 1-12.6 5.2L4 14.6"/><path d="M4 19.4v-4.8h4.8"/></symbol>
+  <symbol id="ic-layers" viewBox="0 0 24 24"><path d="M12 3.4 20 7.4 12 11.4 4 7.4z"/><path d="M4 12.4 12 16.4 20 12.4"/><path d="M4 17 12 21 20 17"/></symbol>
+  <symbol id="ic-check-list" viewBox="0 0 24 24"><path d="M4.4 7.6 6.2 9.4 9.4 6.2"/><path d="M4.4 16.6 6.2 18.4 9.4 15.2"/><path d="M12.6 7.8H20M12.6 16.8H20"/></symbol>
+  <symbol id="ic-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.6"/><path d="M14.9 9.1 13.1 13.1 9.1 14.9 10.9 10.9z"/></symbol>
+  <symbol id="ic-book" viewBox="0 0 24 24"><path d="M4.5 5.2h5a2.5 2.5 0 0 1 2.5 2.5v11a2 2 0 0 0-2-2h-5.5z"/><path d="M19.5 5.2h-5A2.5 2.5 0 0 0 12 7.7v11a2 2 0 0 1 2-2h5.5z"/></symbol>
+  <symbol id="ic-plus" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></symbol>
+  <symbol id="ic-chart" viewBox="0 0 24 24"><path d="M4.5 19.5h15"/><path d="M7.4 19.5V11M12 19.5V5.5M16.6 19.5v-5.6"/></symbol>
+  <symbol id="ic-gauge" viewBox="0 0 24 24"><path d="M4 16.5a8 8 0 1 1 16 0"/><path d="M12 16.5 16.2 9.8"/><circle cx="12" cy="16.5" r="1.4"/></symbol>
+</defs></svg>
+<header>
+  <h1>Flow<span>Forge</span> ⚙</h1>
+  <span class="projpill">
+    <select id="projectSelect" title="project"></select>
+    <button class="iconbtn" id="btnPickTop">📂</button>
+  </span>
+  <span class="badge" id="statusBadge">—</span>
+  <span class="badge" id="flowBadge"></span>
+  <span class="spacer"></span>
+  <span class="badge" id="conn">…</span>
+  <button class="iconbtn" id="themeBtn" title="theme">🌙</button>
+  <button class="iconbtn" id="langBtn" title="language">EN</button>
+  <a class="iconbtn" id="lnkStudio" href="/studio" title="studio"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="12" r="2.6"/><path d="M8.6 12h6.8"/></svg></a>
+</header>
+<nav>
+  <div class="tab active" data-page="overview"><span data-i18n="tab_overview"></span></div>
+  <div class="tab" data-page="activity"><span data-i18n="tab_activity"></span><span class="livedot" id="actDot" style="display:none"></span></div>
+  <div class="tab" data-page="artifacts"><span data-i18n="tab_artifacts"></span></div>
+  <div class="tab" data-page="flows"><span data-i18n="tab_flows"></span></div>
+  <div class="tab" data-page="agents"><span data-i18n="tab_agents"></span></div>
+  <div class="tab" data-page="skills"><span data-i18n="tab_skills"></span></div>
+  <div class="tab" data-page="settings"><span data-i18n="tab_settings"></span></div>
+</nav>
+<main>
+
+  <!-- ================ OVERVIEW ================ -->
+  <div class="page active" id="page-overview">
+    <section id="gateBox">
+      <h2 data-i18n="gate_title"></h2>
+      <div class="q" id="gateQuestion"></div>
+      <textarea id="gateNote"></textarea>
+      <div class="row">
+        <button class="btn approve" id="btnApprove"></button>
+        <button class="btn reject" id="btnReject"></button>
+      </div>
+    </section>
+
+    <section>
+      <h2 data-i18n="run_title"></h2>
+      <div class="runbar">
+        <div class="row">
+          <label class="hint" style="border:none; padding:0; margin:0" data-i18n="provider_label"></label>
+          <select id="runProvider"></select>
+          <select id="runFlow"></select>
+        </div>
+        <div class="promptbar">
+          <textarea id="runTask" class="grow" rows="3" spellcheck="false"></textarea>
+          <div class="btncol">
+            <button class="btn" id="btnRefine" data-i18n="refine_btn"></button>
+            <button class="btn" id="btnOptimize" data-i18n="optimize_btn"></button>
+            <button class="btn small" id="btnRefineUndo" data-i18n="refine_undo" style="display:none"></button>
+          </div>
+        </div>
+        <div class="hint" data-i18n="prompt_hint"></div>
+        <div class="row">
+          <select id="runGates">
+            <option value="" data-i18n="gates_default"></option>
+            <option value="terminal" data-i18n="gates_terminal"></option>
+            <option value="dashboard" data-i18n="gates_dashboard"></option>
+            <option value="auto" data-i18n="gates_auto"></option>
+          </select>
+          <select id="runSpeed">
+            <option value="" data-i18n="speed_flow"></option>
+            <option value="fast" data-i18n="speed_fast"></option>
+            <option value="balanced" data-i18n="speed_balanced"></option>
+            <option value="quality" data-i18n="speed_quality"></option>
+          </select>
+          <span class="badge" id="runStatus" style="display:none"></span>
+          <span class="badge done" id="daemonStatus" style="display:none"></span>
+          <span class="badge waiting_gate" id="queueBadge" style="display:none"></span>
+          <span class="badge waiting_gate" id="cliStatus" style="display:none"></span>
+          <button class="btn" id="btnCliLogin" style="display:none"></button>
+          <span class="spacer"></span>
+          <button class="btn reject" id="btnStopRun" data-i18n="run_stop" style="display:none"></button>
+          <button class="btn primary" id="btnRun" data-i18n="run_now"></button>
+        </div>
+      </div>
+      <div class="cmdline"><code id="runCmd">/flow task "..."</code><button class="btn small" id="btnCopyCmd" data-i18n="copy"></button></div>
+      <div class="hint" data-i18n="run_hint"></div>
+      <div class="hint" data-i18n="speed_hint"></div>
+    </section>
+
+    <section id="runConsoleSec" style="display:none">
+      <h2><span data-i18n="run_console"></span> <span class="livedot" id="runDot" style="display:none"></span></h2>
+      <pre id="runConsole" style="max-height:340px"></pre>
+      <div class="hint" data-i18n="auth_hint"></div>
+    </section>
+
+    <div class="grid2 grid-main">
+      <section>
+        <h2 data-i18n="pipeline_title"></h2>
+        <div class="task-line" id="taskText"></div>
+        <div class="task-raw" id="taskRawText" style="display:none"></div>
+        <div id="stages"><div class="empty" data-i18n="no_flow"></div></div>
+      </section>
+      <div>
+        <section id="liveSection">
+          <h2><span data-i18n="live_output"></span> <span class="badge running" id="liveArtifactName" style="direction:ltr"></span></h2>
+          <pre id="liveTail"></pre>
+        </section>
+        <section>
+          <h2 data-i18n="inbox_title"></h2>
+          <textarea id="inboxText" style="width:100%; min-height:64px"></textarea>
+          <div class="row" style="margin-top:8px">
+            <button class="btn primary" id="btnInbox"></button>
+          </div>
+          <div class="hint" data-i18n="inbox_hint"></div>
+        </section>
+        <section>
+          <h2><span data-i18n="activity_feed"></span> <span class="livedot" id="homeDot" style="display:none"></span></h2>
+          <div id="actFeedHome" class="feedbox"><div class="empty" data-i18n="no_activity"></div></div>
+        </section>
+        <section>
+          <h2 data-i18n="log_title"></h2>
+          <div id="log">—</div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================ ACTIVITY (live) ================ -->
+  <div class="page" id="page-activity">
+    <div class="grid2">
+      <section>
+        <h2><span data-i18n="activity_feed"></span></h2>
+        <div class="hint" style="margin-bottom:8px"><span data-i18n="watching"></span> <span id="watchPath" style="direction:ltr; font-family:var(--mono)"></span></div>
+        <div id="actFeed" class="feedbox"><div class="empty" data-i18n="no_activity"></div></div>
+        <div class="hint" data-i18n="activity_hint"></div>
+      </section>
+      <section>
+        <h2><span data-i18n="git_changes"></span> <span class="badge" id="branchBadge" style="direction:ltr"></span></h2>
+        <div id="chgStatus"><div class="empty" data-i18n="no_changes"></div></div>
+        <pre id="chgDiffstat" style="max-height:180px; margin-top:10px; display:none"></pre>
+        <div id="diffView">
+          <div class="row" style="margin-bottom:6px">
+            <span class="badge" id="diffFile" style="direction:ltr"></span>
+            <button class="btn small" id="btnCloseDiff" data-i18n="close"></button>
+          </div>
+          <pre id="diffContent" style="max-height:380px"></pre>
+        </div>
+        <div class="hint" data-i18n="changes_hint"></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ================ ARTIFACTS ================ -->
+  <div class="page" id="page-artifacts">
+    <section>
+      <h2 data-i18n="tab_artifacts"></h2>
+      <div class="filelist" id="artifactList"></div>
+      <div class="row" style="margin-bottom:8px">
+        <button class="btn small" id="btnRawView" data-i18n="raw"></button>
+        <span class="spacer"></span>
+        <label class="hint" style="border:none; padding:0; margin:0" data-i18n="export_as"></label>
+        <select id="exportFormat"></select>
+        <button class="btn small" id="btnExport" data-i18n="export_btn"></button>
+      </div>
+      <div class="hint" id="exportResult" style="display:none"></div>
+      <div class="md" id="artifactView"></div>
+      <pre id="artifactRaw" style="display:none"></pre>
+    </section>
+  </div>
+
+  <!-- ================ FLOWS ================ -->
+  <div class="page" id="page-flows">
+    <section>
+      <h2 data-i18n="tab_flows"></h2>
+      <div id="providerDetect" class="hint" style="margin-bottom:8px"></div>
+      <div class="row" style="margin-bottom:8px">
+        <button class="btn small" id="btnBuildProviderFlow" data-i18n="provider_build_flow"></button>
+        <button class="btn small" id="btnRetargetFlows" data-i18n="retarget_all"></button>
+      </div>
+      <div class="filelist" id="flowList"></div>
+      <div class="row" style="margin-bottom:8px">
+        <button class="btn small chip-active" id="btnViewCanvas" data-i18n="view_canvas"></button>
+        <button class="btn small" id="btnViewJson" data-i18n="view_json"></button>
+        <span class="spacer"></span>
+        <button class="btn" id="btnNewFlow" data-i18n="new_flow"></button>
+        <button class="btn" id="btnDeleteFlow" data-i18n="delete"></button>
+      </div>
+
+      <div id="canvasView">
+        <div id="flowPalette"></div>
+        <div id="canvasArea">
+        <div id="canvasWrap">
+          <div id="flowCanvas">
+            <svg id="flowEdges"></svg>
+            <div id="flowNodes"></div>
+          </div>
+          <div id="canvasEmpty" data-i18n="canvas_empty"></div>
+        </div>
+        <div id="inspectorPane">
+        <div id="nodeInspector">
+          <div class="inshead"><span data-i18n="ins_title"></span> <b id="insName"></b> <span class="tag" id="insId"></span></div>
+          <div class="insgrid">
+            <label data-i18n="ins_model"></label>
+            <select id="insModel"></select>
+            <label data-i18n="ins_effort"></label>
+            <select id="insEffort"></select>
+            <label data-i18n="ins_gate"></label>
+            <select id="insGate">
+              <option value="default" data-i18n="gate_default"></option>
+              <option value="auto">auto</option>
+              <option value="dashboard">dashboard</option>
+              <option value="terminal">terminal</option>
+            </select>
+            <label data-i18n="ins_loops"></label>
+            <input type="number" id="insLoops" min="1" max="9" step="1">
+            <label data-i18n="ins_pre"></label>
+            <span class="row">
+              <button class="btn small" id="insCtx" data-i18n="ins_ctx"></button>
+              <button class="btn small" id="insChecks" data-i18n="ins_checks"></button>
+            </span>
+            <label data-i18n="ins_artifact"></label>
+            <span class="tag" id="insArtifact"></span>
+          </div>
+        </div>
+        <div id="insEmpty" class="hint" data-i18n="ins_pick"></div>
+        </div>
+        </div>
+
+        <div class="row" style="margin-top:8px">
+          <button class="btn primary" id="btnSaveCanvas" data-i18n="save"></button>
+          <button class="btn" id="btnAutoLayout" data-i18n="auto_layout"></button>
+          <button class="btn" id="btnClearCanvas" data-i18n="clear_canvas"></button>
+        </div>
+        <div class="hint" data-i18n="canvas_hint"></div>
+      </div>
+
+      <div id="jsonView" style="display:none">
+        <div class="row" style="margin-bottom:8px">
+          <input type="text" id="newFlowName" placeholder="new-flow-name">
+        </div>
+        <textarea class="code" id="flowEditor" rows="24" spellcheck="false"></textarea>
+        <div class="row" style="margin-top:8px">
+          <button class="btn primary" id="btnSaveFlow" data-i18n="save"></button>
+        </div>
+      </div>
+
+      <div class="hint" data-i18n="flows_hint"></div>
+    </section>
+  </div>
+
+  <!-- ================ AGENTS ================ -->
+  <div class="page" id="page-agents">
+    <section>
+      <h2 data-i18n="tab_agents"></h2>
+      <div class="filelist" id="agentList"></div>
+      <div class="row" style="margin-bottom:8px">
+        <button class="btn small chip-active" id="btnViewAgentVisual" data-i18n="view_visual"></button>
+        <button class="btn small" id="btnViewAgentForm" data-i18n="view_form"></button>
+        <button class="btn small" id="btnViewAgentRaw" data-i18n="view_raw"></button>
+        <span class="spacer"></span>
+        <input type="text" id="newAgentName" placeholder="new-role-name">
+        <button class="btn" id="btnNewAgent" data-i18n="new_agent"></button>
+        <button class="btn" id="btnDeleteAgent" data-i18n="delete"></button>
+      </div>
+
+      <div id="agentVisualView">
+        <div class="palgroup" style="margin-bottom:10px">
+          <span class="cap" data-i18n="vis_preset"></span>
+          <div class="items" id="agPresets"></div>
+        </div>
+        <div class="formgrid">
+          <label data-i18n="ins_model"></label>
+          <select id="agvModel"></select>
+          <label data-i18n="ins_effort"></label>
+          <select id="agvLevel"></select>
+          <label data-i18n="ag_tools"></label>
+          <span class="row" id="agvTools"></span>
+          <label data-i18n="vis_artifact"></label>
+          <select id="agvArtifact"></select>
+          <label data-i18n="vis_sections"></label>
+          <span class="row" id="agvSections"></span>
+          <label data-i18n="vis_rules"></label>
+          <span class="row" id="agvRules"></span>
+        </div>
+        <div class="hint" data-i18n="vis_hint"></div>
+        <pre id="agvPreview" style="margin-top:8px; max-height:320px"></pre>
+      </div>
+
+      <div id="agentFormView" style="display:none">
+        <div class="formgrid">
+          <label data-i18n="ag_name"></label>
+          <span class="tag" id="agName">—</span>
+          <label data-i18n="ag_desc"></label>
+          <input type="text" id="agDesc">
+          <label data-i18n="ins_model"></label>
+          <select id="agModel"></select>
+          <label data-i18n="ins_effort"></label>
+          <select id="agLevel"></select>
+          <label data-i18n="ag_tools"></label>
+          <span class="row" id="agTools"></span>
+          <label data-i18n="ag_prompt"></label>
+          <textarea class="code" id="agPrompt" rows="16" spellcheck="false"></textarea>
+        </div>
+      </div>
+
+      <textarea class="code" id="agentEditor" rows="24" spellcheck="false" style="display:none"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="btn primary" id="btnSaveAgent" data-i18n="save"></button>
+      </div>
+      <div class="hint" data-i18n="agents_hint"></div>
+    </section>
+  </div>
+
+  <!-- ================ SKILLS ================ -->
+  <div class="page" id="page-skills">
+    <section>
+      <h2 data-i18n="tab_skills"></h2>
+      <div class="filelist" id="skillList"></div>
+      <div class="row" style="margin-bottom:8px">
+        <button class="btn small chip-active" id="btnViewSkillVisual" data-i18n="view_visual"></button>
+        <button class="btn small" id="btnViewSkillForm" data-i18n="view_form"></button>
+        <button class="btn small" id="btnViewSkillRaw" data-i18n="view_raw"></button>
+        <span class="spacer"></span>
+        <input type="text" id="newSkillName" placeholder="new-skill-name">
+        <button class="btn" id="btnNewSkill" data-i18n="new_skill"></button>
+      </div>
+
+      <div id="skillVisualView">
+        <div class="palgroup" style="margin-bottom:10px">
+          <span class="cap" data-i18n="vis_preset"></span>
+          <div class="items" id="skPresets"></div>
+        </div>
+        <div class="formgrid">
+          <label data-i18n="vis_flow"></label>
+          <select id="skvFlow"></select>
+          <label data-i18n="gate_mode"></label>
+          <select id="skvGate">
+            <option value="terminal">terminal</option>
+            <option value="dashboard">dashboard</option>
+            <option value="auto">auto</option>
+          </select>
+          <label data-i18n="vis_rules"></label>
+          <span class="row" id="skvRules"></span>
+        </div>
+        <div class="hint" data-i18n="vis_hint"></div>
+        <pre id="skvPreview" style="margin-top:8px; max-height:320px"></pre>
+      </div>
+
+      <div id="skillFormView" style="display:none">
+        <div class="formgrid">
+          <label data-i18n="ag_name"></label>
+          <span class="tag" id="skName">—</span>
+          <label data-i18n="ag_desc"></label>
+          <input type="text" id="skDesc">
+          <label data-i18n="sk_body"></label>
+          <textarea class="code" id="skBody" rows="18" spellcheck="false"></textarea>
+        </div>
+      </div>
+
+      <textarea class="code" id="skillEditor" rows="24" spellcheck="false" style="display:none"></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="btn primary" id="btnSaveSkill" data-i18n="save"></button>
+      </div>
+      <div class="hint" data-i18n="skills_hint"></div>
+    </section>
+  </div>
+
+  <!-- ================ SETTINGS ================ -->
+  <div class="page" id="page-settings">
+    <div class="grid2">
+      <section>
+        <h2 data-i18n="settings_ui"></h2>
+        <div class="kv">
+          <label data-i18n="lang"></label>
+          <select id="setLang"><option value="ar">العربية</option><option value="en">English</option></select>
+          <label data-i18n="theme"></label>
+          <select id="setTheme"><option value="dark" data-i18n="theme_dark"></option><option value="light" data-i18n="theme_light"></option></select>
+          <label data-i18n="poll"></label>
+          <input type="number" id="setPoll" min="500" step="250" style="width:110px">
+        </div>
+        <div class="hint" data-i18n="settings_ui_hint"></div>
+      </section>
+      <section>
+        <h2 data-i18n="settings_project"></h2>
+        <div class="kv">
+          <label data-i18n="gate_mode"></label>
+          <select id="setGateMode">
+            <option value="default" data-i18n="gate_default"></option>
+            <option value="terminal">terminal</option>
+            <option value="dashboard">dashboard</option>
+            <option value="auto">auto</option>
+          </select>
+        </div>
+        <div class="hint" data-i18n="gate_mode_hint"></div>
+        <div class="kv" style="margin-top:12px">
+          <label data-i18n="refine_provider"></label>
+          <select id="setRefineProvider">
+            <option value="auto" data-i18n="refine_auto"></option>
+            <option value="acp" data-i18n="refine_acp"></option>
+            <option value="cli" data-i18n="refine_cli"></option>
+            <option value="http" data-i18n="refine_http"></option>
+            <option value="local" data-i18n="refine_local"></option>
+          </select>
+        </div>
+        <div id="refineHttpBox" style="display:none">
+          <div class="kv"><label data-i18n="refine_base"></label>
+            <input type="text" id="setRefineBase" style="direction:ltr" placeholder="https://api.groq.com/openai/v1"></div>
+          <div class="kv"><label data-i18n="refine_model"></label>
+            <input type="text" id="setRefineModel" style="direction:ltr" placeholder="llama-3.3-70b-versatile"></div>
+          <div class="kv"><label data-i18n="refine_key"></label>
+            <input type="password" id="setRefineKey" style="direction:ltr" placeholder="gsk_..."></div>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn" id="btnSaveRefine" data-i18n="save"></button>
+        </div>
+        <div class="hint" data-i18n="refine_hint"></div>
+      </section>
+    </div>
+    <section>
+      <h2 data-i18n="providers_title"></h2>
+      <div id="provList"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn" id="btnProvRefresh" data-i18n="prov_recheck"></button>
+      </div>
+      <div class="hint" data-i18n="providers_hint"></div>
+    </section>
+    <section>
+      <h2 data-i18n="projects_title"></h2>
+      <div id="projList"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="btnPickProj" data-i18n="pick_project"></button>
+        <button class="btn" id="btnCleanProj" data-i18n="clean_missing"></button>
+        <span class="spacer"></span>
+        <input type="text" id="newProjPath" style="flex:1; min-width:220px; direction:ltr" placeholder="C:\path\to\project">
+        <button class="btn" id="btnAddProj" data-i18n="add_project"></button>
+      </div>
+      <div class="hint" data-i18n="projects_hint"></div>
+    </section>
+  </div>
+</main>
+<div id="pickerBack">
+  <div id="picker">
+    <header>
+      <h1 data-i18n="pick_title"></h1>
+      <span class="spacer"></span>
+      <button class="iconbtn" id="pickerUp" data-i18n="pick_up"></button>
+      <button class="iconbtn" id="pickerRoots" data-i18n="pick_roots"></button>
+      <button class="iconbtn" id="pickerClose">✕</button>
+    </header>
+    <div id="pickerPath">—</div>
+    <div id="pickerList"></div>
+    <div id="pickerFoot">
+      <button class="btn primary" id="pickerUse" data-i18n="pick_use"></button>
+      <span class="hint" style="margin:0" data-i18n="pick_hint"></span>
+    </div>
+  </div>
+</div>
+<div id="toasts"></div>
+
+<script>
+/* ============================== i18n ============================== */
+const I18N = {
+  en: {
+    tab_overview: 'Overview', tab_activity: 'Live activity', tab_artifacts: 'Artifacts', tab_flows: 'Flows',
+    tab_agents: 'Agents', tab_skills: 'Skills', tab_settings: 'Settings',
+    gate_title: 'Approval required', approve: '✔ Approve — continue', reject: '✖ Reject — revise',
+    gate_note_ph: 'Optional note delivered to the agent with your decision…',
+    run_title: 'Run a flow', copy: 'Copy', copied: 'Copied to clipboard', clipboard_blocked: 'Clipboard blocked by the browser',
+    run_task_ph: 'Describe what you want… a rough line is enough, then hit Generate.',
+    gates_default: 'Gates: default', gates_terminal: 'Gates: terminal', gates_dashboard: 'Gates: dashboard', gates_auto: 'Gates: auto',
+    speed_flow: 'Speed: as the flow says', speed_fast: 'Speed: fast ⚡', speed_balanced: 'Speed: balanced', speed_quality: 'Speed: max quality',
+    speed_hint: 'Speed overrides the model and thinking level of every stage. Fast uses the lightning models with low thinking and one retry — minutes instead of tens of minutes; max quality pins opus at max effort.',
+    run_hint: 'Run now executes the flow right here (headless Devin CLI, cwd = active project) — approvals arrive as dashboard gates, and you watch everything live below. Copy is there if you prefer pasting into a Devin chat instead.',
+    run_now: '▶ Run now', run_stop: '■ Stop', run_console: 'Agent console (live)',
+    refine_btn: '✨ Generate', refine_undo: '↶ Undo', refine_working: '✨ Generating…',
+    refine_done: 'Prompt generated', refine_empty: 'Type what you want first',
+    optimize_btn: '⚡ Optimize', optimize_working: '⚡ Optimizing…', optimize_done: 'Prompt optimized',
+    prompt_hint: 'Write in any language — the box grows as you type. ✨ Generate turns a rough idea into a full task statement (adds the outcome and the acceptance criteria). ⚡ Optimize keeps the prompt you already wrote and only sharpens it: same scope, clearer wording, testable finish line. ↶ Undo brings your original text back, and the text stays editable before you run.',
+    refine_provider: 'Prompt generator', refine_auto: 'auto (Devin, then fallbacks)',
+    refine_acp: 'Devin (ACP key)', refine_cli: 'Devin CLI', refine_http: 'Free/any API (OpenAI-compatible)',
+    refine_local: 'offline template (no model)',
+    refine_base: 'API base URL', refine_model: 'Model id', refine_key: 'API key',
+    refine_hint: 'Auto tries Devin first (no extra key, uses your existing login), then a configured API, then an offline template. For a free model use an OpenAI-compatible endpoint, e.g. Groq https://api.groq.com/openai/v1, OpenRouter https://openrouter.ai/api/v1 (…:free models), Gemini https://generativelanguage.googleapis.com/v1beta/openai, or a local Ollama at http://localhost:11434/v1. The key is stored in the project\'s .workbench/settings.json and never sent back to the browser.',
+    run_started: 'Run started — watch the console, pipeline and file feed', run_exit_ok: 'finished ✓', run_exit_bad: 'exited',
+    auth_hint: 'One-time setup: if the CLI is not logged in, use the Login CLI button (opens a terminal + browser), then hit Run again.',
+    cli_login: '🔑 Login CLI', cli_not_auth: 'CLI not logged in — one-time login needed',
+    cli_login_started: 'Login window opened — finish in the browser, then hit Run', cli_ready: 'CLI ready ✓',
+    cli_missing: 'Devin CLI not found on this machine',
+    daemon_alive: 'Executor ready (daemon) ✓', queue_waiting: 'Queued — waiting for the daemon',
+    executor_acp: 'Executor ready ✓',
+    run_queued: 'Sent to the daemon — watch the pipeline live below',
+    no_executor: 'No executor available: log in the CLI once, or start a daemon chat (/flow-daemon)',
+    pipeline_title: 'Pipeline', no_flow: 'No flow has run on this project yet.', task_prefix: 'Task',
+    live_output: 'Live output (current stage)',
+    inbox_title: 'Message to the agent (Inbox)', inbox_send: '📨 Send',
+    inbox_ph: 'Write instructions… e.g. "support the null case", "stop after the code stage"',
+    inbox_hint: 'Read by the orchestrator at the next stage boundary and treated as your direct instructions.',
+    inbox_sent: 'Sent — the agent reads it at the next stage boundary',
+    log_title: 'Log (latest events)',
+    activity_feed: 'File activity (live)', watching: 'Watching:', no_activity: 'No file events yet — they appear here the moment the agent creates or edits files.',
+    activity_hint: 'Live feed from a recursive file-system watcher on the active project. Noise (git internals, node_modules, high-churn state files) is filtered out.',
+    git_changes: 'Working-tree changes', no_changes: 'No uncommitted changes.', no_git: 'Not a git repository.', close: 'Close',
+    changes_hint: 'Click a changed file to view its diff. Refreshes automatically while this tab is open.',
+    new_flow: '+ New flow', new_skill: '+ New skill', delete: 'Delete', save: '💾 Save', saved: 'Saved', raw: 'Raw',
+    export_as: 'Export as', export_btn: '⬇ Export', export_done: 'Exported:',
+    export_pick_first: 'Pick an artifact from the list first.',
+    view_canvas: '⬡ Visual', view_json: '{ } JSON', auto_layout: '⇄ Auto layout', clear_canvas: '✖ Clear',
+    canvas_empty: 'Click a role icon above to drop your first step, then drag from the blue port to connect.',
+    canvas_hint: 'Drag nodes to move them. Blue port (right) = next step, amber port (bottom) = on-failure jump. Click a wire to delete it. The gate icon on a node cycles auto / dashboard / terminal / default; the loop icon sets retry count for the failure branch. Green dot marks the entry step.',
+    canvas_no_nodes: 'Add at least one step first', canvas_no_start: 'Every step has an incoming wire — remove one so the flow has an entry point',
+    pal_group_agents: 'Agent steps', pal_group_understand: 'Understand steps', pal_group_scripts: 'Script & custom',
+    pal_thinker: 'Plan', pal_analyst: 'Analyze', pal_coder: 'Code', pal_tester: 'Test', pal_debugger: 'Debug', pal_shipper: 'Ship',
+    pal_researcher: 'Analytics', pal_optimizer: 'Performance',
+    pal_architecture: 'Architecture', pal_conventions: 'Conventions', pal_rules: 'Rules',
+    pal_scan: 'Scan', pal_checks: 'Checks', pal_script: 'Script', pal_custom: 'Custom',
+    ins_title: 'Step settings:', ins_model: 'Model family', ins_effort: 'Model level', ins_gate: 'Gate',
+    ins_level_default: 'family default',
+    ins_loops: 'Retry loops', ins_pre: 'Pre-scripts', ins_artifact: 'Artifact',
+    ins_inherit: 'inherit (role profile)', eff_high: 'high', eff_medium: 'medium', eff_low: 'low',
+    eff_xhigh: 'xhigh', eff_max: 'max', eff_none: 'no thinking', eff_minimal: 'minimal',
+    view_visual: '⬡ Visual', view_form: '▤ Form', view_raw: '{ } Raw file', new_agent: '+ New role',
+    vis_preset: 'Start from a preset', vis_artifact: 'Artifact it writes', vis_sections: 'Prompt sections',
+    vis_rules: 'Behaviour rules', vis_flow: 'Flow to run',
+    vis_hint: 'Click to build. Everything below is generated into the file shown in the preview — no typing needed.',
+    sec_inputs: 'Inputs', sec_output: 'Output format', sec_verdict: 'PASS/FAIL verdict', sec_summary: '5-line summary',
+    rule_cite: 'cite file:line', rule_readonly: 'read-only on code', rule_minimal: 'minimal change',
+    rule_repro: 'reproduce first', rule_measure: 'measure before/after', rule_notests: 'never weaken tests',
+    rule_conventions: 'follow repo conventions', rule_noinvent: 'never invent facts',
+    skp_runflow: 'Run a flow', skp_report: 'Write a report', skp_checklist: 'Checklist', skp_understand: 'Explain project',
+    srule_arabic: 'reply in Arabic', srule_concise: 'keep it short',
+    srule_askfirst: 'ask when unclear', srule_noguess: 'never guess',
+    ag_name: 'Role name', ag_desc: 'What it does (description)', ag_tools: 'Allowed tools', ag_prompt: 'Role prompt',
+    sk_body: 'Skill instructions', confirm_delete_agent: 'Delete this role profile?',
+    pick_agent_first: 'Pick a role first', name_rule_role: 'Use lowercase letters, digits and dashes only',
+    ins_ctx: 'collect-context', ins_checks: 'run-checks',
+    ins_pick: 'Click a step on the canvas to set its model, thinking level, gate, retries and scripts.',
+    tt_add: 'Add step', tt_gate: 'Gate mode', tt_loops: 'Retry loops', tt_del: 'Delete step',
+    tt_port_next: 'Drag to the next step', tt_port_fail: 'Drag to the on-failure step',
+    flows_hint: 'Flow JSON is stored in the workbench flows/ directory. Edit stages, gates (auto / terminal / dashboard / default), pre/post scripts, done-criteria. Built-in flows (task, understand) cannot be deleted.',
+    agents_hint: 'Agent profile = YAML frontmatter (model, allowed-tools) + system prompt. Changes apply to the next agent invocation. Keep prompts in English for best model performance.',
+    skills_hint: 'Skills are the slash-commands Devin sees (/flow, /understand …). Each skill is skills/<name>/SKILL.md with YAML frontmatter + prompt. New skills appear in Devin on the next session.',
+    settings_ui: 'Interface', lang: 'Language', theme: 'Theme', theme_dark: 'Dark', theme_light: 'Light',
+    poll: 'Refresh (ms)', settings_ui_hint: 'Stored in this browser only.',
+    settings_project: 'Project settings', gate_mode: 'Gate mode', gate_default: 'default (per flow file)',
+    gate_mode_hint: 'Overrides the flow\'s defaultGate for stages whose gate is "default". Saved to the project\'s .workbench/settings.json — the orchestrator re-reads it at every gate, so you can change it mid-flow.',
+    projects_title: 'Projects', add_project: '+ Add', activate: 'Activate', remove: 'Remove', active: 'active',
+    pick_project: '📂 Choose project folder', pick_title: 'Choose a project folder',
+    pick_up: '↑ Up', pick_roots: 'Drives', pick_use: '✔ Use this folder',
+    pick_hint: 'Green tags mark folders that already look like a project (.workbench, git). Click a folder to enter it.',
+    pick_no_sub: 'No sub-folders here — you can still use this folder.',
+    clean_missing: '🧹 Remove missing', clean_none: 'Every project folder still exists',
+    clean_done: 'Removed folders that no longer exist', tt_pick: 'Choose project folder',
+    projects_hint: 'Add any local project by absolute path. The dashboard monitors the ACTIVE project; switching is instant.',
+    decision_sent: 'Decision sent to the flow',
+    confirm_delete_flow: 'Delete this flow file?', pick_flow_first: 'Select a flow first', pick_agent_first: 'Select an agent first', pick_skill_first: 'Select a skill first',
+    name_rule: 'Name must be lowercase letters/digits/hyphens',
+    project_added: 'Project added', project_removed: 'Project removed', project_activated: 'Project switched',
+    settings_saved: 'Settings saved', invalid_json: 'Invalid JSON', select_artifact: 'No artifacts yet',
+    st_pending: 'pending', st_running: 'running', st_waiting_gate: 'waiting approval', st_done: 'done', st_failed: 'failed', st_skipped: 'skipped',
+    fs_running: 'running', fs_waiting_gate: 'waiting approval', fs_done: 'done', fs_failed: 'failed', fs_stopped: 'stopped',
+    conn_ok: '🟢 connected', conn_bad: '🔴 disconnected', no_state: 'no state', no_flow_badge: 'no flow',
+    script_stage: 'script', task_original: 'Original text',
+    tt_project: 'Active project', tt_theme: 'Theme', tt_lang: 'Language', tt_studio: 'Studio (icon-only flow builder)',
+    ph_new_flow: 'new-flow-name', ph_new_skill: 'new-skill-name', ph_proj_path: 'C:\\path\\to\\project',
+    provider_label: 'Executor', provider_devin: 'Devin', provider_copilot: 'GitHub Copilot',
+    provider_cursor: 'Cursor', provider_trae: 'Trae',
+    provider_detected: 'Detected', provider_not_detected: 'Not detected on this machine',
+    provider_modules: 'Detected modules', provider_no_modules: 'No modules found for this provider',
+    provider_looked_for: 'Looked for', provider_editor: 'Editor', provider_cli: 'CLI',
+    providers_title: 'Executors — who does the work',
+    providers_hint: 'Each card is what was actually found on this machine. "Connected" is read live from that provider\'s own CLI — the login opens a real terminal on ITS login command, so your password or token never passes through this dashboard. Devin is the only provider that can execute a flow; the others are here so the flow list, the model list and the module detection follow the tool you actually use. Cursor and Trae keep the session inside their own window, so their button opens the editor on its sign-in screen instead of pretending to authenticate you here. Switching executor also retargets the models pinned on the flow canvas to the closest model the new tool actually has.',
+    prov_installed: 'installed', prov_missing: 'not installed', prov_runs: 'runs flows',
+    prov_detect_only: 'detection only', prov_connected: 'connected', prov_disconnected: 'not connected',
+    prov_in_app: 'sign-in lives in the app', prov_active: 'active',
+    prov_login: '🔑 Connect', prov_relogin: '🔑 Sign in again', prov_use: 'Use this one',
+    prov_recheck: '↻ Re-check everything', prov_switched: 'Executor switched',
+    prov_login_started: 'A terminal opened — finish the login there, then press Re-check',
+    prov_already: 'Already connected', prov_no_cli: 'No CLI for this provider on the machine',
+    prov_open_app: '🔑 Open the app to sign in', prov_app_opened: 'The app is opening — sign in inside it',
+    prov_no_login: 'no login', models_retargeted: 'Stage models switched to the new executor',
+    prov_unknown: 'sign-in state not readable',
+    prov_account_only: 'account connected, tool not installed',
+    retarget_all: '⇄ Retarget every flow to this executor',
+    retarget_none: 'Every flow already uses models this executor supports',
+    retarget_confirm: 'These flows will get a copy retargeted to the selected executor:',
+    retarget_note: 'The originals stay untouched (* = this executor\'s own copy, updated in place). Only Devin can run a flow, so its flows must keep Devin models.',
+    retarget_done: 'Flows retargeted',
+    provider_build_flow: '⚙ Build flow from detected modules',
+    provider_built: 'Flow built from detected modules — review and save',
+    provider_not_runnable: 'Only Devin can run flows; the other providers are for filtering and building',
+    provider_flow_filtered: 'Flow list filtered by the selected executor',
+  },
+  ar: {
+    tab_overview: 'نظرة عامة', tab_activity: 'النشاط لايف', tab_artifacts: 'المخرجات', tab_flows: 'الفلوز',
+    tab_agents: 'الوكلاء', tab_skills: 'المهارات', tab_settings: 'الإعدادات',
+    gate_title: 'موافقة مطلوبة', approve: '✔ موافقة — كمّل', reject: '✖ رفض — راجع',
+    gate_note_ph: 'ملاحظة اختيارية توصل للوكيل مع قرارك…',
+    run_title: 'تشغيل فلو', copy: 'نسخ', copied: 'اتنسخ في الحافظة', clipboard_blocked: 'المتصفح منع النسخ',
+    run_task_ph: 'اوصف اللي انت عاوزه… سطر مبدئي يكفي، وبعدين دوس «ولّد».',
+    gates_default: 'الموافقات: الافتراضي', gates_terminal: 'الموافقات: الترمنال', gates_dashboard: 'الموافقات: الشاشة', gates_auto: 'الموافقات: أوتوماتيك',
+    speed_flow: 'السرعة: زي ما الفلو مظبوط', speed_fast: 'السرعة: صاروخ ⚡', speed_balanced: 'السرعة: متوازن', speed_quality: 'السرعة: أعلى جودة',
+    speed_hint: 'السرعة بتغيّر موديل ومستوى تفكير كل المراحل. «صاروخ» بيستخدم موديلات اللايتنينج بتفكير منخفض ومحاولة إعادة واحدة — دقايق بدل عشرات الدقايق؛ و«أعلى جودة» بيثبّت opus على أقصى تفكير.',
+    run_hint: 'زرار "شغّل دلوقتي" بينفذ الفلو من هنا مباشرة (Devin CLI بوضع headless على المشروع النشط) — الموافقات بتجيلك كبوابات على الشاشة، وبتتفرج على كل حاجة لايف تحت. زرار النسخ موجود لو تحب تلصق الأمر في شات Devin بدلًا من كده.',
+    run_now: '▶ شغّل دلوقتي', run_stop: '■ إيقاف', run_console: 'كونسول الوكيل (لايف)',
+    refine_btn: '✨ ولّد', refine_undo: '↶ تراجع', refine_working: '✨ بيولّد…',
+    refine_done: 'البرومبت اتولّد', refine_empty: 'اكتب اللي انت عاوزه الأول',
+    optimize_btn: '⚡ حسّن', optimize_working: '⚡ بيحسّن…', optimize_done: 'البرومبت اتحسّن',
+    prompt_hint: 'اكتب بأي لغة — المربع بيكبر مع الكتابة. ✨ «ولّد» بياخد فكرة مبدئية ويطلّع منها طلب كامل (بيضيف النتيجة المطلوبة ومعايير القبول). ⚡ «حسّن» بيسيب البرومبت اللي كتبته ويشحتو بس: نفس النطاق، صياغة أوضح، ونهاية قابلة للقياس. ↶ «تراجع» بيرجّع نصك الأصلي، والنص فاضل قابل للتعديل قبل ما تشغّل.',
+    refine_provider: 'مولّد البرومبت', refine_auto: 'أوتوماتيك (Devin الأول وبعدين البدايل)',
+    refine_acp: 'Devin (مفتاح ACP)', refine_cli: 'Devin CLI', refine_http: 'أي API مجاني (متوافق OpenAI)',
+    refine_local: 'قالب محلي (بدون موديل)',
+    refine_base: 'رابط الـ API', refine_model: 'اسم الموديل', refine_key: 'مفتاح الـ API',
+    refine_hint: 'الأوتوماتيك بيجرّب Devin الأول (مفيش مفتاح زيادة — بيستخدم تسجيل دخولك)، وبعدين الـ API اللي ظبطته، وفي الآخر قالب محلي. لو عايز موديل مجاني استخدم أي إندبوينت متوافق مع OpenAI، مثلاً Groq على https://api.groq.com/openai/v1 أو OpenRouter على https://openrouter.ai/api/v1 (موديلات بتنتهي بـ ‎:free) أو Gemini على https://generativelanguage.googleapis.com/v1beta/openai أو Ollama محلي على http://localhost:11434/v1. المفتاح بيتخزن في ‎.workbench/settings.json بتاع المشروع ومابيرجعش للمتصفح أبدًا.',
+    run_started: 'التشغيل بدأ — تابع الكونسول والمراحل وبث الملفات', run_exit_ok: 'خلّص ✓', run_exit_bad: 'خرج',
+    auth_hint: 'إعداد لمرة واحدة: لو الـ CLI مش مسجل، استخدم زرار تسجيل الدخول (بيفتح ترمنال + متصفح) وبعدين ارجع دوس تشغيل.',
+    cli_login: '🔑 تسجيل دخول CLI', cli_not_auth: 'الـ CLI مش مسجل دخول — محتاج تسجيل مرة واحدة',
+    cli_login_started: 'نافذة تسجيل الدخول اتفتحت — كمّل في المتصفح وبعدين دوس تشغيل', cli_ready: 'الـ CLI جاهز ✓',
+    cli_missing: 'Devin CLI مش موجود على الجهاز',
+    daemon_alive: 'المنفّذ جاهز (ديمون) ✓', queue_waiting: 'في الطابور — مستني الديمون',
+    executor_acp: 'المنفّذ جاهز ✓',
+    run_queued: 'اتبعت للديمون — تابع المراحل لايف تحت',
+    no_executor: 'مفيش منفّذ متاح: سجّل الـ CLI مرة واحدة، أو شغّل ديمون (‎/flow-daemon)',
+    pipeline_title: 'مراحل الفلو', no_flow: 'لسه مفيش فلو اشتغل على المشروع ده.', task_prefix: 'التاسك',
+    live_output: 'المخرج الحي (المرحلة الشغالة)',
+    inbox_title: 'رسالة للوكيل (Inbox)', inbox_send: '📨 إرسال',
+    inbox_ph: 'اكتب توجيهاتك… مثلا: "اهتم بحالة الـ null"، "وقّف بعد مرحلة الكود"',
+    inbox_hint: 'الأوركستريتور بيقرأها عند أقرب حد بين المراحل وبيعاملها كتعليمات مباشرة منك.',
+    inbox_sent: 'اتبعتت — الوكيل هيقرأها عند أقرب مرحلة',
+    log_title: 'السجل (آخر الأحداث)',
+    activity_feed: 'نشاط الملفات (لايف)', watching: 'بيراقب:', no_activity: 'مفيش أحداث لسه — أول ما الوكيل يعمل أو يعدل ملف هتشوفه هنا فورًا.',
+    activity_hint: 'بث حي من مراقب ملفات شامل على المشروع النشط. الضوضاء (ملفات git الداخلية و node_modules وملفات الحالة كثيرة التغيير) متفلترة.',
+    git_changes: 'تغييرات الشجرة (git)', no_changes: 'مفيش تغييرات غير مرفوعة.', no_git: 'المجلد ده مش ريبو git.', close: 'إغلاق',
+    changes_hint: 'دوس على أي ملف متغير تشوف الـ diff بتاعه. بيتحدث تلقائيًا طول ما التاب ده مفتوح.',
+    new_flow: '+ فلو جديد', new_skill: '+ مهارة جديدة', delete: 'حذف', save: '💾 حفظ', saved: 'اتحفظ', raw: 'خام',
+    export_as: 'صدّر كـ', export_btn: '⬇ تصدير', export_done: 'اتصدّر:',
+    export_pick_first: 'اختار مخرج من القائمة الأول.',
+    view_canvas: '⬡ مرئي', view_json: '{ } JSON', auto_layout: '⇄ ترتيب تلقائي', clear_canvas: '✖ تفريغ',
+    canvas_empty: 'دوس على أيقونة دور فوق عشان تنزّل أول خطوة، وبعدين اسحب من المنفذ الأزرق عشان توصّل.',
+    canvas_hint: 'اسحب العُقد عشان تحركها. المنفذ الأزرق (يمين) = الخطوة اللي بعدها، والمنفذ البرتقالي (تحت) = القفزة وقت الفشل. دوس على أي خط عشان تمسحه. أيقونة البوابة على العقدة بتلف بين auto / dashboard / terminal / default، وأيقونة اللوب بتحدد عدد المحاولات في فرع الفشل. النقطة الخضرا بتعلّم خطوة البداية.',
+    canvas_no_nodes: 'ضيف خطوة واحدة على الأقل الأول', canvas_no_start: 'كل الخطوات داخل عليها خط — امسح واحد عشان يبقى في نقطة بداية',
+    pal_group_agents: 'خطوات الوكلاء', pal_group_understand: 'خطوات الفهم', pal_group_scripts: 'سكربت ومخصص',
+    pal_thinker: 'تخطيط', pal_analyst: 'تحليل', pal_coder: 'كود', pal_tester: 'اختبار', pal_debugger: 'تصحيح', pal_shipper: 'رفع',
+    pal_researcher: 'إحصائيات', pal_optimizer: 'أداء',
+    pal_architecture: 'معمارية', pal_conventions: 'أعراف', pal_rules: 'قواعد',
+    pal_scan: 'مسح', pal_checks: 'فحوص', pal_script: 'سكربت', pal_custom: 'مخصصة',
+    ins_title: 'إعدادات الخطوة:', ins_model: 'عائلة الموديل', ins_effort: 'درجة الموديل', ins_gate: 'البوابة',
+    ins_level_default: 'الدرجة الافتراضية للعائلة',
+    ins_loops: 'عدد المحاولات', ins_pre: 'سكربتات قبل الخطوة', ins_artifact: 'المخرج',
+    ins_inherit: 'الافتراضي (من ملف الدور)', eff_high: 'عالي', eff_medium: 'متوسط', eff_low: 'منخفض',
+    eff_xhigh: 'عالي جدًا', eff_max: 'أقصى', eff_none: 'بدون تفكير', eff_minimal: 'أدنى',
+    view_visual: '⬡ مرئي', view_form: '▤ نموذج', view_raw: '{ } الملف الخام', new_agent: '+ دور جديد',
+    vis_preset: 'ابدأ من قالب', vis_artifact: 'الملف اللي بيكتبه', vis_sections: 'أقسام البرومبت',
+    vis_rules: 'قواعد السلوك', vis_flow: 'الفلو اللي هيشغله',
+    vis_hint: 'ابني بالدوس بس. كل اللي تحت بيتولد في الملف اللي باين في المعاينة — مفيش كتابة.',
+    sec_inputs: 'المدخلات', sec_output: 'شكل المخرج', sec_verdict: 'حكم PASS/FAIL', sec_summary: 'ملخص 5 سطور',
+    rule_cite: 'استشهاد file:line', rule_readonly: 'ممنوع يعدل كود', rule_minimal: 'تغيير أقل ما يمكن',
+    rule_repro: 'يعيد الإنتاج الأول', rule_measure: 'قياس قبل وبعد', rule_notests: 'ممنوع يضعّف الاختبارات',
+    rule_conventions: 'يمشي على أعراف الريبو', rule_noinvent: 'ممنوع يخترع حقائق',
+    skp_runflow: 'يشغّل فلو', skp_report: 'يكتب تقرير', skp_checklist: 'قائمة فحص', skp_understand: 'يشرح المشروع',
+    srule_arabic: 'يرد بالعربي', srule_concise: 'رد مختصر',
+    srule_askfirst: 'يسأل لو مش واضح', srule_noguess: 'ممنوع التخمين',
+    ag_name: 'اسم الدور', ag_desc: 'بيعمل إيه (الوصف)', ag_tools: 'الأدوات المسموحة', ag_prompt: 'برومبت الدور',
+    sk_body: 'تعليمات المهارة', confirm_delete_agent: 'تمسح ملف الدور ده؟',
+    pick_agent_first: 'اختار دور الأول', name_rule_role: 'حروف إنجليزي صغيرة وأرقام وشرطات بس',
+    ins_ctx: 'collect-context', ins_checks: 'run-checks',
+    ins_pick: 'دوس على أي خطوة على اللوحة عشان تظبط الموديل ومستوى التفكير والبوابة والمحاولات والسكربتات.',
+    tt_add: 'إضافة خطوة', tt_gate: 'وضع البوابة', tt_loops: 'عدد المحاولات', tt_del: 'حذف الخطوة',
+    tt_port_next: 'اسحب للخطوة اللي بعدها', tt_port_fail: 'اسحب لخطوة الفشل',
+    flows_hint: 'ملف الفلو JSON متخزن في flows/‎ في مكتبة الـ workbench. عدّل المراحل والبوابات (auto / terminal / dashboard / default) والسكربتات وشروط الجودة. الفلوز الأساسية (task, understand) مش بتتحذف.',
+    agents_hint: 'بروفايل الوكيل = فرونت ماتر YAML (الموديل والأدوات) + برومبت النظام. التعديل بيسري من أول استدعاء جديد. خلّي البرومبتات إنجليزي عشان أفضل أداء للموديل.',
+    skills_hint: 'المهارات هي أوامر السلاش اللي Devin بيشوفها (‎/flow، ‎/understand…). كل مهارة ملف skills/<name>/SKILL.md بفرونت ماتر YAML + برومبت. المهارة الجديدة بتظهر في Devin من الجلسة الجاية.',
+    settings_ui: 'الواجهة', lang: 'اللغة', theme: 'الثيم', theme_dark: 'غامق', theme_light: 'فاتح',
+    poll: 'التحديث (ملّي ثانية)', settings_ui_hint: 'بيتخزن في المتصفح ده بس.',
+    settings_project: 'إعدادات المشروع', gate_mode: 'وضع الموافقات', gate_default: 'الافتراضي (من ملف الفلو)',
+    gate_mode_hint: 'بيستبدل defaultGate بتاع الفلو للمراحل اللي بوابتها "default". بيتحفظ في ‎.workbench/settings.json — الأوركستريتور بيقرأه عند كل بوابة، فتقدر تغيّره والفلو شغّال.',
+    projects_title: 'المشاريع', add_project: '+ إضافة', activate: 'تفعيل', remove: 'إزالة', active: 'نشط',
+    pick_project: '📂 اختار مجلد المشروع', pick_title: 'اختار مجلد المشروع',
+    pick_up: '↑ لفوق', pick_roots: 'البارتيشنات', pick_use: '✔ استخدم المجلد ده',
+    pick_hint: 'العلامات الخضرا بتقول إن المجلد شكله مشروع فعلاً (‎.workbench أو git). دوس على أي مجلد عشان تدخله.',
+    pick_no_sub: 'مفيش مجلدات جوّا — وبردو تقدر تستخدم المجلد ده.',
+    clean_missing: '🧹 امسح المفقود', clean_none: 'كل مجلدات المشاريع موجودة',
+    clean_done: 'اتمسحوا اللي مابقوش موجودين', tt_pick: 'اختار مجلد المشروع',
+    projects_hint: 'ضيف أي مشروع محلي بمساره الكامل. الشاشة بتراقب المشروع النشط، والتبديل فوري.',
+    decision_sent: 'القرار وصل للفلو',
+    confirm_delete_flow: 'متأكد من حذف ملف الفلو ده؟', pick_flow_first: 'اختر فلو الأول', pick_agent_first: 'اختر وكيل الأول', pick_skill_first: 'اختر مهارة الأول',
+    name_rule: 'الاسم لازم حروف إنجليزي صغيرة/أرقام/شرطات',
+    project_added: 'المشروع اتضاف', project_removed: 'المشروع اتشال', project_activated: 'اتبدّل المشروع',
+    settings_saved: 'الإعدادات اتحفظت', invalid_json: 'JSON غير صالح', select_artifact: 'لا مخرجات بعد',
+    st_pending: 'في الانتظار', st_running: 'شغّال', st_waiting_gate: 'مستني موافقة', st_done: 'خلّص', st_failed: 'فشل', st_skipped: 'متخطى',
+    fs_running: 'شغّال', fs_waiting_gate: 'مستني موافقة', fs_done: 'خلّص', fs_failed: 'فشل', fs_stopped: 'متوقف',
+    conn_ok: '🟢 متصل', conn_bad: '🔴 غير متصل', no_state: 'لا حالة', no_flow_badge: 'لا يوجد فلو',
+    script_stage: 'سكربت', task_original: 'النص الأصلي',
+    tt_project: 'المشروع النشط', tt_theme: 'الثيم', tt_lang: 'اللغة', tt_studio: 'الاستوديو (بناء الفلو بالأيقونات)',
+    ph_new_flow: 'اسم-الفلو-الجديد', ph_new_skill: 'اسم-المهارة-الجديدة', ph_proj_path: 'C:\\مسار\\المشروع',
+    provider_label: 'المنفّذ', provider_devin: 'ديفين', provider_copilot: 'جيت‌هاب كوبايلوت',
+    provider_cursor: 'كيرسر', provider_trae: 'تراي',
+    provider_detected: 'متلقي', provider_not_detected: 'مش متلقي على الجهاز ده',
+    provider_modules: 'الوحدات المكتشفة', provider_no_modules: 'مفيش وحدات للمزوّد ده',
+    provider_looked_for: 'دوّرنا في', provider_editor: 'المحرر', provider_cli: 'الأداة',
+    providers_title: 'المنفّذين — مين اللي بيشتغل',
+    providers_hint: 'كل كارت ده اللي اتلقى فعلًا على الجهاز ده. «متصل» بتتقرا لايف من الـCLI بتاع المزوّد نفسه — وزرار الاتصال بيفتح ترمنال حقيقي على أمر اللوجن بتاعه، يعني باسوردك أو توكنك عمره ما بيعدي من الشاشة دي. «ديفين» هو الوحيد اللي بينفّذ فلوز؛ والباقين موجودين عشان قايمة الفلوز والموديلات واكتشاف الوحدات تمشي ورا الأداة اللي بتستخدمها. كيرسر وتراي بيحتفظوا بالجلسة جوّا البرنامج، عشان كده زرارهم بيفتح المحرر على شاشة تسجيل الدخول بدل ما يدّعي إنه سجّلك من هنا. ولمّا تغيّر المنفّذ، موديلات المراحل المثبّتة على الكانفاس بتتحوّل لوحدها لأقرب موديل موجود فعلًا عند الأداة الجديدة.',
+    prov_installed: 'متركّب', prov_missing: 'مش متركّب', prov_runs: 'بيشغّل فلوز',
+    prov_detect_only: 'اكتشاف بس', prov_connected: 'متصل', prov_disconnected: 'مش متصل',
+    prov_in_app: 'التسجيل جوّا البرنامج', prov_active: 'المستخدم حاليًا',
+    prov_login: '🔑 اتصل', prov_relogin: '🔑 سجّل دخول تاني', prov_use: 'خليه المنفّذ',
+    prov_recheck: '↻ افحص كل حاجة تاني', prov_switched: 'المنفّذ اتغير',
+    prov_login_started: 'اتفتح ترمنال — كمّل الدخول هناك وبعدين دوس «افحص تاني»',
+    prov_already: 'متصل خلاص', prov_no_cli: 'مفيش CLI للمزوّد ده على الجهاز',
+    prov_open_app: '🔑 افتح البرنامج للتسجيل', prov_app_opened: 'البرنامج بيتفتح — سجّل دخولك جوّاه',
+    prov_no_login: 'مفيش لوجن', models_retargeted: 'موديلات المراحل اتحوّلت للمنفّذ الجديد',
+    prov_unknown: 'حالة الدخول مش مقروءة',
+    prov_account_only: 'الحساب متصل، بس الأداة مش متركّبة',
+    retarget_all: '⇄ حوّل كل الفلوز للمنفّذ ده',
+    retarget_none: 'كل الفلوز بتستخدم موديلات المنفّذ ده خلاص',
+    retarget_confirm: 'الفلوز دي هياخدوا نسخة محوّلة للمنفّذ المختار:',
+    retarget_note: 'الأصل مابيتلمسش (والنجمة * يعني نسخة المنفّذ ده نفسه، بتتحدّث في مكانها). ديفين بس هو اللي بيشغّل، ففلوزه لازم تفضل بموديلاته.',
+    retarget_done: 'الفلوز اتحوّلت',
+    provider_build_flow: '⚙ ابنِ فلو من الوحدات المكتشفة',
+    provider_built: 'الفلو اتبنى من الوحدات المكتشفة — راجعه واحفظه',
+    provider_not_runnable: 'ديفين بس هو اللي بيشغّل الفلوز؛ باقي المزوّدين للفلترة والبناء',
+    provider_flow_filtered: 'قايمة الفلوز مفلترة حسب المنفّذ المختار',
+  },
+};
+let LANG = localStorage.getItem('ff.lang') || 'ar';
+const t = (k) => (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k;
+
+/* ============================== helpers ============================== */
+const $ = (id) => document.getElementById(id);
+const api = async (path, opts) => {
+  const r = await fetch(path, opts);
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+};
+const post = (u, b) => api(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) });
+function toast(msg, kind) {
+  const d = document.createElement('div');
+  d.className = 'toast' + (kind ? ' ' + kind : '');
+  d.textContent = msg;
+  $('toasts').appendChild(d);
+  setTimeout(() => d.remove(), 3500);
+}
+function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+function fmtDur(a, b) {
+  if (!a) return '';
+  const ms = (b ? Date.parse(b) : Date.now()) - Date.parse(a);
+  if (isNaN(ms) || ms < 0) return '';
+  const s = Math.floor(ms / 1000), m = Math.floor(s / 60);
+  return m ? `${m}m ${s % 60}s` : `${s}s`;
+}
+/* Minimal markdown renderer: escape first, then transform.
+   Adds review-friendly semantics: tables, checkboxes, and colored
+   PASS/FAIL/MET badges so documents can be scanned at a glance. */
+function mdTable(block) {
+  const rows = block.trim().split('\n').filter((l) => l.trim().startsWith('|'));
+  if (rows.length < 2 || !/^\s*\|[\s:|-]+\|\s*$/.test(rows[1])) return null;
+  const cells = (l) => l.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+  const head = cells(rows[0]).map((c) => `<th>${c}</th>`).join('');
+  const body = rows.slice(2).map((r) => `<tr>${cells(r).map((c) => `<td>${c}</td>`).join('')}</tr>`).join('');
+  return `<table><tr>${head}</tr>${body}</table>`;
+}
+function badgify(html) {
+  return html
+    .replace(/\b(NOT MET|FAIL(?:ED)?|Blocking|ERROR)\b/g, '<span class="badge-fail">$1</span>')
+    .replace(/\b(PASS(?:ED)?|MET|OK|APPROVED?)\b/g, '<span class="badge-ok">$1</span>')
+    .replace(/\b(NOT TESTABLE|SKIPPED|WARN(?:ING)?|PENDING)\b/g, '<span class="badge-warn">$1</span>');
+}
+function renderMd(src) {
+  let x = esc(src);
+  x = x.replace(/```([\s\S]*?)```/g, (_, code) => `<pre><code>${code.replace(/^\n/, '')}</code></pre>`);
+  x = x.replace(/^#### (.*)$/gm, '<h3>$1</h3>');
+  x = x.replace(/^### (.*)$/gm, '<h3>$1</h3>');
+  x = x.replace(/^## (.*)$/gm, '<h2>$1</h2>');
+  x = x.replace(/^# (.*)$/gm, '<h1>$1</h1>');
+  x = x.replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>');
+  x = x.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  x = x.replace(/^[-*] \[ \] (.*)$/gm, '<li class="todo">$1</li>');
+  x = x.replace(/^[-*] \[[xX]\] (.*)$/gm, '<li class="donebox">$1</li>');
+  x = x.replace(/^[-*] (.*)$/gm, '<li>$1</li>');
+  x = x.split(/\n{2,}/).map((blk) => {
+    const trimmed = blk.trim();
+    if (/^<(h\d|pre|li)/.test(trimmed)) return blk;
+    const table = trimmed.startsWith('|') ? mdTable(blk) : null;
+    if (table) return table;
+    return `<p>${blk.replace(/\n/g, '<br>')}</p>`;
+  }).join('\n');
+  // Apply badges outside <pre> blocks only, so raw output stays untouched.
+  return x.split(/(<pre>[\s\S]*?<\/pre>)/).map((seg) => seg.startsWith('<pre>') ? seg : badgify(seg)).join('');
+}
+/* Rebuild a <select>'s option list only when items change; preserve selection. */
+function syncSelect(sel, items, selected) {
+  const sig = JSON.stringify(items) + '|' + LANG;
+  if (sel.dataset.sig !== sig) {
+    sel.innerHTML = items.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    sel.dataset.sig = sig;
+  }
+  if (selected !== undefined && sel.value !== selected && items.includes(selected)) sel.value = selected;
+}
+
+/* ============================== language & theme ============================== */
+function applyLang() {
+  document.documentElement.lang = LANG;
+  document.documentElement.dir = LANG === 'ar' ? 'rtl' : 'ltr';
+  $('langBtn').textContent = LANG === 'ar' ? 'EN' : 'ع';
+  document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  $('gateNote').placeholder = t('gate_note_ph');
+  $('runTask').placeholder = t('run_task_ph');
+  $('inboxText').placeholder = t('inbox_ph');
+  $('newFlowName').placeholder = t('ph_new_flow');
+  $('newSkillName').placeholder = t('ph_new_skill');
+  $('newProjPath').placeholder = t('ph_proj_path');
+  $('runProvider').title = t('provider_flow_filtered');
+  $('projectSelect').title = t('tt_project');
+  $('btnPickTop').title = t('tt_pick');
+  $('themeBtn').title = t('tt_theme');
+  $('langBtn').title = t('tt_lang');
+  $('lnkStudio').title = t('tt_studio');
+  $('btnApprove').textContent = t('approve');
+  $('btnReject').textContent = t('reject');
+  $('btnInbox').textContent = t('inbox_send');
+  $('setLang').value = LANG;
+  $('conn').textContent = connOk === null ? '…' : (connOk ? t('conn_ok') : t('conn_bad'));
+  renderPalette();
+  renderCanvas();
+  if (lastData) renderAll(lastData);
+  fetchModels();
+  // Provider cards are built from data, not from data-i18n nodes.
+  if (activeTab === 'settings') loadProviders(false);
+}
+$('langBtn').onclick = () => { LANG = LANG === 'ar' ? 'en' : 'ar'; localStorage.setItem('ff.lang', LANG); applyLang(); };
+$('setLang').onchange = () => { LANG = $('setLang').value; localStorage.setItem('ff.lang', LANG); applyLang(); };
+
+let THEME = localStorage.getItem('ff.theme') || 'dark';
+function applyTheme() {
+  document.documentElement.dataset.theme = THEME;
+  $('themeBtn').textContent = THEME === 'dark' ? '🌙' : '☀️';
+  $('setTheme').value = THEME;
+}
+$('themeBtn').onclick = () => { THEME = THEME === 'dark' ? 'light' : 'dark'; localStorage.setItem('ff.theme', THEME); applyTheme(); };
+$('setTheme').onchange = () => { THEME = $('setTheme').value; localStorage.setItem('ff.theme', THEME); applyTheme(); };
+
+/* ============================== tabs ============================== */
+let activeTab = 'overview';
+document.querySelectorAll('nav .tab').forEach((tab) => tab.onclick = () => {
+  document.querySelectorAll('nav .tab').forEach((x) => x.classList.remove('active'));
+  document.querySelectorAll('.page').forEach((x) => x.classList.remove('active'));
+  tab.classList.add('active');
+  activeTab = tab.dataset.page;
+  $('page-' + activeTab).classList.add('active');
+  if (activeTab === 'flows') { loadFlows(); fetchModels(); fetchProviderDetect(); }
+  if (activeTab === 'agents') { loadAgents(); fetchModels(); renderAgentVisual(); }
+  if (activeTab === 'skills') { loadSkills(); renderSkillVisual(); }
+  if (activeTab === 'activity') { fetchActivity(); fetchChanges(); }
+  if (activeTab === 'settings') loadProviders(false);
+});
+
+/* ============================== polling ============================== */
+let lastData = null;
+let lastStamp = '';
+let selectedArtifact = null;
+let pollTimer = null;
+let POLL_MS = Number(localStorage.getItem('ff.poll') || 1500);
+let pollCount = 0;
+let connOk = null;
+
+async function poll() {
+  pollCount++;
+  try {
+    const d = await api('/api/state');
+    connOk = true;
+    $('conn').textContent = t('conn_ok');
+    lastData = d;
+    renderAll(d);
+  } catch (e) {
+    connOk = false;
+    $('conn').textContent = t('conn_bad');
+  }
+  fetchActivity();
+  fetchRun();
+  if (activeTab === 'activity' && pollCount % 2 === 0) fetchChanges();
+}
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(poll, POLL_MS);
+}
+
+function renderAll(d) {
+  renderHeader(d);
+  renderStages(d);
+  renderGate(d.gate);
+  renderArtifactList(d.artifacts || []);
+  renderRunBuilder(d);
+  renderProjects(d);
+  renderProjectSettings(d);
+  renderLiveTail(d);
+  renderExecStatus(d);
+}
+
+/* Execution-path indicators: ACP key > daemon heartbeat; queued request. */
+let lastDaemonAlive = false;
+let lastAcpReady = false;
+function renderExecStatus(d) {
+  lastAcpReady = !!(d.executors && d.executors.acp);
+  lastDaemonAlive = !!(d.daemon && d.daemon.alive);
+  const dm = $('daemonStatus');
+  if (lastAcpReady) { dm.style.display = 'inline-block'; dm.textContent = t('executor_acp'); }
+  else if (lastDaemonAlive) { dm.style.display = 'inline-block'; dm.textContent = t('daemon_alive'); }
+  else dm.style.display = 'none';
+  const qb = $('queueBadge');
+  if (d.queuePending) { qb.style.display = 'inline-block'; qb.textContent = t('queue_waiting'); }
+  else qb.style.display = 'none';
+  // The CLI warning only matters when there is no executor at all.
+  if (lastAcpReady || lastDaemonAlive) { $('cliStatus').style.display = 'none'; $('btnCliLogin').style.display = 'none'; }
+}
+
+/* ============================== header & project switcher ============================== */
+function stTitle(st) { return (LANG === 'ar' && st.titleAr) ? st.titleAr : (st.title || st.id); }
+
+function renderHeader(d) {
+  const s = d.state;
+  const badge = $('statusBadge');
+  if (!s) {
+    badge.textContent = t('no_state'); badge.className = 'badge';
+    $('flowBadge').textContent = t('no_flow_badge');
+  } else {
+    badge.textContent = t('fs_' + s.status) || s.status;
+    badge.className = 'badge ' + (s.status || '');
+    $('flowBadge').textContent = (LANG === 'ar' && s.flowTitleAr) ? s.flowTitleAr : (s.flowTitle || s.flow || '');
+  }
+  syncSelect($('projectSelect'), d.projects || [], d.project || undefined);
+}
+
+$('projectSelect').onchange = async () => {
+  try {
+    await post('/api/projects', { action: 'activate', path: $('projectSelect').value });
+    toast(t('project_activated'), 'ok');
+    selectedArtifact = null;
+    $('artifactView').innerHTML = ''; $('artifactRaw').textContent = '';
+    actCursor = null;
+    $('actFeed').innerHTML = `<div class="empty">${esc(t('no_activity'))}</div>`;
+    $('actFeedHome').innerHTML = `<div class="empty">${esc(t('no_activity'))}</div>`;
+    poll();
+  } catch (e) { toast(e.message, 'err'); }
+};
+
+/* ============================== pipeline ============================== */
+function renderStages(d) {
+  const s = d.state;
+  const models = d.models || {};
+  const el = $('stages');
+  if (!s) {
+    el.innerHTML = `<div class="empty">${esc(t('no_flow'))}</div>`;
+    $('taskText').textContent = ''; $('taskRawText').style.display = 'none'; $('log').textContent = '—';
+    return;
+  }
+  $('taskText').textContent = s.task ? `${t('task_prefix')}: ${s.task}` : '';
+  if (s.taskRaw && s.taskRaw !== s.task) {
+    $('taskRawText').style.display = 'block';
+    $('taskRawText').textContent = `${t('task_original')}: ${s.taskRaw}`;
+  } else {
+    $('taskRawText').style.display = 'none';
+  }
+  el.innerHTML = '';
+  (s.stages || []).forEach((st) => {
+    const div = document.createElement('div');
+    div.className = 'stage ' + (st.status || 'pending');
+    const loops = s.loops && s.loops[st.id] ? `<span class="loops">↺ ${s.loops[st.id]}</span>` : '';
+    const dur = fmtDur(st.startedAt, st.endedAt);
+    const note = (LANG === 'ar' && st.noteAr) ? st.noteAr : (st.note || '');
+    // A stage-level override wins over the model pinned in the role profile.
+    const modelName = st.model || (st.agent ? models[st.agent] : null);
+    const model = (modelName ? `<span class="modelchip">${esc(modelName)}</span>` : '')
+      + (st.effort ? `<span class="modelchip">${esc((I18N[LANG] || {})['eff_' + st.effort] || st.effort)}</span>` : '');
+    div.innerHTML = `<div class="dot"></div>
+      <div class="info">
+        <div class="t">${esc(stTitle(st))} <b>${esc(st.id)}</b>${loops}</div>
+        <div class="note">${esc(note)}</div>
+      </div>
+      <div class="meta">${esc(st.agent || t('script_stage'))} ${model}<br>${esc(t('st_' + st.status) || st.status || '')}${dur ? '<br>' + dur : ''}</div>`;
+    el.appendChild(div);
+  });
+  const log = (s.log || []).slice(-30).map((l) => `[${(l.t || '').replace('T', ' ').slice(0, 19)}] ${l.msg}`).join('\n');
+  $('log').textContent = log || '—';
+  const stamp = JSON.stringify([s.updatedAt, s.status, s.currentStage]);
+  if (stamp !== lastStamp) { lastStamp = stamp; if (selectedArtifact) viewArtifact(selectedArtifact, true); }
+}
+
+/* Live tail of the running stage's artifact. */
+let liveArtifact = null;
+async function renderLiveTail(d) {
+  const s = d.state;
+  const running = s && (s.stages || []).find((st) => st.status === 'running' && st.artifact);
+  const sec = $('liveSection');
+  if (!running || !(d.artifacts || []).some((a) => a.name === running.artifact)) {
+    sec.style.display = 'none'; liveArtifact = null; return;
+  }
+  sec.style.display = 'block';
+  $('liveArtifactName').textContent = running.artifact;
+  try {
+    const r = await api('/api/artifact?name=' + encodeURIComponent(running.artifact));
+    const lines = r.content.split('\n');
+    $('liveTail').textContent = lines.slice(-28).join('\n');
+    $('liveTail').scrollTop = $('liveTail').scrollHeight;
+    liveArtifact = running.artifact;
+  } catch { /* artifact may not exist yet */ }
+}
+
+/* ============================== gate ============================== */
+let currentGateStage = null;
+function renderGate(gate) {
+  const box = $('gateBox');
+  if (gate && gate.stage) {
+    currentGateStage = gate.stage;
+    const q = (LANG === 'ar' && gate.questionAr) ? gate.questionAr : gate.question;
+    $('gateQuestion').textContent = `🔔 [${gate.stage}] ` + (q || t('gate_title'));
+    box.style.display = 'block';
+  } else {
+    currentGateStage = null;
+    box.style.display = 'none';
+  }
+}
+async function decide(decision) {
+  if (!currentGateStage) return;
+  $('btnApprove').disabled = $('btnReject').disabled = true;
+  try {
+    await post('/api/command', { stage: currentGateStage, decision, note: $('gateNote').value });
+    $('gateNote').value = '';
+    toast(t('decision_sent'), 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+  $('btnApprove').disabled = $('btnReject').disabled = false;
+}
+$('btnApprove').onclick = () => decide('approve');
+$('btnReject').onclick = () => decide('reject');
+
+/* ============================== executor providers ==============================
+   The selected provider drives three things: which flows the run bar lists (a
+   flow with no `providers` field is unrestricted), which model catalogue the
+   inspector and the visual builders show, and which editor the Flows tab probes
+   for modules. Only Devin can actually RUN a flow - see provider_not_runnable. */
+const PROVIDER_LABELS = {
+  devin: () => t('provider_devin'),
+  copilot: () => t('provider_copilot'),
+  cursor: () => t('provider_cursor'),
+  trae: () => t('provider_trae'),
+};
+let PROVIDER = localStorage.getItem('ff.provider') || 'devin';
+let providerSynced = false; // settings.executorProvider wins once, on first poll
+
+function renderProviderSelect(d) {
+  const list = (d.providers || []).length ? d.providers : [{ id: 'devin', installed: true }];
+  const sig = JSON.stringify(list.map((p) => [p.id, p.installed])) + '|' + LANG;
+  const sel = $('runProvider');
+  if (sel.dataset.sig !== sig) {
+    sel.innerHTML = list.map((p) => {
+      const label = PROVIDER_LABELS[p.id] ? PROVIDER_LABELS[p.id]() : p.id;
+      return `<option value="${esc(p.id)}">${esc((p.installed ? '✓ ' : '✗ ') + label)}</option>`;
+    }).join('');
+    sel.dataset.sig = sig;
+  }
+  if (!list.some((p) => p.id === PROVIDER)) PROVIDER = 'devin';
+  if (sel.value !== PROVIDER) sel.value = PROVIDER;
+}
+$('runProvider').onchange = async () => {
+  PROVIDER = $('runProvider').value;
+  localStorage.setItem('ff.provider', PROVIDER);
+  if (lastData) renderRunBuilder(lastData);
+  fetchModels();
+  fetchProviderDetect();
+  retargetCanvasModels();
+  try { await post('/api/settings', { executorProvider: PROVIDER }); } catch { /* no project yet */ }
+};
+
+/* ============================== run-command builder ============================== */
+function renderRunBuilder(d) {
+  renderProviderSelect(d);
+  if (!providerSynced && d.settings) {
+    providerSynced = true;
+    if (d.settings.executorProvider && !localStorage.getItem('ff.provider')) {
+      PROVIDER = d.settings.executorProvider;
+      $('runProvider').value = PROVIDER;
+      fetchModels();
+    }
+  }
+  // A flow with no `providers` field is available to every provider.
+  const map = d.flowProviders || {};
+  const list = (d.flows || []).filter((f) => !map[f] || map[f].includes(PROVIDER));
+  const before = $('runFlow').value;
+  syncSelect($('runFlow'), list);
+  if (before && !list.includes(before) && list.length) $('runFlow').value = list[0];
+  buildCmd();
+}
+function buildCmd() {
+  const flow = $('runFlow').value || 'task';
+  const task = $('runTask').value.trim();
+  const gates = $('runGates').value;
+  const speed = $('runSpeed').value;
+  let cmd;
+  if (flow === 'understand' && !task) cmd = '/understand';
+  else cmd = `/flow ${flow} "${task || '...'}"`;
+  if (gates) cmd += ` --gates=${gates}`;
+  if (speed) cmd += ` --speed=${speed}`;
+  $('runCmd').textContent = cmd;
+}
+// The task box follows the text instead of scrolling inside three lines.
+function autoGrow() {
+  const el = $('runTask');
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight + 2, 340) + 'px';
+}
+$('runFlow').onchange = buildCmd;
+$('runTask').oninput = () => { autoGrow(); buildCmd(); };
+$('runGates').onchange = buildCmd;
+$('runSpeed').onchange = () => { localStorage.setItem('ff.speed', $('runSpeed').value); buildCmd(); };
+$('btnCopyCmd').onclick = async () => {
+  try { await navigator.clipboard.writeText($('runCmd').textContent); toast(t('copied'), 'ok'); }
+  catch { toast(t('clipboard_blocked'), 'err'); }
+};
+
+/* ============================== headless runner ============================== */
+let runCursor = 0;
+async function fetchRun() {
+  try {
+    const d = await api('/api/run?since=' + runCursor);
+    if (!d.exists) return;
+    $('runConsoleSec').style.display = 'block';
+    if (d.lines.length) {
+      runCursor = d.next;
+      const pre = $('runConsole');
+      pre.textContent += (pre.textContent ? '\n' : '') + d.lines.join('\n');
+      const lines = pre.textContent.split('\n');
+      if (lines.length > 1500) pre.textContent = lines.slice(-1500).join('\n');
+      pre.scrollTop = pre.scrollHeight;
+      $('runDot').style.display = 'inline-block';
+      setTimeout(() => { $('runDot').style.display = 'none'; }, 1500);
+    }
+    const badge = $('runStatus');
+    badge.style.display = 'inline-block';
+    if (d.active) {
+      badge.textContent = t('fs_running');
+      badge.className = 'badge running';
+      $('btnRun').disabled = true;
+      $('btnStopRun').style.display = 'inline-block';
+    } else {
+      badge.textContent = d.exitCode === 0 ? t('run_exit_ok') : `${t('run_exit_bad')} (${d.exitCode})`;
+      badge.className = 'badge ' + (d.exitCode === 0 ? 'done' : 'failed');
+      $('btnRun').disabled = false;
+      $('btnStopRun').style.display = 'none';
+    }
+  } catch { /* server unreachable */ }
+}
+/* Prompt generation: the rough line the user typed goes to a model and comes
+   back as the precise task statement, editable before running. */
+let refineBefore = null;
+async function runRefine(mode) {
+  const text = $('runTask').value.trim();
+  if (!text) { toast(t('refine_empty'), 'err'); return; }
+  const btn = $(mode === 'optimize' ? 'btnOptimize' : 'btnRefine');
+  const other = $(mode === 'optimize' ? 'btnRefine' : 'btnOptimize');
+  const label = btn.textContent;
+  btn.disabled = other.disabled = true;
+  btn.textContent = t(mode === 'optimize' ? 'optimize_working' : 'refine_working');
+  try {
+    const r = await post('/api/refine', { text, flow: $('runFlow').value || 'task', mode });
+    refineBefore = text;
+    $('runTask').value = r.prompt;
+    $('btnRefineUndo').style.display = '';
+    autoGrow();
+    buildCmd();
+    toast(t(mode === 'optimize' ? 'optimize_done' : 'refine_done') + ' — ' + r.via, 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+  btn.disabled = other.disabled = false;
+  btn.textContent = label;
+}
+$('btnRefine').onclick = () => runRefine('generate');
+$('btnOptimize').onclick = () => runRefine('optimize');
+$('btnRefineUndo').onclick = () => {
+  if (refineBefore === null) return;
+  $('runTask').value = refineBefore;
+  refineBefore = null;
+  $('btnRefineUndo').style.display = 'none';
+  autoGrow();
+  buildCmd();
+};
+$('btnRun').onclick = async () => {
+  const flow = $('runFlow').value || 'task';
+  const task = $('runTask').value.trim();
+  const gates = $('runGates').value || 'dashboard';
+  const speed = $('runSpeed').value || 'flow';
+  try {
+    $('btnRun').disabled = true;
+    const r = await post('/api/run', { flow, task, gates, speed, permissionMode: 'dangerous', provider: PROVIDER });
+    if (r.mode === 'queue') {
+      $('btnRun').disabled = false;
+      toast(t('run_queued'), 'ok');
+    } else {
+      runCursor = 0;
+      $('runConsole').textContent = '';
+      $('runConsoleSec').style.display = 'block';
+      toast(t('run_started'), 'ok');
+    }
+  } catch (e) {
+    $('btnRun').disabled = false;
+    if (e.message === 'provider_not_runnable') toast(t('provider_not_runnable'), 'err');
+    else if (e.message === 'no_executor') { toast(t('no_executor'), 'err'); fetchCli(true); }
+    else if (e.message === 'cli_not_authenticated') { toast(t('cli_not_auth'), 'err'); fetchCli(true); }
+    else toast(e.message, 'err');
+  }
+};
+$('btnStopRun').onclick = async () => {
+  try { await post('/api/run/stop', {}); } catch (e) { toast(e.message, 'err'); }
+};
+
+/* ---------- CLI auth status ---------- */
+async function fetchCli(force) {
+  try {
+    const d = await api('/api/cli' + (force ? '?force=1' : ''));
+    const chip = $('cliStatus'), btn = $('btnCliLogin');
+    btn.textContent = t('cli_login');
+    if (lastAcpReady || lastDaemonAlive || (d.found && d.authenticated)) {
+      chip.style.display = 'none'; btn.style.display = 'none';
+    } else if (!d.found) {
+      chip.style.display = 'inline-block'; chip.textContent = t('cli_missing');
+      chip.className = 'badge failed'; btn.style.display = 'none';
+    } else {
+      chip.style.display = 'inline-block'; chip.textContent = t('cli_not_auth');
+      chip.className = 'badge waiting_gate'; btn.style.display = 'inline-block';
+    }
+    return d;
+  } catch { return null; }
+}
+$('btnCliLogin').onclick = async () => {
+  try {
+    const r = await post('/api/cli/login', {});
+    if (r.already) { toast(t('cli_ready'), 'ok'); fetchCli(true); return; }
+    toast(t('cli_login_started'), 'ok');
+    // Poll until the login completes so the chip flips green by itself.
+    for (let i = 0; i < 36; i++) {
+      await new Promise((res) => setTimeout(res, 5000));
+      const d = await fetchCli(true);
+      if (d && d.authenticated) { toast(t('cli_ready'), 'ok'); break; }
+    }
+  } catch (e) { toast(e.message, 'err'); }
+};
+
+/* ============================== activity (live) ============================== */
+let actCursor = null;
+function appendFeedRows(feed, events, max) {
+  if (feed.querySelector('.empty')) feed.innerHTML = '';
+  for (const e of events) {
+    const row = document.createElement('div');
+    row.className = 'act-row';
+    row.innerHTML = `<span class="t">${esc(e.t.replace('T', ' ').slice(11, 19))}</span><span class="ty ${esc(e.type)}">${esc(e.type)}</span> ${esc(e.path)}`;
+    feed.appendChild(row);
+  }
+  while (feed.children.length > max) feed.removeChild(feed.firstChild);
+  feed.scrollTop = feed.scrollHeight;
+}
+async function fetchActivity() {
+  try {
+    const d = await api('/api/activity' + (actCursor ? '?since=' + encodeURIComponent(actCursor) : ''));
+    $('watchPath').textContent = d.watching || '—';
+    if (!actCursor) { $('actFeed').innerHTML = ''; $('actFeedHome').innerHTML = ''; }
+    if (d.events.length) {
+      $('actDot').style.display = 'inline-block';
+      $('homeDot').style.display = 'inline-block';
+      appendFeedRows($('actFeed'), d.events, 300);
+      appendFeedRows($('actFeedHome'), d.events, 120);
+      setTimeout(() => { $('actDot').style.display = 'none'; $('homeDot').style.display = 'none'; }, 2000);
+    } else {
+      for (const id of ['actFeed', 'actFeedHome']) {
+        const feed = $(id);
+        if (!feed.children.length) feed.innerHTML = `<div class="empty">${esc(t('no_activity'))}</div>`;
+      }
+    }
+    actCursor = d.now;
+  } catch { /* server unreachable; conn badge already reflects it */ }
+}
+
+async function fetchChanges() {
+  try {
+    const d = await api('/api/changes');
+    if (!d.git) {
+      $('branchBadge').textContent = '';
+      $('chgStatus').innerHTML = `<div class="empty">${esc(t('no_git'))}</div>`;
+      $('chgDiffstat').style.display = 'none';
+      return;
+    }
+    $('branchBadge').textContent = d.branch || '';
+    const el = $('chgStatus');
+    if (!d.status.length) {
+      el.innerHTML = `<div class="empty">${esc(t('no_changes'))}</div>`;
+    } else {
+      el.innerHTML = '';
+      d.status.forEach((line) => {
+        const file = line.slice(3).trim();
+        const div = document.createElement('div');
+        div.className = 'chg-file';
+        div.style.cssText = 'direction:ltr; text-align:left; font-family:var(--mono); font-size:12px;';
+        div.textContent = line;
+        div.onclick = () => viewDiff(file);
+        el.appendChild(div);
+      });
+    }
+    if (d.diffstat.length) { $('chgDiffstat').style.display = 'block'; $('chgDiffstat').textContent = d.diffstat.join('\n'); }
+    else $('chgDiffstat').style.display = 'none';
+  } catch { /* no active project */ }
+}
+
+async function viewDiff(file) {
+  try {
+    const d = await api('/api/diff?file=' + encodeURIComponent(file));
+    $('diffFile').textContent = d.file;
+    $('diffContent').textContent = d.diff;
+    $('diffView').style.display = 'block';
+  } catch (e) { toast(e.message, 'err'); }
+}
+$('btnCloseDiff').onclick = () => { $('diffView').style.display = 'none'; };
+
+/* ============================== artifacts ============================== */
+let rawMode = false;
+function renderArtifactList(list) {
+  const el = $('artifactList');
+  el.innerHTML = '';
+  if (!list.length) { el.innerHTML = `<span class="empty">${esc(t('select_artifact'))}</span>`; return; }
+  list.forEach((a) => {
+    const b = document.createElement('button');
+    b.className = 'btn small' + (a.name === selectedArtifact ? ' chip-active' : '');
+    b.textContent = `${a.name} (${(a.size / 1024).toFixed(1)}KB)`;
+    b.onclick = () => viewArtifact(a.name);
+    el.appendChild(b);
+  });
+}
+async function viewArtifact(name, silent) {
+  selectedArtifact = name;
+  try {
+    const d = await api('/api/artifact?name=' + encodeURIComponent(name));
+    $('artifactView').innerHTML = renderMd(d.content);
+    $('artifactRaw').textContent = d.content;
+    renderArtifactList(lastData ? lastData.artifacts || [] : []);
+  } catch (e) { if (!silent) toast(e.message, 'err'); }
+}
+$('btnRawView').onclick = () => {
+  rawMode = !rawMode;
+  $('artifactView').style.display = rawMode ? 'none' : 'block';
+  $('artifactRaw').style.display = rawMode ? 'block' : 'none';
+  $('btnRawView').classList.toggle('chip-active', rawMode);
+};
+
+/* Export: the format list comes from the server registry, so a new format in
+   scripts/lib/formats.mjs shows up here without touching the UI. */
+async function loadExportFormats() {
+  try {
+    const d = await api('/api/formats');
+    const sel = $('exportFormat');
+    sel.innerHTML = '';
+    d.formats.forEach((f) => {
+      const o = document.createElement('option');
+      o.value = f.id;
+      o.textContent = `${f.id} — ${f.label}`;
+      sel.appendChild(o);
+    });
+    sel.value = 'pdf';
+  } catch { /* no server yet */ }
+}
+$('btnExport').onclick = async () => {
+  if (!selectedArtifact) { toast(t('export_pick_first'), 'err'); return; }
+  const btn = $('btnExport');
+  btn.disabled = true;
+  try {
+    const r = await post('/api/export', { name: selectedArtifact, to: $('exportFormat').value });
+    const box = $('exportResult');
+    box.style.display = 'block';
+    box.textContent = `${t('export_done')} ${r.out} (${(r.size / 1024).toFixed(1)}KB, ${r.method})`;
+    toast(t('export_done'), 'ok');
+  } catch (e) { toast(e.message, 'err'); } finally { btn.disabled = false; }
+};
+
+/* ============================== generic md-collection editor factory ============================== */
+/* Flows, agents and skills share the same list/select/edit/save UX. */
+function makeEditor(cfg) {
+  const state = { current: null };
+  async function load() {
+    const names = await cfg.list();
+    const el = $(cfg.listEl); el.innerHTML = '';
+    names.forEach((f) => {
+      const b = document.createElement('button');
+      b.className = 'btn small' + (f === state.current ? ' chip-active' : '');
+      b.textContent = f;
+      b.onclick = async () => {
+        state.current = f;
+        const r = await api(cfg.getUrl + encodeURIComponent(f));
+        $(cfg.editorEl).value = r.content;
+        if (cfg.onLoad) cfg.onLoad(r.content);
+        load();
+      };
+      el.appendChild(b);
+    });
+  }
+  async function save() {
+    if (!state.current) { toast(t(cfg.pickMsg), 'err'); return; }
+    if (cfg.validate) { const err = cfg.validate($(cfg.editorEl).value); if (err) { toast(err, 'err'); return; } }
+    try {
+      await post(cfg.postUrl, { name: state.current, content: $(cfg.editorEl).value });
+      toast(t('saved'), 'ok');
+    } catch (e) { toast(e.message, 'err'); }
+  }
+  return { load, save, state };
+}
+
+/* ---------- flows ---------- */
+const flowsEd = makeEditor({
+  listEl: 'flowList', editorEl: 'flowEditor',
+  list: async () => (lastData ? lastData.flows : (await api('/api/state')).flows) || [],
+  getUrl: '/api/flow?name=', postUrl: '/api/flow', pickMsg: 'pick_flow_first',
+  onLoad: (content) => { try { flowToGraph(JSON.parse(content)); } catch { /* JSON view will report it */ } },
+  validate: (v) => { try { JSON.parse(v); return null; } catch (e) { return t('invalid_json') + ': ' + e.message; } },
+});
+const loadFlows = flowsEd.load;
+$('btnSaveFlow').onclick = flowsEd.save;
+$('btnNewFlow').onclick = async () => {
+  // Typing a name is optional: an empty box means "generate one" so the whole
+  // visual editor stays keyboard-free.
+  const typed = $('newFlowName').value.trim();
+  const name = typed || ('flow-' + Date.now().toString(36));
+  if (typed && !/^[a-z0-9][a-z0-9-]*$/.test(typed)) { toast(t('name_rule'), 'err'); return; }
+  const template = {
+    name, title: name, titleAr: name, description: 'Describe what this flow does.', defaultGate: 'terminal',
+    stages: [
+      { id: 'step-1', title: 'Step one', titleAr: 'الخطوة الأولى', agent: 'analyst',
+        prompt: "Describe exactly what this stage's agent must do for the project at {PROJECT}. Task: {TASK}",
+        pre: [], post: [], gate: 'auto', artifact: 'step-1.md', done: ['step-1.md exists'] },
+      { id: 'step-2', title: 'Step two (gated)', titleAr: 'الخطوة الثانية (ببوابة)', agent: 'coder',
+        prompt: 'Second stage instruction for {PROJECT}.',
+        pre: [], post: [], gate: 'default', gateQuestion: 'Continue after step-2?', gateQuestionAr: 'نكمل بعد الخطوة الثانية؟',
+        artifact: 'step-2.md', done: ['step-2.md exists'] },
+    ],
+  };
+  try {
+    await post('/api/flow', { name, content: JSON.stringify(template, null, 2) });
+    flowsEd.state.current = name;
+    $('newFlowName').value = '';
+    toast(t('saved'), 'ok');
+    await poll();
+    await loadFlows();
+    const r = await api('/api/flow?name=' + encodeURIComponent(name));
+    $('flowEditor').value = r.content;
+    flowToGraph(JSON.parse(r.content));
+    autoLayout();
+  } catch (e) { toast(e.message, 'err'); }
+};
+/* ---------- detected provider modules ---------- */
+/* Shows what the selected editor actually has on this machine and in the active
+   project, and turns it into an ordinary flow through the existing canvas path. */
+let providerDetection = null;
+async function fetchProviderDetect() {
+  const box = $('providerDetect');
+  try {
+    const d = await api('/api/provider?id=' + encodeURIComponent(PROVIDER));
+    providerDetection = d;
+    const det = d.detection;
+    const head = PROVIDER_LABELS[PROVIDER] ? PROVIDER_LABELS[PROVIDER]() : PROVIDER;
+    const rows = [];
+    rows.push(`<b>${esc(head)}</b> — ${det.installed ? esc(t('provider_detected')) : esc(t('provider_not_detected'))}`);
+    if (det.editorPath) rows.push(`${esc(t('provider_editor'))}: <span style="direction:ltr">${esc(det.editorPath)}</span>`);
+    if (det.cliPath) rows.push(`${esc(t('provider_cli'))}: <span style="direction:ltr">${esc(det.cliPath)}</span>`);
+    if (det.modules.length) {
+      const byKind = {};
+      for (const m of det.modules) (byKind[m.kind] = byKind[m.kind] || []).push(m.label);
+      rows.push(`${esc(t('provider_modules'))} (${det.modules.length}):`);
+      for (const kind of Object.keys(byKind).sort()) {
+        rows.push(`• ${esc(kind)}: <span style="direction:ltr">${esc(byKind[kind].join(', '))}</span>`);
+      }
+    } else {
+      rows.push(esc(t('provider_no_modules')));
+      const looked = det.missing.slice(0, 6).map((m) => m.path || m.label);
+      if (looked.length) rows.push(`${esc(t('provider_looked_for'))}: <span style="direction:ltr">${esc(looked.join(' | '))}</span>`);
+    }
+    box.innerHTML = rows.join('<br>');
+  } catch (e) {
+    providerDetection = null;
+    box.textContent = e.message;
+  }
+}
+/* Bulk retarget: preview every flow first, then write per-provider copies.
+   The originals stay runnable on Devin - see POST /api/retarget-flows. */
+$('btnRetargetFlows').onclick = async () => {
+  try {
+    const pre = await post('/api/retarget-flows', { provider: PROVIDER });
+    const touched = pre.flows.filter((f) => f.changes.length);
+    if (!touched.length) { toast(t('retarget_none'), 'ok'); return; }
+    const lines = touched.map((f) => `• ${f.name} → ${f.target}${f.inPlace ? ' *' : ''} (${f.changes.length})`);
+    const sample = touched[0].changes[0];
+    if (!confirm(`${t('retarget_confirm')}\n\n${lines.join('\n')}\n\n${sample.from} → ${sample.to}\n\n${t('retarget_note')}`)) return;
+    const done = await post('/api/retarget-flows', { provider: PROVIDER, apply: true });
+    toast(`${t('retarget_done')} (${done.totalChanges})`, 'ok');
+    loadFlows();
+    poll();
+  } catch (e) { toast(e.message, 'err'); }
+};
+$('btnBuildProviderFlow').onclick = async () => {
+  if (!providerDetection) await fetchProviderDetect();
+  if (!providerDetection || !providerDetection.flow) return;
+  const flow = providerDetection.flow;
+  $('flowEditor').value = JSON.stringify(flow, null, 2);
+  $('newFlowName').value = flow.name;
+  flowsEd.state.current = flow.name;
+  flowToGraph(flow);
+  autoLayout();
+  toast(t('provider_built'), 'ok');
+};
+
+$('btnDeleteFlow').onclick = async () => {
+  if (!flowsEd.state.current) { toast(t('pick_flow_first'), 'err'); return; }
+  if (!confirm(t('confirm_delete_flow'))) return;
+  try {
+    await api('/api/flow?name=' + encodeURIComponent(flowsEd.state.current), { method: 'DELETE' });
+    toast(t('saved'), 'ok');
+    flowsEd.state.current = null; $('flowEditor').value = '';
+    G = { meta: null, nodes: [], edges: [] };
+    renderCanvas();
+    await poll();
+    await loadFlows();
+  } catch (e) { toast(e.message, 'err'); }
+};
+
+/* ============================== visual flow editor ==============================
+   Graph model: nodes carry a full stage object; wires carry the control flow.
+   'next' wires (blue) build the linear stage order, 'fail' wires (amber) become
+   onFail jumps. Node positions round-trip through the flow file's optional
+   ui.pos map, which the orchestrator ignores. */
+const FROLES = {
+  thinker: {
+    icon: 'ic-brain', color: '#7a5af8', stage: 'think', agent: 'thinker', gate: 'dashboard',
+    title: 'Think & plan', titleAr: 'التفكير والتخطيط', artifact: 'plan.md',
+    prompt: 'Task: {TASK}\n\nProduce the plan per your role contract. Write it to .workbench/artifacts/plan.md in the project at {PROJECT}.',
+    gateQuestion: 'Review the plan in plan.md - proceed with this plan?',
+    gateQuestionAr: 'راجع الخطة في plan.md — نكمل على الخطة دي؟',
+    pre: ['scripts/collect-context.mjs'],
+    done: ['plan.md exists with Task, Requirements, Chosen approach, Steps, Acceptance criteria, Risks', 'Every step names concrete files/modules'],
+  },
+  analyst: {
+    icon: 'ic-search', color: '#2563eb', stage: 'analyze', agent: 'analyst', gate: 'auto',
+    title: 'Code analysis', titleAr: 'تحليل الكود', artifact: 'analysis.md',
+    prompt: 'Analyze the codebase for the approved plan (.workbench/artifacts/plan.md) in the project at {PROJECT}. Mode 1 (task analysis). Write analysis.md per your role contract.',
+    gateQuestion: 'Review analysis.md - proceed to implementation?',
+    gateQuestionAr: 'راجع analysis.md — نكمل على التنفيذ؟',
+    pre: [],
+    done: ['analysis.md exists with impacted files, data flow with citations, patterns to follow, test landscape'],
+  },
+  coder: {
+    icon: 'ic-code', color: '#0ea5e9', stage: 'code', agent: 'coder', gate: 'auto',
+    title: 'Implementation', titleAr: 'كتابة الكود', artifact: 'code-notes.md',
+    prompt: 'Implement the approved plan (.workbench/artifacts/plan.md) guided by .workbench/artifacts/analysis.md in the project at {PROJECT}. Write code-notes.md per your role contract.',
+    gateQuestion: 'Review code-notes.md - proceed to testing?',
+    gateQuestionAr: 'راجع code-notes.md — نكمل على الاختبار؟',
+    pre: [],
+    done: ['Every plan step is implemented or its omission is justified in code-notes.md'],
+  },
+  tester: {
+    icon: 'ic-shield-check', color: '#3fb950', stage: 'test', agent: 'tester', gate: 'auto',
+    title: 'Test & review', titleAr: 'الاختبار والمراجعة', artifact: 'review.md',
+    prompt: 'Verify and review the implemented change in the project at {PROJECT}. Checks output (if any) is in .workbench/artifacts/checks.md. Write review.md per your role contract and lead your reply with VERDICT: PASS or VERDICT: FAIL.',
+    gateQuestion: 'Review review.md - accept this verdict?',
+    gateQuestionAr: 'راجع review.md — تقبل الحكم ده؟',
+    pre: ['scripts/run-checks.mjs'],
+    done: ['review.md exists with an explicit Verdict line', 'Every acceptance criterion is marked MET / NOT MET / NOT TESTABLE with evidence'],
+  },
+  debugger: {
+    icon: 'ic-bug', color: '#d29922', stage: 'debug', agent: 'debugger', gate: 'auto',
+    title: 'Debug & root-cause', titleAr: 'التصحيح وتحليل الأعطال', artifact: 'debug.md',
+    prompt: 'The tester issued FAIL. Fix the failures per .workbench/artifacts/review.md in the project at {PROJECT}. Write/append debug.md per your role contract. Reproduce first, fix root causes only, re-verify everything.',
+    gateQuestion: 'Review debug.md - re-run the tester?',
+    gateQuestionAr: 'راجع debug.md — أعيد الاختبار؟',
+    pre: [],
+    done: ['Every blocking finding from review.md is addressed or refuted with evidence'],
+  },
+  shipper: {
+    icon: 'ic-rocket', color: '#ef4899', stage: 'ship', agent: 'shipper', gate: 'dashboard',
+    title: 'Ship & deliver', titleAr: 'الرفع والتسليم', artifact: 'ship.md',
+    prompt: 'The change PASSED review. Package it for the project at {PROJECT} per your role contract. Mode: {SHIP_MODE}. Write ship.md.',
+    gateQuestion: 'The change passed review - commit it? (and push if requested)',
+    gateQuestionAr: 'الشغل عدى المراجعة — أعمل commit؟ (والـ push لو مطلوب)',
+    pre: [],
+    done: ['ship.md exists with summary, file list, commit message, and actions taken'],
+  },
+};
+/* Non-agent and specialised steps. A stage with agent:null is a script stage -
+   its pre-scripts ARE the work (see skills/flow/SKILL.md step 4). */
+Object.assign(FROLES, {
+  scan: {
+    icon: 'ic-layers', color: '#8b949e', stage: 'scan', agent: null, gate: 'auto',
+    title: 'Project scan (no AI)', titleAr: 'مسح المشروع (بدون AI)', artifact: 'context.md',
+    prompt: null, pre: ['scripts/collect-context.mjs'],
+    gateQuestion: 'Review context.md - continue?', gateQuestionAr: 'راجع context.md — نكمل؟',
+    done: ['context.md exists with git state, file tree, and manifest contents'],
+  },
+  checks: {
+    icon: 'ic-check-list', color: '#8b949e', stage: 'checks', agent: null, gate: 'auto',
+    title: 'Automated checks (no AI)', titleAr: 'فحوص تلقائية (بدون AI)', artifact: 'checks.md',
+    prompt: null, pre: ['scripts/run-checks.mjs'],
+    gateQuestion: 'Review checks.md - continue?', gateQuestionAr: 'راجع checks.md — نكمل؟',
+    done: ['checks.md exists and records the RESULT line of every check'],
+  },
+  architecture: {
+    icon: 'ic-compass', color: '#2563eb', stage: 'architecture', agent: 'analyst', gate: 'auto',
+    title: 'Architecture analysis', titleAr: 'تحليل المعمارية', artifact: 'understanding.md',
+    prompt: 'Mode 2 (understand flow) for the project at {PROJECT}: produce the ARCHITECTURE part of .workbench/artifacts/understanding.md - purpose, modules and responsibilities, entry points, end-to-end data flow, external integrations, configuration surface. Ground everything in files you opened, with citations.',
+    pre: [],
+    gateQuestion: 'Review the architecture section - continue?', gateQuestionAr: 'راجع قسم المعمارية — نكمل؟',
+    done: ['understanding.md contains an Architecture section with entry points and data flow backed by real paths'],
+  },
+  conventions: {
+    icon: 'ic-check-list', color: '#2563eb', stage: 'conventions', agent: 'analyst', gate: 'auto',
+    title: 'Convention extraction', titleAr: 'استخراج الأعراف الهندسية', artifact: 'understanding.md',
+    prompt: 'Mode 2 (understand flow) for the project at {PROJECT}: extend .workbench/artifacts/understanding.md with a CONVENTIONS section - actual code style, naming, error handling, typing, test framework and layout, verified build/run/test commands, directory meaning. Verify commands against manifests; on Windows note npm.cmd usage where relevant.',
+    pre: [],
+    gateQuestion: 'Review the conventions section - continue?', gateQuestionAr: 'راجع قسم الأعراف — نكمل؟',
+    done: ['understanding.md contains a Conventions section with verified commands'],
+  },
+  rules: {
+    icon: 'ic-book', color: '#7a5af8', stage: 'rules', agent: 'thinker', gate: 'dashboard',
+    title: 'Rules & knowledge output', titleAr: 'توليد القواعد والمعرفة', artifact: 'agents-draft.md',
+    prompt: 'From .workbench/artifacts/understanding.md for the project at {PROJECT}, produce agents-draft.md (a concise draft AGENTS.md: commands, conventions, gotchas, verification steps, under 60 lines) and .workbench/knowledge.json filled from verified findings only.',
+    pre: [],
+    gateQuestion: 'Write/update AGENTS.md in the project root from agents-draft.md?',
+    gateQuestionAr: 'أكتب/أحدّث AGENTS.md في جذر المشروع من المسودة؟',
+    done: ['agents-draft.md exists, concise and grounded in understanding.md', 'knowledge.json exists and parses as valid JSON'],
+  },
+  researcher: {
+    icon: 'ic-chart', color: '#14b8a6', stage: 'research', agent: 'researcher', gate: 'dashboard',
+    title: 'Measure & interpret', titleAr: 'القياس والتفسير', artifact: 'report.md',
+    prompt: 'Question: {TASK}\n\nProject root: {PROJECT}. Grounding is in .workbench/artifacts/analysis.md. Compute what can be measured from this repository using read-only commands, then interpret it. Write report.md per your role contract: evidence with citations, a numbers table naming the command behind each value, insights, and ranked recommendations.',
+    gateQuestion: 'The report is ready - review the numbers and recommendations?',
+    gateQuestionAr: 'التقرير جاهز — تراجع الأرقام والتوصيات؟',
+    pre: [],
+    done: ['report.md contains a Numbers table where every value names its source command or file', 'Recommendations are ranked with impact, effort and risk'],
+  },
+  optimizer: {
+    icon: 'ic-gauge', color: '#f97316', stage: 'perf', agent: 'optimizer', gate: 'dashboard',
+    title: 'Measure & optimize', titleAr: 'القياس والتحسين', artifact: 'perf.md',
+    prompt: 'Performance goal: {TASK}\n\nProject root: {PROJECT}. Measure a baseline with a reproducible benchmark BEFORE changing anything, optimize one hotspot at a time re-measuring after each, and revert what does not move the number. Behavior must not change. Write perf.md per your role contract.',
+    gateQuestion: 'Review perf.md - keep these optimizations?',
+    gateQuestionAr: 'راجع perf.md — نسيب التحسينات دي؟',
+    pre: [],
+    done: ['perf.md contains the benchmark command, a baseline table and an After table with deltas', 'Reverted attempts are listed under Rejected'],
+  },
+  custom: {
+    icon: 'ic-plus', color: '#58a6ff', stage: 'step', agent: 'analyst', gate: 'auto',
+    title: 'Custom step', titleAr: 'خطوة مخصصة', artifact: 'step.md',
+    prompt: "Describe exactly what this stage's agent must do for the project at {PROJECT}. Task: {TASK}",
+    pre: [],
+    gateQuestion: 'Continue after this step?', gateQuestionAr: 'نكمل بعد الخطوة دي؟',
+    done: ['The stage artifact exists and answers the stage prompt'],
+  },
+  script: {
+    icon: 'ic-terminal', color: '#8b949e', stage: 'script', agent: null, gate: 'auto',
+    title: 'Script step (no AI)', titleAr: 'خطوة سكربت (بدون AI)', artifact: 'script.md',
+    prompt: null, pre: [],
+    gateQuestion: 'Continue after the script?', gateQuestionAr: 'نكمل بعد السكربت؟',
+    done: ['The script exited 0 (or reported SKIPPED)'],
+  },
+});
+const FROLE_ORDER = ['thinker', 'analyst', 'coder', 'tester', 'debugger', 'shipper', 'researcher', 'optimizer'];
+const PALETTE_GROUPS = [
+  { cap: 'pal_group_agents', items: FROLE_ORDER },
+  { cap: 'pal_group_understand', items: ['architecture', 'conventions', 'rules'] },
+  { cap: 'pal_group_scripts', items: ['scan', 'checks', 'script', 'custom'] },
+];
+const FGATE_CYCLE = ['auto', 'dashboard', 'terminal', 'default'];
+const FGATE_ICONS = { auto: 'ic-bolt', dashboard: 'ic-monitor', terminal: 'ic-terminal', default: 'ic-dot' };
+const NODE_W = 150, NODE_H = 170, GRID = 10;
+const COL_GAP = NODE_W + 70, ROW_GAP = NODE_H + 70;
+const SVGNS = 'http://www.w3.org/2000/svg';
+
+/* Model catalogue comes from `devin models list` via GET /api/models, so the
+   picker offers exactly the models this account has. A stage stores the id it
+   must run with in `model`, plus the level word in `effort` (the orchestrator
+   turns that into a Thinking level line for the subagent). */
+let MODEL_FAMILIES = [];
+const LEVEL_WORDS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
+function levelOfVariant(family, variant) {
+  const tail = variant.id.startsWith(family.slug + '-') ? variant.id.slice(family.slug.length + 1) : variant.id;
+  return tail.split('-').find((p) => LEVEL_WORDS.includes(p)) || '';
+}
+// Node badges show a compact form of the model UID; the full id stays in the
+// tooltip and in the flow file.
+function shortModel(model) {
+  const fam = familyOfModel(model);
+  if (!fam) return model;
+  const level = (fam.variants || []).find((v) => v.id === model);
+  const lvl = level ? levelOfVariant(fam, level) : '';
+  const base = (fam.aliases || [])[0] || fam.slug;
+  return lvl ? base + ' · ' + lvl : base;
+}
+function familyOfModel(model) {
+  if (!model) return null;
+  return MODEL_FAMILIES.find((f) => f.variants.some((v) => v.id === model))
+    || MODEL_FAMILIES.find((f) => f.slug === model || (f.aliases || []).includes(model))
+    || null;
+}
+const PRE_SCRIPTS = { ctx: 'scripts/collect-context.mjs', checks: 'scripts/run-checks.mjs' };
+
+let G = { meta: null, nodes: [], edges: [] };
+let selectedNode = null;
+
+function svgIcon(id, cls) {
+  const svg = document.createElementNS(SVGNS, 'svg');
+  svg.setAttribute('class', 'ic' + (cls ? ' ' + cls : ''));
+  const use = document.createElementNS(SVGNS, 'use');
+  use.setAttribute('href', '#' + id);
+  svg.appendChild(use);
+  return svg;
+}
+const gNode = (id) => G.nodes.find((n) => n.id === id) || null;
+/* Pick the palette entry that best represents an existing stage, so a flow file
+   authored by hand still shows meaningful icons. */
+function roleOfStage(s) {
+  if (FROLES[s.id]) return s.id;
+  if (!s.agent) {
+    const pre = (s.pre || []).join(' ');
+    if (pre.includes('collect-context')) return 'scan';
+    if (pre.includes('run-checks')) return 'checks';
+    return 'script';
+  }
+  return FROLE_ORDER.includes(s.agent) ? s.agent : 'custom';
+}
+function freeId(base) {
+  let id = base, i = 2;
+  while (gNode(id)) id = base + '-' + (i++);
+  return id;
+}
+function freeSpot(i) { return { x: 60 + (i % 5) * COL_GAP, y: 60 + Math.floor(i / 5) * ROW_GAP }; }
+
+function addNode(role) {
+  const R = FROLES[role];
+  const spot = freeSpot(G.nodes.length);
+  G.nodes.push({
+    id: freeId(R.stage), role, gate: R.gate, maxLoops: 3, x: spot.x, y: spot.y,
+    stage: {
+      title: R.title, titleAr: R.titleAr, agent: R.agent, prompt: R.prompt,
+      pre: R.pre.slice(), post: [], artifact: R.artifact, done: R.done.slice(),
+      gateQuestion: R.gateQuestion, gateQuestionAr: R.gateQuestionAr,
+    },
+  });
+  if (!G.meta) G.meta = { title: 'Visual flow', titleAr: 'فلو مرسوم', description: '', defaultGate: 'terminal' };
+  selectedNode = G.nodes[G.nodes.length - 1].id;
+  renderCanvas();
+}
+function removeNode(id) {
+  if (selectedNode === id) selectedNode = null;
+  G.nodes = G.nodes.filter((n) => n.id !== id);
+  G.edges = G.edges.filter((e) => e.from !== id && e.to !== id);
+  renderCanvas();
+}
+function connect(from, to, kind) {
+  if (from === to) return;
+  G.edges = G.edges.filter((e) => !(e.from === from && e.kind === kind));
+  G.edges.push({ from, to, kind });
+  renderCanvas();
+}
+
+/* ---------- flow file <-> graph ---------- */
+function flowToGraph(flow) {
+  const stages = Array.isArray(flow.stages) ? flow.stages : [];
+  const pos = (flow.ui && flow.ui.pos) || {};
+  G.meta = {
+    title: flow.title || flow.name || 'Flow', titleAr: flow.titleAr || flow.title || 'Flow',
+    description: flow.description || '', defaultGate: flow.defaultGate || 'terminal',
+    // Optional executor restriction: carried through the canvas so saving from
+    // the canvas view cannot silently strip it (no field = every provider).
+    providers: Array.isArray(flow.providers) ? flow.providers.slice() : null,
+  };
+  G.nodes = stages.map((s, i) => {
+    const p = pos[s.id] || {};
+    const spot = freeSpot(i);
+    const stage = Object.assign({}, s);
+    delete stage.id; delete stage.gate; delete stage.next;
+    delete stage.onFail; delete stage.maxLoops; delete stage.runOnlyWhenJumpedTo;
+    return {
+      id: s.id, role: roleOfStage(s), gate: s.gate || 'default',
+      maxLoops: Number(s.maxLoops) || 3, jump: !!s.runOnlyWhenJumpedTo,
+      x: Number.isFinite(p.x) ? p.x : spot.x, y: Number.isFinite(p.y) ? p.y : spot.y,
+      stage,
+    };
+  });
+  // Select the first step so the settings pane is never empty on load.
+  selectedNode = G.nodes.length ? G.nodes[0].id : null;
+  G.edges = [];
+  stages.forEach((s, i) => {
+    if (s.onFail && stages.some((x) => x.id === s.onFail)) G.edges.push({ from: s.id, to: s.onFail, kind: 'fail' });
+    let target = s.next || null;
+    if (!target && !s.runOnlyWhenJumpedTo) {
+      for (let j = i + 1; j < stages.length; j++) {
+        if (!stages[j].runOnlyWhenJumpedTo) { target = stages[j].id; break; }
+      }
+    }
+    if (target && stages.some((x) => x.id === target)) G.edges.push({ from: s.id, to: target, kind: 'next' });
+  });
+  renderCanvas();
+}
+
+function graphToFlow(name) {
+  if (!G.nodes.length) return { error: t('canvas_no_nodes') };
+  const nextOut = new Map(), failOut = new Map(), nextIn = new Set();
+  for (const e of G.edges) {
+    if (e.kind === 'fail') failOut.set(e.from, e.to);
+    else { nextOut.set(e.from, e.to); nextIn.add(e.to); }
+  }
+  const roots = G.nodes.filter((n) => !nextIn.has(n.id)).sort((a, b) => a.x - b.x);
+  if (!roots.length) return { error: t('canvas_no_start') };
+  const chain = [], onChain = new Set();
+  for (let cur = roots[0]; cur && !onChain.has(cur.id);) {
+    onChain.add(cur.id); chain.push(cur);
+    const nx = nextOut.get(cur.id);
+    cur = nx ? gNode(nx) : null;
+  }
+  const ordered = chain.concat(G.nodes.filter((n) => !onChain.has(n.id)));
+  const stages = ordered.map((n, i) => {
+    const st = Object.assign({ id: n.id }, n.stage, { gate: n.gate });
+    if (st.gate === 'auto') { delete st.gateQuestion; delete st.gateQuestionAr; }
+    const jump = !onChain.has(n.id);
+    if (jump) st.runOnlyWhenJumpedTo = true;
+    const nx = nextOut.get(n.id);
+    const following = ordered[i + 1];
+    if (nx && (jump || !following || following.id !== nx)) st.next = nx;
+    const f = failOut.get(n.id);
+    if (f) { st.onFail = f; st.maxLoops = n.maxLoops || 3; }
+    return st;
+  });
+  const meta = G.meta || {};
+  const pos = {};
+  for (const n of G.nodes) pos[n.id] = { x: n.x, y: n.y };
+  const flow = {
+    name,
+    title: meta.title || name,
+    titleAr: meta.titleAr || meta.title || name,
+    description: meta.description || 'Flow authored in the visual editor.',
+    defaultGate: meta.defaultGate || 'terminal',
+    stages,
+    ui: { pos },
+  };
+  // Only re-emit the executor restriction when the loaded flow had one.
+  if (Array.isArray(meta.providers)) flow.providers = meta.providers.slice();
+  return { flow };
+}
+
+/* ---------- layout & rendering ---------- */
+function autoLayout() {
+  const nextOut = new Map(), nextIn = new Set();
+  for (const e of G.edges) if (e.kind === 'next') { nextOut.set(e.from, e.to); nextIn.add(e.to); }
+  const roots = G.nodes.filter((n) => !nextIn.has(n.id));
+  const placed = new Set();
+  let col = 0;
+  for (let cur = roots[0] || G.nodes[0]; cur && !placed.has(cur.id);) {
+    placed.add(cur.id);
+    cur.x = 60 + col * COL_GAP; cur.y = 60; col++;
+    const nx = nextOut.get(cur.id);
+    cur = nx ? gNode(nx) : null;
+  }
+  let k = 0;
+  for (const n of G.nodes) {
+    if (placed.has(n.id)) continue;
+    const src = G.edges.find((e) => e.kind === 'fail' && e.to === n.id);
+    const from = src ? gNode(src.from) : null;
+    n.x = from ? from.x : 60 + k * COL_GAP;
+    n.y = (from ? from.y : 60) + ROW_GAP;
+    k++;
+  }
+  renderCanvas();
+}
+
+function anchor(node, side) {
+  if (side === 'right') return { x: node.x + NODE_W, y: node.y + NODE_H / 2 };
+  if (side === 'left') return { x: node.x, y: node.y + NODE_H / 2 };
+  if (side === 'bottom') return { x: node.x + NODE_W / 2, y: node.y + NODE_H };
+  return { x: node.x + NODE_W / 2, y: node.y };
+}
+function wirePath(a, b, kind) {
+  if (kind === 'fail') {
+    const dy = Math.max(40, Math.abs(b.y - a.y) / 2);
+    return `M ${a.x} ${a.y} C ${a.x} ${a.y + dy}, ${b.x} ${b.y - dy}, ${b.x} ${b.y}`;
+  }
+  const dx = Math.max(50, Math.abs(b.x - a.x) / 2);
+  return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
+}
+function renderEdges() {
+  const svg = $('flowEdges');
+  svg.textContent = '';
+  const nextIn = new Set(G.edges.filter((e) => e.kind === 'next').map((e) => e.to));
+  for (const e of G.edges) {
+    const from = gNode(e.from), to = gNode(e.to);
+    if (!from || !to) continue;
+    const a = anchor(from, e.kind === 'fail' ? 'bottom' : 'right');
+    const b = anchor(to, e.kind === 'fail' ? 'top' : 'left');
+    const d = wirePath(a, b, e.kind);
+    const wire = document.createElementNS(SVGNS, 'path');
+    wire.setAttribute('class', 'wire' + (e.kind === 'fail' ? ' fail' : ''));
+    wire.setAttribute('d', d);
+    const hit = document.createElementNS(SVGNS, 'path');
+    hit.setAttribute('class', 'hit');
+    hit.setAttribute('d', d);
+    hit.onclick = () => { G.edges = G.edges.filter((x) => x !== e); renderCanvas(); };
+    svg.appendChild(wire);
+    svg.appendChild(hit);
+  }
+  document.querySelectorAll('#flowNodes .fnode').forEach((el) => {
+    el.dataset.start = (!nextIn.has(el.dataset.id) && G.nodes.length > 1) ? '1' : '0';
+  });
+}
+function renderCanvas() {
+  const box = $('flowNodes');
+  box.textContent = '';
+  $('canvasEmpty').style.display = G.nodes.length ? 'none' : 'flex';
+  for (const n of G.nodes) {
+    const R = FROLES[n.role];
+    const el = document.createElement('div');
+    el.className = 'fnode';
+    el.dataset.id = n.id;
+    el.dataset.jump = n.jump ? '1' : '0';
+    el.style.setProperty('--role', R.color);
+    el.style.left = n.x + 'px';
+    el.style.top = n.y + 'px';
+
+    const glyph = document.createElement('div');
+    glyph.className = 'glyph';
+    glyph.appendChild(svgIcon(R.icon));
+    el.appendChild(glyph);
+
+    const name = document.createElement('div');
+    name.className = 'name';
+    name.textContent = (LANG === 'ar' && n.stage.titleAr) ? n.stage.titleAr : (n.stage.title || R.title);
+    el.appendChild(name);
+
+    const tag = document.createElement('div');
+    tag.className = 'tag';
+    tag.textContent = n.id;
+    el.appendChild(tag);
+
+    // Per-step overrides are visible at a glance, not hidden in the JSON.
+    const badges = document.createElement('div');
+    badges.className = 'badges';
+    if (n.stage.model) {
+      const m = document.createElement('span');
+      m.className = 'model';
+      m.textContent = shortModel(n.stage.model);
+      m.title = n.stage.model;
+      badges.appendChild(m);
+    }
+    // The model badge already carries the level when the UID encodes one.
+    if (n.stage.effort && !shortModel(n.stage.model || '').includes(n.stage.effort)) {
+      const ef = document.createElement('span');
+      ef.className = 'effort';
+      ef.textContent = n.stage.effort;
+      badges.appendChild(ef);
+    }
+    if ((n.stage.pre || []).length) {
+      const p = document.createElement('span');
+      p.textContent = 'pre:' + n.stage.pre.length;
+      badges.appendChild(p);
+    }
+    el.appendChild(badges);
+
+    const tools = document.createElement('div');
+    tools.className = 'tools';
+    const gateBtn = document.createElement('button');
+    gateBtn.className = 'tool';
+    gateBtn.title = t('tt_gate') + ': ' + n.gate;
+    gateBtn.appendChild(svgIcon(FGATE_ICONS[n.gate] || 'ic-dot', 'xs'));
+    gateBtn.onclick = (ev) => {
+      ev.stopPropagation();
+      n.gate = FGATE_CYCLE[(FGATE_CYCLE.indexOf(n.gate) + 1) % FGATE_CYCLE.length];
+      renderCanvas();
+    };
+    const loopBtn = document.createElement('button');
+    loopBtn.className = 'tool';
+    loopBtn.title = t('tt_loops') + ': ' + n.maxLoops;
+    loopBtn.appendChild(svgIcon('ic-loop', 'xs'));
+    loopBtn.onclick = (ev) => {
+      ev.stopPropagation();
+      n.maxLoops = n.maxLoops >= 5 ? 1 : n.maxLoops + 1;
+      renderCanvas();
+    };
+    const delBtn = document.createElement('button');
+    delBtn.className = 'tool del';
+    delBtn.title = t('tt_del');
+    delBtn.appendChild(svgIcon('ic-cross', 'xs'));
+    delBtn.onclick = (ev) => { ev.stopPropagation(); removeNode(n.id); };
+    tools.append(gateBtn, loopBtn, delBtn);
+    el.appendChild(tools);
+
+    const flag = document.createElement('span');
+    flag.className = 'startflag';
+    el.appendChild(flag);
+    for (const kind of ['next', 'fail']) {
+      const port = document.createElement('span');
+      port.className = 'port ' + kind;
+      port.title = t(kind === 'next' ? 'tt_port_next' : 'tt_port_fail');
+      port.onpointerdown = (ev) => startWire(ev, n, kind);
+      el.appendChild(port);
+    }
+    el.onpointerdown = (ev) => { selectNode(n.id); startDrag(ev, n, el); };
+    el.dataset.sel = selectedNode === n.id ? '1' : '0';
+    box.appendChild(el);
+  }
+  renderEdges();
+  renderInspector();
+}
+
+/* ---------- per-step inspector ---------- */
+function selectNode(id) {
+  selectedNode = id;
+  document.querySelectorAll('#flowNodes .fnode').forEach((el) => {
+    el.dataset.sel = el.dataset.id === id ? '1' : '0';
+  });
+  renderInspector();
+}
+function renderInspector() {
+  const n = selectedNode ? gNode(selectedNode) : null;
+  $('nodeInspector').style.display = n ? 'block' : 'none';
+  $('insEmpty').style.display = n ? 'none' : '';
+  if (!n) return;
+  const R = FROLES[n.role];
+  $('insName').textContent = (LANG === 'ar' && n.stage.titleAr) ? n.stage.titleAr : (n.stage.title || R.title);
+  $('insId').textContent = n.id + (n.stage.agent ? ' · ' + n.stage.agent : ' · script');
+  fillModelSelects(n);
+  $('insGate').value = n.gate;
+  $('insLoops').value = n.maxLoops;
+  $('insArtifact').textContent = n.stage.artifact || '—';
+  const pre = n.stage.pre || [];
+  $('insCtx').classList.toggle('chip-active', pre.includes(PRE_SCRIPTS.ctx));
+  $('insChecks').classList.toggle('chip-active', pre.includes(PRE_SCRIPTS.checks));
+}
+function withSelected(fn) {
+  const n = selectedNode ? gNode(selectedNode) : null;
+  if (!n) return;
+  fn(n);
+  renderCanvas();
+}
+function togglePre(key) {
+  withSelected((n) => {
+    const script = PRE_SCRIPTS[key];
+    const pre = n.stage.pre || (n.stage.pre = []);
+    const i = pre.indexOf(script);
+    if (i >= 0) pre.splice(i, 1); else pre.push(script);
+  });
+}
+// Used when the server predates /api/models (old process still running) so the
+// picker is never empty - these three aliases always resolve in the CLI.
+const FALLBACK_FAMILIES = [
+  { slug: 'opus', label: 'Opus', aliases: [], variants: [] },
+  { slug: 'sonnet', label: 'Sonnet', aliases: [], variants: [] },
+  { slug: 'swe', label: 'SWE', aliases: [], variants: [] },
+];
+async function fetchModels() {
+  try {
+    const d = await api('/api/models?provider=' + encodeURIComponent(PROVIDER));
+    MODEL_FAMILIES = (d.families || []).length ? d.families : FALLBACK_FAMILIES;
+  } catch {
+    MODEL_FAMILIES = FALLBACK_FAMILIES;
+  }
+  renderInspector();
+  if (activeTab === 'agents') renderAgentVisual();
+}
+function fillModelSelects(n) {
+  fillFamilySelects($('insModel'), $('insEffort'), n.stage.model || '');
+}
+/* Switching executor must not leave the canvas pinned to models the new tool
+   does not have. The server owns the mapping rule (it is derived from the
+   catalogues); here we only apply the returned map and let the user save. */
+async function retargetCanvasModels() {
+  const pinned = G.nodes.map((n) => n.stage && n.stage.model).filter(Boolean);
+  if (!pinned.length) return;
+  let map;
+  try {
+    ({ map } = await post('/api/retarget-models', { provider: PROVIDER, models: pinned }));
+  } catch { return; }
+  let changed = 0;
+  for (const n of G.nodes) {
+    const from = n.stage && n.stage.model;
+    if (!from || !map[from] || map[from] === from) continue;
+    n.stage.model = map[from];
+    delete n.stage.effort; // the level word belongs to the old family
+    changed++;
+  }
+  if (!changed) return;
+  renderCanvas();
+  renderInspector();
+  toast(`${t('models_retargeted')} (${changed})`, 'ok');
+}
+$('insModel').onchange = () => withSelected((n) => {
+  const slug = $('insModel').value;
+  delete n.stage.effort;
+  if (!slug) delete n.stage.model;
+  else n.stage.model = slug;  // a family slug is itself a valid --model value
+});
+$('insEffort').onchange = () => withSelected((n) => {
+  const id = $('insEffort').value;
+  const fam = familyOfModel(n.stage.model);
+  if (!fam) return;
+  if (!id) { n.stage.model = fam.slug; delete n.stage.effort; return; }
+  const variant = fam.variants.find((v) => v.id === id);
+  n.stage.model = id;
+  const lvl = variant ? levelOfVariant(fam, variant) : '';
+  if (lvl) n.stage.effort = lvl; else delete n.stage.effort;
+});
+$('insGate').onchange = () => withSelected((n) => { n.gate = $('insGate').value; });
+$('insLoops').onchange = () => withSelected((n) => {
+  n.maxLoops = Math.min(9, Math.max(1, Number($('insLoops').value) || 3));
+});
+$('insCtx').onclick = () => togglePre('ctx');
+$('insChecks').onclick = () => togglePre('checks');
+
+/* ---------- pointer interactions ---------- */
+function canvasPoint(ev) {
+  const r = $('flowCanvas').getBoundingClientRect();
+  return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+}
+function startDrag(ev, n, el) {
+  if (ev.target.closest('.tool') || ev.target.closest('.port')) return;
+  ev.preventDefault();
+  const p = canvasPoint(ev);
+  const off = { x: p.x - n.x, y: p.y - n.y };
+  el.dataset.drag = '1';
+  el.setPointerCapture(ev.pointerId);
+  const move = (e) => {
+    const q = canvasPoint(e);
+    n.x = Math.max(0, Math.round((q.x - off.x) / GRID) * GRID);
+    n.y = Math.max(0, Math.round((q.y - off.y) / GRID) * GRID);
+    el.style.left = n.x + 'px';
+    el.style.top = n.y + 'px';
+    renderEdges();
+  };
+  const up = () => {
+    el.dataset.drag = '0';
+    el.removeEventListener('pointermove', move);
+    el.removeEventListener('pointerup', up);
+    el.removeEventListener('pointercancel', up);
+  };
+  el.addEventListener('pointermove', move);
+  el.addEventListener('pointerup', up);
+  el.addEventListener('pointercancel', up);
+}
+function startWire(ev, n, kind) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  const svg = $('flowEdges');
+  const ghost = document.createElementNS(SVGNS, 'path');
+  ghost.setAttribute('class', 'ghost');
+  svg.appendChild(ghost);
+  const a = anchor(n, kind === 'fail' ? 'bottom' : 'right');
+  const port = ev.currentTarget;
+  port.setPointerCapture(ev.pointerId);
+  const move = (e) => {
+    const q = canvasPoint(e);
+    ghost.setAttribute('d', wirePath(a, q, kind));
+  };
+  const up = (e) => {
+    ghost.remove();
+    port.removeEventListener('pointermove', move);
+    port.removeEventListener('pointerup', up);
+    port.removeEventListener('pointercancel', up);
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const target = el && el.closest ? el.closest('.fnode') : null;
+    if (target && target.dataset.id !== n.id) connect(n.id, target.dataset.id, kind);
+  };
+  port.addEventListener('pointermove', move);
+  port.addEventListener('pointerup', up);
+  port.addEventListener('pointercancel', up);
+}
+
+/* ---------- palette & view toggle ---------- */
+function renderPalette() {
+  const box = $('flowPalette');
+  box.textContent = '';
+  for (const group of PALETTE_GROUPS) {
+    const g = document.createElement('div');
+    g.className = 'palgroup';
+    const cap = document.createElement('span');
+    cap.className = 'cap';
+    cap.textContent = t(group.cap);
+    g.appendChild(cap);
+    const items = document.createElement('div');
+    items.className = 'items';
+    for (const role of group.items) {
+      const R = FROLES[role];
+      const b = document.createElement('button');
+      b.className = 'palbtn';
+      b.style.setProperty('--role', R.color);
+      b.title = t('tt_add') + ': ' + R.title;
+      b.appendChild(svgIcon(R.icon));
+      const lbl = document.createElement('span');
+      lbl.className = 'lbl';
+      lbl.textContent = t('pal_' + role);
+      b.appendChild(lbl);
+      b.onclick = () => addNode(role);
+      items.appendChild(b);
+    }
+    g.appendChild(items);
+    box.appendChild(g);
+  }
+}
+function setFlowView(view) {
+  const canvas = view === 'canvas';
+  $('canvasView').style.display = canvas ? '' : 'none';
+  $('jsonView').style.display = canvas ? 'none' : '';
+  $('btnViewCanvas').classList.toggle('chip-active', canvas);
+  $('btnViewJson').classList.toggle('chip-active', !canvas);
+  localStorage.setItem('ff.flowview', view);
+  if (canvas) renderEdges();
+}
+$('btnViewCanvas').onclick = () => setFlowView('canvas');
+$('btnViewJson').onclick = () => {
+  // Keep the JSON view honest: mirror whatever the canvas currently holds.
+  if (G.nodes.length) {
+    const built = graphToFlow(flowsEd.state.current || 'flow');
+    if (built.flow) $('flowEditor').value = JSON.stringify(built.flow, null, 2);
+  }
+  setFlowView('json');
+};
+$('btnAutoLayout').onclick = () => autoLayout();
+$('btnClearCanvas').onclick = () => { G.nodes = []; G.edges = []; renderCanvas(); };
+$('btnSaveCanvas').onclick = async () => {
+  const name = flowsEd.state.current || ('flow-' + Date.now().toString(36));
+  const built = graphToFlow(name);
+  if (built.error) { toast(built.error, 'err'); return; }
+  try {
+    await post('/api/flow', { name, content: JSON.stringify(built.flow, null, 2) });
+    flowsEd.state.current = name;
+    $('flowEditor').value = JSON.stringify(built.flow, null, 2);
+    toast(t('saved'), 'ok');
+    await poll();
+    await loadFlows();
+  } catch (e) { toast(e.message, 'err'); }
+};
+
+/* ============================== markdown-with-frontmatter forms ==============================
+   Agent profiles and skills are `---` YAML frontmatter + a markdown body. The
+   form view edits the few fields that matter through selects and toggles and
+   re-composes the file on save, so nobody has to hand-write YAML. The raw view
+   stays available for anything the form does not model. */
+const AGENT_TOOLS = ['read', 'grep', 'glob', 'edit', 'exec', 'web'];
+
+function parseFrontmatter(md) {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(md || '');
+  if (!m) return { fm: {}, list: {}, body: md || '' };
+  const fm = {}, list = {};
+  let currentList = null;
+  for (const raw of m[1].split(/\r?\n/)) {
+    const item = /^\s+-\s+(.*)$/.exec(raw);
+    if (item && currentList) { list[currentList].push(item[1].trim()); continue; }
+    const kv = /^([A-Za-z0-9_-]+):\s*(.*)$/.exec(raw);
+    if (!kv) continue;
+    if (kv[2] === '') { currentList = kv[1]; list[currentList] = []; } else { fm[kv[1]] = kv[2].trim(); currentList = null; }
+  }
+  return { fm, list, body: m[2] };
+}
+function composeAgent(f) {
+  const head = ['---', `name: ${f.name}`, `description: ${f.description}`, `model: ${f.model}`];
+  if (f.effort) head.push(`effort: ${f.effort}`);
+  head.push('allowed-tools:');
+  for (const tool of f.tools) head.push(`  - ${tool}`);
+  head.push('---', '');
+  return head.join('\n') + '\n' + f.body.replace(/^\n+/, '');
+}
+
+/* ============================== visual role builder ==============================
+   Click-only authoring: a preset seeds everything, then sections and rules are
+   toggled as chips. buildRoleBody() turns that selection into the markdown body
+   of the profile - nobody types YAML or prompt scaffolding. */
+const ARTIFACTS = ['plan.md', 'analysis.md', 'code-notes.md', 'review.md', 'debug.md',
+  'ship.md', 'report.md', 'perf.md', 'understanding.md', 'checks.md', 'context.md'];
+
+const ROLE_SECTIONS = {
+  inputs: (a) => ['## Inputs', '1. The instruction given to you by the orchestrator.',
+    '2. `.workbench/artifacts/context.md` - repo facts. Read it first if it exists.',
+    '3. `.workbench/inbox.md` - user notes; treat as direct user instructions.', ''].join('\n'),
+  output: (a) => ['## Output', `Write \`.workbench/artifacts/${a.artifact}\` with:`,
+    '- what you did / found', '- the evidence behind it (file:line or command output)',
+    '- anything the next role must know', ''].join('\n'),
+  verdict: () => ['## Verdict', 'Lead your reply with `VERDICT: PASS` or `VERDICT: FAIL`,',
+    'and repeat it as a `## Verdict:` line inside your artifact.', ''].join('\n'),
+  summary: () => ['## Reply', 'End your reply with a 5-line summary for the orchestrator.', ''].join('\n'),
+};
+const ROLE_RULES = {
+  cite: 'Ground every claim in files you actually opened, citing `path:line`.',
+  readonly: 'Do NOT modify any project file. You only write your artifact under `.workbench/artifacts/`.',
+  minimal: 'Keep the change minimal and focused - no drive-by refactors.',
+  repro: 'Reproduce the problem BEFORE fixing it, and fix root causes only.',
+  measure: 'Measure before and after; an improvement you cannot measure did not happen.',
+  notests: 'Never weaken, skip or delete a test to make something pass.',
+  conventions: "Follow the repository's existing conventions instead of introducing your own.",
+  noinvent: 'If the repository cannot answer something, say so plainly instead of inventing it.',
+};
+const ROLE_PRESETS = {
+  analyst: { icon: 'ic-search', color: '#2563eb', model: 'sonnet', artifact: 'analysis.md',
+    desc: 'Maps how the codebase works around a task - impacted files, data flow, risks.',
+    tools: ['read', 'grep', 'glob', 'edit'], sections: ['inputs', 'output', 'summary'], rules: ['cite', 'readonly'] },
+  coder: { icon: 'ic-code', color: '#0ea5e9', model: 'opus', artifact: 'code-notes.md',
+    desc: 'Implements the approved plan and records what changed.',
+    tools: ['read', 'grep', 'glob', 'edit', 'exec'], sections: ['inputs', 'output', 'summary'], rules: ['minimal', 'conventions', 'notests'] },
+  tester: { icon: 'ic-shield-check', color: '#3fb950', model: 'sonnet', artifact: 'review.md',
+    desc: 'Verifies the change against the acceptance criteria and issues a verdict.',
+    tools: ['read', 'grep', 'glob', 'edit', 'exec'], sections: ['inputs', 'output', 'verdict', 'summary'], rules: ['cite', 'notests'] },
+  debugger: { icon: 'ic-bug', color: '#d29922', model: 'opus', artifact: 'debug.md',
+    desc: 'Reproduces failures and fixes root causes.',
+    tools: ['read', 'grep', 'glob', 'edit', 'exec'], sections: ['inputs', 'output', 'summary'], rules: ['repro', 'minimal', 'notests'] },
+  researcher: { icon: 'ic-chart', color: '#14b8a6', model: 'opus', artifact: 'report.md',
+    desc: 'Answers business/data questions with measured evidence from the repository.',
+    tools: ['read', 'grep', 'glob', 'exec', 'edit'], sections: ['inputs', 'output', 'summary'], rules: ['cite', 'readonly', 'noinvent'] },
+  optimizer: { icon: 'ic-gauge', color: '#f97316', model: 'opus', artifact: 'perf.md',
+    desc: 'Measures, finds the hotspot, optimizes and proves the gain.',
+    tools: ['read', 'grep', 'glob', 'edit', 'exec'], sections: ['inputs', 'output', 'summary'], rules: ['measure', 'minimal', 'notests'] },
+  thinker: { icon: 'ic-brain', color: '#7a5af8', model: 'opus', artifact: 'plan.md',
+    desc: 'Turns a task into a concrete plan with testable acceptance criteria.',
+    tools: ['read', 'grep', 'glob', 'edit'], sections: ['inputs', 'output', 'summary'], rules: ['cite', 'readonly'] },
+  shipper: { icon: 'ic-rocket', color: '#ef4899', model: 'swe', artifact: 'ship.md',
+    desc: 'Packages verified work: summary, commit message, and the commit itself when approved.',
+    tools: ['read', 'grep', 'glob', 'edit', 'exec'], sections: ['inputs', 'output', 'summary'], rules: ['minimal'] },
+};
+
+function buildRoleBody(a) {
+  const out = [`You are **${a.name}**, a role in a staged engineering pipeline.`, '', a.desc, ''];
+  for (const key of Object.keys(ROLE_SECTIONS)) {
+    if (a.sections.includes(key)) out.push(ROLE_SECTIONS[key](a));
+  }
+  if (a.rules.length) {
+    out.push('## Rules');
+    for (const key of a.rules) if (ROLE_RULES[key]) out.push('- ' + ROLE_RULES[key]);
+    out.push('');
+  }
+  return out.join('\n');
+}
+
+/* ---------- agents ---------- */
+let agentTools = new Set(['read', 'grep', 'glob', 'edit']);
+const agentsEd = makeEditor({
+  listEl: 'agentList', editorEl: 'agentEditor',
+  list: async () => (await api('/api/agents')).agents,
+  getUrl: '/api/agent?name=', postUrl: '/api/agent', pickMsg: 'pick_agent_first',
+  onLoad: (content) => { fillAgentForm(content); seedVisual(content); },
+});
+const loadAgents = agentsEd.load;
+
+// The agents API lists file names (analyst.md); the profile's `name:` field is
+// the bare role name.
+const roleName = () => (agentsEd.state.current || '').replace(/\.md$/, '');
+function fillAgentForm(content) {
+  const { fm, list, body } = parseFrontmatter(content);
+  $('agName').textContent = fm.name || roleName() || '—';
+  $('agDesc').value = fm.description || '';
+  $('agPrompt').value = body.trim();
+  agentTools = new Set((list['allowed-tools'] || []).length ? list['allowed-tools'] : ['read', 'grep', 'glob', 'edit']);
+  renderAgentTools();
+  fillFamilySelects($('agModel'), $('agLevel'), fm.model || '');
+}
+function renderAgentTools() {
+  const box = $('agTools');
+  box.innerHTML = '';
+  for (const tool of AGENT_TOOLS) {
+    const b = document.createElement('button');
+    b.className = 'btn small' + (agentTools.has(tool) ? ' chip-active' : '');
+    b.textContent = tool;
+    b.onclick = () => {
+      if (agentTools.has(tool)) agentTools.delete(tool); else agentTools.add(tool);
+      renderAgentTools();
+    };
+    box.appendChild(b);
+  }
+}
+// Shared by the flow inspector and the agent form: family select + level select
+// driven by the live model catalogue.
+function fillFamilySelects(famSel, lvlSel, current) {
+  const fam = familyOfModel(current);
+  famSel.innerHTML = `<option value="">${esc(t('ins_inherit'))}</option>`
+    + MODEL_FAMILIES.map((f) => {
+      const alias = (f.aliases || []).length ? ` (${f.aliases.join(', ')})` : '';
+      return `<option value="${esc(f.slug)}">${esc(f.label + alias)}</option>`;
+    }).join('');
+  famSel.value = fam ? fam.slug : '';
+  const variants = fam ? (fam.variants || []) : [];
+  lvlSel.disabled = !variants.length;
+  lvlSel.innerHTML = `<option value="">${esc(t('ins_level_default'))}</option>`
+    + variants.map((v) => `<option value="${esc(v.id)}">${esc(v.label)}</option>`).join('');
+  lvlSel.value = variants.some((v) => v.id === current) ? current : '';
+}
+function agentModelValue() {
+  return $('agLevel').value || $('agModel').value || '';
+}
+$('agModel').onchange = () => fillFamilySelects($('agModel'), $('agLevel'), $('agModel').value);
+
+/* ---------- agents: visual view ---------- */
+let agentView = 'visual';
+const vis = { preset: 'analyst', artifact: 'analysis.md', tools: new Set(['read', 'grep', 'glob', 'edit']),
+  sections: new Set(['inputs', 'output', 'summary']), rules: new Set(['cite']), desc: '' };
+
+function chipRow(box, items, isOn, onToggle, label, rerender) {
+  box.innerHTML = '';
+  for (const key of items) {
+    const b = document.createElement('button');
+    b.className = 'btn small' + (isOn(key) ? ' chip-active' : '');
+    b.textContent = label(key);
+    b.onclick = () => { onToggle(key); rerender(); };
+    box.appendChild(b);
+  }
+}
+function applyPreset(key) {
+  const p = ROLE_PRESETS[key];
+  vis.preset = key;
+  vis.desc = p.desc;
+  vis.artifact = p.artifact;
+  vis.tools = new Set(p.tools);
+  vis.sections = new Set(p.sections);
+  vis.rules = new Set(p.rules);
+  fillFamilySelects($('agvModel'), $('agvLevel'), p.model);
+  renderAgentVisual();
+}
+function renderAgentPresets() {
+  const box = $('agPresets');
+  box.innerHTML = '';
+  for (const [key, p] of Object.entries(ROLE_PRESETS)) {
+    const b = document.createElement('button');
+    b.className = 'palbtn' + (vis.preset === key ? ' chip-active' : '');
+    b.style.setProperty('--role', p.color);
+    b.appendChild(svgIcon(p.icon));
+    const lbl = document.createElement('span');
+    lbl.className = 'lbl';
+    lbl.textContent = t('pal_' + key) || key;
+    b.appendChild(lbl);
+    b.onclick = () => applyPreset(key);
+    box.appendChild(b);
+  }
+}
+function renderAgentVisual() {
+  renderAgentPresets();
+  $('agvArtifact').innerHTML = ARTIFACTS.concat(vis.artifact && !ARTIFACTS.includes(vis.artifact) ? [vis.artifact] : [])
+    .map((a) => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
+  $('agvArtifact').value = vis.artifact;
+  chipRow($('agvTools'), AGENT_TOOLS, (k) => vis.tools.has(k),
+    (k) => (vis.tools.has(k) ? vis.tools.delete(k) : vis.tools.add(k)), (k) => k, renderAgentVisual);
+  chipRow($('agvSections'), Object.keys(ROLE_SECTIONS), (k) => vis.sections.has(k),
+    (k) => (vis.sections.has(k) ? vis.sections.delete(k) : vis.sections.add(k)), (k) => t('sec_' + k), renderAgentVisual);
+  chipRow($('agvRules'), Object.keys(ROLE_RULES), (k) => vis.rules.has(k),
+    (k) => (vis.rules.has(k) ? vis.rules.delete(k) : vis.rules.add(k)), (k) => t('rule_' + k), renderAgentVisual);
+  $('agvPreview').textContent = visualAgentContent();
+}
+function visualAgentContent() {
+  const name = roleName() || $('newAgentName').value.trim() || 'new-role';
+  return composeAgent({
+    name,
+    description: vis.desc || ROLE_PRESETS[vis.preset].desc,
+    model: $('agvLevel').value || $('agvModel').value || ROLE_PRESETS[vis.preset].model,
+    tools: [...vis.tools],
+    body: buildRoleBody({ name, desc: vis.desc || ROLE_PRESETS[vis.preset].desc,
+      artifact: vis.artifact, sections: [...vis.sections], rules: [...vis.rules] }),
+  });
+}
+// Reading an existing profile back into the click-only view: everything the
+// builder can express is detected, the rest stays on the raw tab.
+function seedVisual(content) {
+  const { fm, list, body } = parseFrontmatter(content);
+  vis.desc = fm.description || '';
+  if ((list['allowed-tools'] || []).length) vis.tools = new Set(list['allowed-tools']);
+  const art = /\.workbench\/artifacts\/([A-Za-z0-9._-]+)/.exec(body);
+  if (art) vis.artifact = art[1];
+  vis.sections = new Set(Object.keys(ROLE_SECTIONS).filter((k) => {
+    if (k === 'inputs') return /^## Inputs/m.test(body);
+    if (k === 'output') return /^## Output/m.test(body);
+    if (k === 'verdict') return /VERDICT:/.test(body);
+    return /5-line summary/.test(body);
+  }));
+  vis.rules = new Set(Object.entries(ROLE_RULES).filter(([, text]) =>
+    body.includes(text.slice(0, 28))).map(([k]) => k));
+  if (ROLE_PRESETS[roleName()]) vis.preset = roleName();
+  fillFamilySelects($('agvModel'), $('agvLevel'), fm.model || '');
+  if (agentView === 'visual') renderAgentVisual();
+}
+$('agvArtifact').onchange = () => { vis.artifact = $('agvArtifact').value; renderAgentVisual(); };
+$('agvModel').onchange = () => { fillFamilySelects($('agvModel'), $('agvLevel'), $('agvModel').value); renderAgentVisual(); };
+$('agvLevel').onchange = () => renderAgentVisual();
+
+$('btnViewAgentVisual').onclick = () => setAgentView('visual');
+$('btnViewAgentForm').onclick = () => setAgentView('form');
+$('btnViewAgentRaw').onclick = () => setAgentView('raw');
+function setAgentView(view) {
+  // Whatever the current view produced becomes the raw content, so switching
+  // never loses work.
+  if (agentsEd.state.current || view !== 'visual') $('agentEditor').value = agentFileContent();
+  agentView = view;
+  $('agentVisualView').style.display = view === 'visual' ? '' : 'none';
+  $('agentFormView').style.display = view === 'form' ? '' : 'none';
+  $('agentEditor').style.display = view === 'raw' ? '' : 'none';
+  $('btnViewAgentVisual').classList.toggle('chip-active', view === 'visual');
+  $('btnViewAgentForm').classList.toggle('chip-active', view === 'form');
+  $('btnViewAgentRaw').classList.toggle('chip-active', view === 'raw');
+  if (view === 'form') fillAgentForm($('agentEditor').value);
+  if (view === 'visual') renderAgentVisual();
+}
+function agentFileContent() {
+  if (agentView === 'raw') return $('agentEditor').value;
+  if (agentView === 'visual') return visualAgentContent();
+  return composeAgent({
+    name: roleName(),
+    description: $('agDesc').value.trim(),
+    model: agentModelValue() || 'sonnet',
+    tools: [...agentTools],
+    body: $('agPrompt').value,
+  });
+}
+$('btnSaveAgent').onclick = () => {
+  if (!agentsEd.state.current) { toast(t('pick_agent_first'), 'err'); return; }
+  $('agentEditor').value = agentFileContent();
+  agentsEd.save();
+};
+$('btnNewAgent').onclick = async () => {
+  const name = $('newAgentName').value.trim();
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) { toast(t('name_rule_role'), 'err'); return; }
+  // The new role is exactly what the visual builder currently shows, only
+  // renamed - so "+ New role" needs no typing beyond the name.
+  const p = ROLE_PRESETS[vis.preset];
+  const content = composeAgent({
+    name,
+    description: vis.desc || p.desc,
+    model: $('agvLevel').value || $('agvModel').value || p.model,
+    tools: [...vis.tools],
+    body: buildRoleBody({ name, desc: vis.desc || p.desc, artifact: vis.artifact,
+      sections: [...vis.sections], rules: [...vis.rules] }),
+  });
+  try {
+    await post('/api/agent', { name, content });
+    agentsEd.state.current = name;
+    $('newAgentName').value = '';
+    $('agentEditor').value = content;
+    fillAgentForm(content);
+    toast(t('saved'), 'ok');
+    await loadAgents();
+  } catch (e) { toast(e.message, 'err'); }
+};
+$('btnDeleteAgent').onclick = async () => {
+  if (!agentsEd.state.current) { toast(t('pick_agent_first'), 'err'); return; }
+  if (!confirm(t('confirm_delete_agent'))) return;
+  try {
+    await api('/api/agent?name=' + encodeURIComponent(agentsEd.state.current), { method: 'DELETE' });
+    agentsEd.state.current = null;
+    $('agentEditor').value = '';
+    fillAgentForm('');
+    toast(t('saved'), 'ok');
+    await loadAgents();
+  } catch (e) { toast(e.message, 'err'); }
+};
+
+/* ---------- skills ---------- */
+const skillsEd = makeEditor({
+  listEl: 'skillList', editorEl: 'skillEditor',
+  list: async () => (await api('/api/skills')).skills,
+  getUrl: '/api/skill?name=', postUrl: '/api/skill', pickMsg: 'pick_skill_first',
+  onLoad: (content) => fillSkillForm(content),
+});
+const loadSkills = skillsEd.load;
+let skillTriggers = ['user'];
+function fillSkillForm(content) {
+  const { fm, list, body } = parseFrontmatter(content);
+  $('skName').textContent = fm.name || skillsEd.state.current || '—';
+  $('skDesc').value = fm.description || '';
+  $('skBody').value = body.trim();
+  skillTriggers = (list.triggers || []).length ? list.triggers : ['user'];
+}
+function skillFileContent() {
+  if (skillView === 'raw') return $('skillEditor').value;
+  if (skillView === 'visual') return visualSkillContent();
+  const head = ['---', `name: ${skillsEd.state.current}`, `description: ${$('skDesc').value.trim()}`, 'triggers:'];
+  for (const trigger of skillTriggers) head.push(`  - ${trigger}`);
+  head.push('---', '');
+  return head.join('\n') + '\n' + $('skBody').value.replace(/^\n+/, '');
+}
+/* ---------- skills: visual view ---------- */
+const SKILL_PRESETS = {
+  runflow: { icon: 'ic-bolt', color: '#58a6ff',
+    desc: 'Runs a FlowForge pipeline on the task the user typed.',
+    body: (s) => [`Run the **${s.flow}** flow on the user's request.`, '',
+      `Invoke the /flow skill: \`/flow ${s.flow} "<the user's task, refined>" --gates=${s.gate}\`.`,
+      'Refine the raw request into one precise task sentence first, then start the flow',
+      'and report where it stops.', ''].join('\n') },
+  report: { icon: 'ic-chart', color: '#14b8a6',
+    desc: 'Produces a written report about the current project.',
+    body: () => ['Produce a written report for the current project.', '',
+      'Gather the facts from the repository first (never from memory), then write the',
+      'report to `.workbench/artifacts/report.md` with: what you inspected, the numbers',
+      'you measured with the command behind each, what they mean, and ranked next steps.', ''].join('\n') },
+  checklist: { icon: 'ic-check-list', color: '#3fb950',
+    desc: 'Walks a fixed checklist over the project and reports pass/fail per item.',
+    body: () => ['Walk this checklist over the current project and report PASS/FAIL per item,', '',
+      '1. The project builds with its documented command.',
+      '2. The test suite runs green.',
+      '3. No secret or credential is committed.',
+      '4. README/AGENTS instructions still match reality.', '',
+      'Quote the command output behind every verdict.', ''].join('\n') },
+  understand: { icon: 'ic-compass', color: '#2563eb',
+    desc: 'Explains an unfamiliar project: architecture, conventions, entry points.',
+    body: () => ['Explain the current project to an engineer who has never seen it:', '',
+      'architecture and module responsibilities, entry points, end-to-end data flow,',
+      'the conventions actually used, and the verified build/run/test commands.',
+      'Ground every statement in files you opened and cite their paths.', ''].join('\n') },
+};
+const SKILL_RULES = {
+  arabic: 'Reply to the user in Egyptian Arabic; keep code, commands and paths in English.',
+  concise: 'Keep the reply under 15 lines unless the user asks for more.',
+  askfirst: 'Ask one clarifying question if the request is ambiguous before doing the work.',
+  noguess: 'Never invent file names, commands or numbers - verify them in the repository.',
+};
+const skv = { preset: 'runflow', flow: 'task', gate: 'terminal', rules: new Set(['noguess']) };
+
+function renderSkillVisual() {
+  const box = $('skPresets');
+  box.innerHTML = '';
+  for (const [key, p] of Object.entries(SKILL_PRESETS)) {
+    const b = document.createElement('button');
+    b.className = 'palbtn' + (skv.preset === key ? ' chip-active' : '');
+    b.style.setProperty('--role', p.color);
+    b.appendChild(svgIcon(p.icon));
+    const lbl = document.createElement('span');
+    lbl.className = 'lbl';
+    lbl.textContent = t('skp_' + key);
+    b.appendChild(lbl);
+    b.onclick = () => { skv.preset = key; renderSkillVisual(); };
+    box.appendChild(b);
+  }
+  const flows = (lastData && lastData.flows) || ['task'];
+  $('skvFlow').innerHTML = flows.map((f) => `<option value="${esc(f)}">${esc(f)}</option>`).join('');
+  $('skvFlow').value = flows.includes(skv.flow) ? skv.flow : flows[0];
+  $('skvFlow').disabled = skv.preset !== 'runflow';
+  $('skvGate').value = skv.gate;
+  $('skvGate').disabled = skv.preset !== 'runflow';
+  chipRow($('skvRules'), Object.keys(SKILL_RULES), (k) => skv.rules.has(k),
+    (k) => (skv.rules.has(k) ? skv.rules.delete(k) : skv.rules.add(k)), (k) => t('srule_' + k), renderSkillVisual);
+  $('skvPreview').textContent = visualSkillContent();
+}
+function visualSkillContent() {
+  const p = SKILL_PRESETS[skv.preset];
+  const name = skillsEd.state.current || $('newSkillName').value.trim() || 'new-skill';
+  const head = ['---', `name: ${name}`, `description: ${p.desc}`, 'triggers:', '  - user', '---', ''];
+  const rules = [...skv.rules].map((k) => '- ' + SKILL_RULES[k]);
+  const body = p.body({ flow: $('skvFlow').value || skv.flow, gate: $('skvGate').value || skv.gate })
+    + (rules.length ? '\n## Rules\n' + rules.join('\n') + '\n' : '');
+  return head.join('\n') + '\n' + body;
+}
+$('skvFlow').onchange = () => { skv.flow = $('skvFlow').value; renderSkillVisual(); };
+$('skvGate').onchange = () => { skv.gate = $('skvGate').value; renderSkillVisual(); };
+
+let skillView = 'visual';
+function setSkillView(view) {
+  if (skillsEd.state.current || view !== 'visual') $('skillEditor').value = skillFileContent();
+  skillView = view;
+  $('skillVisualView').style.display = view === 'visual' ? '' : 'none';
+  $('skillFormView').style.display = view === 'form' ? '' : 'none';
+  $('skillEditor').style.display = view === 'raw' ? '' : 'none';
+  $('btnViewSkillVisual').classList.toggle('chip-active', view === 'visual');
+  $('btnViewSkillForm').classList.toggle('chip-active', view === 'form');
+  $('btnViewSkillRaw').classList.toggle('chip-active', view === 'raw');
+  if (view === 'form') fillSkillForm($('skillEditor').value);
+  if (view === 'visual') renderSkillVisual();
+}
+$('btnViewSkillVisual').onclick = () => setSkillView('visual');
+$('btnViewSkillForm').onclick = () => setSkillView('form');
+$('btnViewSkillRaw').onclick = () => setSkillView('raw');
+$('btnSaveSkill').onclick = () => {
+  if (!skillsEd.state.current) { toast(t('pick_skill_first'), 'err'); return; }
+  $('skillEditor').value = skillFileContent();
+  skillsEd.save();
+};
+$('btnNewSkill').onclick = async () => {
+  const name = $('newSkillName').value.trim();
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) { toast(t('name_rule'), 'err'); return; }
+  // Built from whatever the visual builder currently shows, renamed.
+  const template = visualSkillContent().replace(/^name: .*$/m, `name: ${name}`);
+  try {
+    await post('/api/skill', { name, content: template });
+    skillsEd.state.current = name;
+    $('newSkillName').value = '';
+    toast(t('saved'), 'ok');
+    await loadSkills();
+    $('skillEditor').value = template;
+    fillSkillForm(template);
+  } catch (e) { toast(e.message, 'err'); }
+};
+
+/* ============================== inbox ============================== */
+$('btnInbox').onclick = async () => {
+  const text = $('inboxText').value.trim();
+  if (!text) return;
+  try {
+    await post('/api/inbox', { text });
+    $('inboxText').value = '';
+    toast(t('inbox_sent'), 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+};
+
+/* ============================== settings ============================== */
+let settingsDirty = false;
+function renderProjectSettings(d) {
+  if (settingsDirty) return;
+  if (!d.settings) return;
+  $('setGateMode').value = d.settings.gateMode || 'default';
+  $('setRefineProvider').value = d.settings.refineProvider || 'auto';
+  if (document.activeElement !== $('setRefineBase')) $('setRefineBase').value = d.settings.refineApiBase || '';
+  if (document.activeElement !== $('setRefineModel')) $('setRefineModel').value = d.settings.refineModel || '';
+  // The key itself is never sent back; a set key shows as a placeholder only.
+  $('setRefineKey').placeholder = d.settings.refineApiKeySet ? '••••••••' : 'gsk_...';
+  $('refineHttpBox').style.display = $('setRefineProvider').value === 'http' ? '' : 'none';
+}
+$('setRefineProvider').onchange = () => {
+  $('refineHttpBox').style.display = $('setRefineProvider').value === 'http' ? '' : 'none';
+};
+$('btnSaveRefine').onclick = async () => {
+  settingsDirty = true;
+  const patch = {
+    refineProvider: $('setRefineProvider').value,
+    refineApiBase: $('setRefineBase').value.trim(),
+    refineModel: $('setRefineModel').value.trim(),
+  };
+  if ($('setRefineKey').value) patch.refineApiKey = $('setRefineKey').value;
+  try {
+    await post('/api/settings', patch);
+    $('setRefineKey').value = '';
+    toast(t('settings_saved'), 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+  settingsDirty = false;
+};
+$('setGateMode').onchange = async () => {
+  settingsDirty = true;
+  try {
+    await post('/api/settings', { gateMode: $('setGateMode').value });
+    toast(t('settings_saved'), 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+  settingsDirty = false;
+};
+
+$('setPoll').value = POLL_MS;
+$('setPoll').onchange = () => {
+  POLL_MS = Math.max(500, Number($('setPoll').value) || 1500);
+  localStorage.setItem('ff.poll', POLL_MS);
+  $('setPoll').value = POLL_MS;
+  startPolling();
+  toast(t('settings_saved'), 'ok');
+};
+
+/* ---------- Settings > executor providers ----------
+   One card per provider: what was detected on this machine, whether its CLI
+   reports a login, and the honest reason when there is nothing to log into.
+   Only providers whose credentials live in a CLI get a login button. */
+const PROVIDER_ICON = { devin: '🤖', copilot: '🐙', cursor: '🖱️', trae: '🧩' };
+let provBusy = false;
+
+function providerCard(p, auth) {
+  const name = LANG === 'ar' ? (p.labelAr || p.label) : p.label;
+  const chips = [
+    p.installed
+      ? `<span class="badge done">${esc(t('prov_installed'))}</span>`
+      : `<span class="badge">${esc(t('prov_missing'))}</span>`,
+    p.runnable
+      ? `<span class="badge done">${esc(t('prov_runs'))}</span>`
+      : `<span class="badge">${esc(t('prov_detect_only'))}</span>`,
+  ];
+  // Four honest states, never a guess: connected / not connected / unreadable /
+  // signed in somewhere else while the tool itself is missing.
+  if (auth) {
+    const connected = `<span class="badge done">${esc(t('prov_connected'))}${auth.account ? ' — ' + esc(auth.account) : ''}</span>`;
+    if (auth.kind === 'cli') {
+      if (auth.loggedIn && !p.installed) chips.push(`<span class="badge">${esc(t('prov_account_only'))}${auth.account ? ' — ' + esc(auth.account) : ''}</span>`);
+      else if (auth.loggedIn) chips.push(connected);
+      else chips.push(`<span class="badge failed">${esc(t('prov_disconnected'))}</span>`);
+    } else if (auth.kind === 'app') {
+      chips.push(`<span class="badge">${esc(t('prov_in_app'))}</span>`);
+      if (p.installed && auth.known && auth.loggedIn) chips.push(connected);
+      else if (p.installed && auth.known) chips.push(`<span class="badge failed">${esc(t('prov_disconnected'))}</span>`);
+      else if (p.installed) chips.push(`<span class="badge">${esc(t('prov_unknown'))}</span>`);
+    } else chips.push(`<span class="badge">${esc(t('prov_no_login'))}</span>`);
+  }
+  const cliPath = p.cliPath || (auth && auth.cli) || '';
+  const paths = [
+    p.editorPath ? `${esc(t('provider_editor'))}: ${esc(p.editorPath)}` : '',
+    cliPath ? `${esc(t('provider_cli'))}: ${esc(cliPath)}` : '',
+    `${esc(t('provider_modules'))}: ${p.moduleCount}`,
+  ].filter(Boolean).join('<br>');
+  const why = auth && auth.kind !== 'cli'
+    ? `<div class="why">${esc(LANG === 'ar' ? (auth.reasonAr || auth.reason) : auth.reason)}</div>`
+    : (auth && auth.detail ? `<div class="paths">${esc(auth.detail)}</div>` : '');
+  // The server already decided what is possible (canLogin needs the credential
+  // CLI, canOpen needs the app to exist), so the card never offers a button that
+  // can only answer 409.
+  const buttons = [];
+  if (auth && auth.canLogin) {
+    buttons.push(`<button class="btn small" data-act="login" data-id="${esc(p.id)}">`
+      + esc(auth.loggedIn ? t('prov_relogin') : t('prov_login')) + '</button>');
+  }
+  if (auth && auth.canOpen) {
+    buttons.push(`<button class="btn small" data-act="login" data-id="${esc(p.id)}">${esc(t('prov_open_app'))}</button>`);
+  }
+  if (p.id !== PROVIDER) {
+    buttons.push(`<button class="btn small" data-act="use" data-id="${esc(p.id)}">${esc(t('prov_use'))}</button>`);
+  }
+  return `<div class="provcard${p.id === PROVIDER ? ' active' : ''}">`
+    + `<h3>${PROVIDER_ICON[p.id] || '•'} ${esc(name)}`
+    + (p.id === PROVIDER ? ` <span class="badge done">${esc(t('prov_active'))}</span>` : '')
+    + `</h3><div>${chips.join(' ')}</div><div class="paths">${paths}</div>${why}`
+    + (buttons.length ? `<div class="row">${buttons.join('')}</div>` : '')
+    + '</div>';
+}
+
+async function loadProviders(force) {
+  const box = $('provList');
+  if (provBusy) return;
+  provBusy = true;
+  try {
+    const d = await api('/api/providers');
+    const list = d.providers || [];
+    const auths = await Promise.all(list.map((p) => api('/api/provider-auth?id='
+      + encodeURIComponent(p.id) + (force ? '&force=1' : '')).then((r) => r.auth).catch(() => null)));
+    box.className = 'provgrid';
+    box.innerHTML = list.map((p, i) => providerCard(p, auths[i])).join('');
+    box.querySelectorAll('button[data-act]').forEach((b) => {
+      b.onclick = () => (b.dataset.act === 'login' ? providerLogin(b.dataset.id) : useProvider(b.dataset.id));
+    });
+  } catch (e) {
+    box.className = '';
+    box.textContent = e.message;
+  }
+  provBusy = false;
+}
+
+async function providerLogin(id) {
+  try {
+    const r = await post('/api/provider/login', { id });
+    toast(r.opened ? t('prov_app_opened') : r.already ? t('prov_already') : t('prov_login_started'), 'ok');
+    if (!r.already && !r.opened) setTimeout(() => loadProviders(true), 15000);
+  } catch (e) {
+    toast(e.message === 'cli_not_found' || e.message === 'app_not_found' ? t('prov_no_cli')
+      : e.message === 'login_not_supported' ? t('prov_in_app') : e.message, 'err');
+  }
+}
+
+async function useProvider(id) {
+  PROVIDER = id;
+  localStorage.setItem('ff.provider', id);
+  $('runProvider').value = id;
+  if (lastData) renderRunBuilder(lastData);
+  fetchModels();
+  loadProviders(false);
+  retargetCanvasModels();
+  try { await post('/api/settings', { executorProvider: id }); } catch { /* no project yet */ }
+  toast(t('prov_switched'), 'ok');
+}
+$('btnProvRefresh').onclick = () => loadProviders(true);
+
+function renderProjects(d) {
+  const el = $('projList');
+  el.innerHTML = '';
+  (d.projects || []).forEach((p) => {
+    const div = document.createElement('div');
+    div.className = 'proj-item' + (p === d.project ? ' active' : '');
+    div.innerHTML = `<span class="path">${esc(p)}</span>` +
+      (p === d.project
+        ? `<span class="badge done">${esc(t('active'))}</span>`
+        : `<button class="btn small" data-act="activate">${esc(t('activate'))}</button>`) +
+      `<button class="btn small" data-act="remove">${esc(t('remove'))}</button>`;
+    div.querySelectorAll('button').forEach((b) => b.onclick = async () => {
+      try {
+        await post('/api/projects', { action: b.dataset.act, path: p });
+        toast(b.dataset.act === 'remove' ? t('project_removed') : t('project_activated'), 'ok');
+        poll();
+      } catch (e) { toast(e.message, 'err'); }
+    });
+    el.appendChild(div);
+  });
+}
+$('btnAddProj').onclick = async () => {
+  const p = $('newProjPath').value.trim();
+  if (!p) return;
+  try {
+    await post('/api/projects', { action: 'add', path: p });
+    $('newProjPath').value = '';
+    toast(t('project_added'), 'ok');
+    poll();
+  } catch (e) { toast(e.message, 'err'); }
+};
+
+/* ---------- folder picker ----------
+   Browses the machine through /api/browse so a project is chosen by clicking
+   folders; the chosen folder is added to the registry and activated. */
+let pickerDir = null;
+async function pickerOpen(startAt) {
+  $('pickerBack').classList.add('open');
+  await pickerLoad(startAt || localStorage.getItem('ff.lastdir') || '');
+}
+function pickerClose() { $('pickerBack').classList.remove('open'); }
+async function pickerLoad(dir) {
+  let d;
+  try {
+    d = await api('/api/browse' + (dir ? '?path=' + encodeURIComponent(dir) : ''));
+  } catch (e) {
+    toast(e.message, 'err');
+    if (dir) return pickerLoad('');
+    return;
+  }
+  pickerDir = d.path;
+  $('pickerPath').textContent = d.path || t('pick_roots');
+  $('pickerUse').disabled = !d.path;
+  $('pickerUp').style.display = d.parent ? '' : 'none';
+  if (d.path) localStorage.setItem('ff.lastdir', d.path);
+  const list = $('pickerList');
+  list.innerHTML = '';
+  const row = (label, target, marks) => {
+    const el = document.createElement('div');
+    el.className = 'pickrow';
+    const tags = marks
+      ? `<span class="tags">${marks.workbench ? `<span class="tag hit">.workbench</span>` : ''}`
+        + `${marks.git ? '<span class="tag hit">git</span>' : ''}`
+        + `${marks.pkg ? '<span class="tag">npm</span>' : ''}</span>`
+      : '';
+    el.innerHTML = `<span>📁</span><span class="nm">${esc(label)}</span>${tags}`;
+    el.onclick = () => pickerLoad(target);
+    list.appendChild(el);
+  };
+  if (d.roots) {
+    (d.shortcuts || []).forEach((p) => row(p, p, null));
+    (d.drives || []).forEach((p) => row(p, p, null));
+  } else {
+    d.entries.forEach((e) => row(e.name, e.path, e));
+    if (!d.entries.length) list.innerHTML = `<div class="empty">${esc(t('pick_no_sub'))}</div>`;
+  }
+}
+$('btnPickProj').onclick = () => pickerOpen();
+$('btnPickTop').onclick = () => pickerOpen();
+$('pickerClose').onclick = pickerClose;
+$('pickerBack').onclick = (e) => { if (e.target === $('pickerBack')) pickerClose(); };
+$('pickerRoots').onclick = () => pickerLoad('');
+$('pickerUp').onclick = async () => {
+  if (!pickerDir) return;
+  const d = await api('/api/browse?path=' + encodeURIComponent(pickerDir));
+  pickerLoad(d.parent || '');
+};
+$('pickerUse').onclick = async () => {
+  if (!pickerDir) return;
+  try {
+    await post('/api/projects', { action: 'add', path: pickerDir });
+    toast(t('project_added'), 'ok');
+    pickerClose();
+    poll();
+  } catch (e) { toast(e.message, 'err'); }
+};
+// Registry entries can outlive their folder (renamed/deleted drive) - one click
+// drops every path that no longer exists.
+$('btnCleanProj').onclick = async () => {
+  const d = lastData || (await api('/api/state'));
+  const dead = [];
+  for (const p of d.projects || []) {
+    try { await api('/api/browse?path=' + encodeURIComponent(p)); } catch { dead.push(p); }
+  }
+  if (!dead.length) { toast(t('clean_none'), 'ok'); return; }
+  for (const p of dead) {
+    try { await post('/api/projects', { action: 'remove', path: p }); } catch {}
+  }
+  toast(t('clean_done') + ' (' + dead.length + ')', 'ok');
+  poll();
+};
+
+/* ============================== boot ============================== */
+$('runSpeed').value = localStorage.getItem('ff.speed') || '';
+applyTheme();
+setFlowView(localStorage.getItem('ff.flowview') === 'json' ? 'json' : 'canvas');
+applyLang();
+poll();
+startPolling();
+fetchCli();
+loadExportFormats();
+</script>
+</body>
+</html>

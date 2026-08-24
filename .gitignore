@@ -1,0 +1,12 @@
+# Local machine state - never published
+*.local.*
+*.log
+Thumbs.db
+Desktop.ini
+
+# Per-project runtime state and everything the agents write into it
+# (plan.md, analysis.md, review.md, code-notes.md, ship.md, exports, ...)
+.workbench/
+
+# Internal working notes for the AI assistant that maintains this repo
+AGENTS.md
