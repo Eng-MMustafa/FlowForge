@@ -7,7 +7,7 @@
 [![npm](https://img.shields.io/npm/v/flowforge-cli?color=cb3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/flowforge-cli)
 [![Node](https://img.shields.io/badge/node-%E2%89%A518-3ecc6b?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-6fb8ff)](#zero-dependencies)
-[![Tests](https://img.shields.io/badge/tests-255%20passing-3ecc6b)](#tests)
+[![Tests](https://img.shields.io/badge/tests-260%20passing-3ecc6b)](#tests)
 [![License](https://img.shields.io/badge/license-MIT-f0a92e)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows-6fb8ff)](#requirements)
 
@@ -515,7 +515,7 @@ The dashboard is a plain `node:http` server; every screen is built on this API, 
 node dashboard\test\run-tests.mjs
 ```
 
-**255 checks, no test framework.** The suite spawns its own server on a spare port with a temporary scratch project, and restores your registry afterwards. It covers UI script syntax, complete bilingual i18n key coverage, the Studio's text-free guarantee, the flow↔graph round trip and cycle rejection, every API endpoint, the watcher feed, the gate protocol, provider detection/auth/model mapping, path-traversal guards, and the document converter (real PDF bytes, and `.docx`/`.xlsx` opened with Windows' own ZIP reader).
+**260 checks, no test framework.** The suite spawns its own server on a spare port with a temporary scratch project, and restores your registry afterwards. It covers UI script syntax, complete bilingual i18n key coverage, the Studio's text-free guarantee, the flow↔graph round trip and cycle rejection, every API endpoint, the watcher feed, the gate protocol, provider detection/auth/model mapping, path-traversal guards, and the document converter (real PDF bytes, and `.docx`/`.xlsx` opened with Windows' own ZIP reader).
 
 ---
 
@@ -534,7 +534,8 @@ FlowForge/
 │   ├── acp-client.mjs   Devin ACP session client
 │   ├── ui/index.html    the dashboard (single file)
 │   ├── ui/studio.html   the wordless builder
-│   └── test/            the 255-check suite
+│   └── test/            the 260-check suite
+├── docs/index.html       the landing page (GitHub Pages)
 ├── docs/screenshots/    the images in this README
 ├── bin/flowforge.mjs     the global CLI
 ├── get.mjs               the one-command installer

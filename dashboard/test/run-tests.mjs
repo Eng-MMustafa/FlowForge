@@ -127,6 +127,36 @@ console.log('# static checks');
     localMisses.length === 0, localMisses.join(', '));
 }
 
+// The landing page (GitHub Pages, served from docs/) follows the same rules as
+// the dashboard: no external code, bilingual, and every image really there.
+{
+  const site = fs.readFileSync(path.join(WORKBENCH, 'docs', 'index.html'), 'utf8');
+  const scripts = [...site.matchAll(/<script\b([^>]*)>/g)].map((m) => m[1]);
+  const links = [...site.matchAll(/<link\b[^>]*href="([^"]+)"/g)].map((m) => m[1]);
+  ok('site: loads no external script or stylesheet',
+    scripts.every((a) => !/\bsrc=/.test(a)) && links.every((h) => !/^https?:/.test(h)));
+
+  let siteSyntax = true, siteErr = '';
+  const inline = site.match(/<script>([\s\S]*?)<\/script>/);
+  try { new Function(inline[1]); } catch (e) { siteSyntax = false; siteErr = e.message; }
+  ok('site: inline script parses (syntax valid)', siteSyntax, siteErr);
+
+  const pairs = [...site.matchAll(/data-en="[^"]*"(?:\s|\n)*data-ar="[^"]*"/g)].length;
+  const enCount = [...site.matchAll(/\bdata-en="/g)].length;
+  ok('site: every English string has its Arabic twin', pairs === enCount && enCount > 10,
+    `${pairs}/${enCount}`);
+
+  const imgs = [...site.matchAll(/<img\b[^>]*src="([^"]+)"/g)].map((m) => m[1])
+    .filter((u) => !/^https?:/.test(u));
+  const missing = imgs.filter((u) => !fs.existsSync(path.join(WORKBENCH, 'docs', u)));
+  ok('site: every screenshot it shows exists', imgs.length > 0 && missing.length === 0,
+    missing.join(', '));
+
+  const cmd = site.match(/<code id="cmd">([^<]+)<\/code>/);
+  ok('site: the copy button offers the documented install command',
+    !!cmd && cmd[1].includes('get.mjs') && cmd[1].includes('Eng-MMustafa/FlowForge'));
+}
+
 // The one-command installer must stay dependency-free and never hard-code a
 // machine path, because it is fetched and run raw from GitHub.
 {

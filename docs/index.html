@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FlowForge - one sentence, a whole engineering pipeline</title>
+<meta name="description" content="Turn one rough sentence into a staged AI engineering pipeline: specialised subagents, quality gates you approve, and a zero-dependency live dashboard.">
+<meta property="og:title" content="FlowForge">
+<meta property="og:description" content="One sentence in. A planned, analysed, implemented, tested and shipped change out.">
+<meta property="og:image" content="https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/docs/screenshots/01-overview.png">
+<meta name="theme-color" content="#0b0f14">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#9881;</text></svg>">
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121821; --panel2:#171f2b; --line:#243040;
+    --ink:#e6edf3; --dim:#93a1b1; --green:#3ecc6b; --blue:#6fb8ff; --amber:#f0a92e; --red:#cb3837;
+    --radius:14px; --wrap:1080px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Naskh Arabic",sans-serif;
+    background-image:radial-gradient(1100px 520px at 50% -220px,rgba(62,204,107,.10),transparent 70%);}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:var(--wrap);margin:0 auto;padding:0 22px}
+  header{position:sticky;top:0;z-index:20;backdrop-filter:blur(10px);
+    background:rgba(11,15,20,.82);border-bottom:1px solid var(--line)}
+  header .wrap{display:flex;align-items:center;gap:18px;height:60px}
+  .brand{font-weight:700;font-size:18px;letter-spacing:.2px}
+  .brand span{color:var(--green)}
+  nav{margin-inline-start:auto;display:flex;align-items:center;gap:18px;font-size:14px}
+  nav a{color:var(--dim)} nav a:hover{color:var(--ink);text-decoration:none}
+  .lang{border:1px solid var(--line);background:var(--panel);color:var(--ink);
+    border-radius:999px;padding:5px 13px;font:inherit;font-size:13px;cursor:pointer}
+  .lang:hover{border-color:var(--green)}
+  .hero{padding:76px 0 40px;text-align:center}
+  h1{font-size:clamp(30px,5vw,50px);line-height:1.15;margin:0 0 16px;letter-spacing:-.02em}
+  h1 em{font-style:normal;color:var(--green)}
+  .sub{max-width:660px;margin:0 auto 30px;color:var(--dim);font-size:clamp(15px,2vw,18px)}
+  .cmd{display:flex;align-items:center;gap:10px;max-width:840px;margin:0 auto;
+    background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 12px 12px 16px}
+  .cmd code{flex:1;overflow-x:auto;white-space:nowrap;text-align:left;direction:ltr;
+    font:13.5px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;color:#cfe6ff;scrollbar-width:thin}
+  .copy{flex:none;border:1px solid var(--line);background:var(--panel2);color:var(--ink);
+    border-radius:9px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer;transition:.15s}
+  .copy:hover{border-color:var(--green);color:var(--green)}
+  .copy.done{border-color:var(--green);background:rgba(62,204,107,.14);color:var(--green)}
+  .alt{margin:14px auto 0;color:var(--dim);font-size:13.5px}
+  .alt code{background:var(--panel);border:1px solid var(--line);border-radius:7px;
+    padding:3px 8px;color:#cfe6ff;font-size:12.5px;direction:ltr;display:inline-block}
+  .badges{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:26px 0 0}
+  .badges img{height:20px}
+  .shot{margin:44px auto 0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;
+    box-shadow:0 26px 70px rgba(0,0,0,.55);background:var(--panel)}
+  .shot img{display:block;width:100%}
+  section{padding:56px 0}
+  h2{font-size:clamp(22px,3vw,30px);margin:0 0 10px;letter-spacing:-.01em}
+  .lead{color:var(--dim);margin:0 0 30px;max-width:720px}
+  .pipe{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;justify-content:center}
+  .step{flex:1 1 130px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 10px;text-align:center}
+  .step b{display:block;font-size:14px;margin-bottom:2px}
+  .step small{color:var(--dim);font-size:11.5px;direction:ltr;display:block}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(272px,1fr));gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+  .card h3{margin:0 0 8px;font-size:16.5px}
+  .card p{margin:0;color:var(--dim);font-size:14.5px}
+  .card .ico{font-size:21px;display:block;margin-bottom:9px}
+  .gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+  figure{margin:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--panel)}
+  figure img{display:block;width:100%}
+  figcaption{padding:11px 14px;color:var(--dim);font-size:13.5px;border-top:1px solid var(--line)}
+  .cta{text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:44px 22px}
+  .btns{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:20px}
+  .btn{border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:11px;
+    padding:11px 22px;font-size:14.5px;font-weight:600}
+  .btn:hover{border-color:var(--green);text-decoration:none}
+  .btn.primary{background:var(--green);border-color:var(--green);color:#06210f}
+  .btn.primary:hover{filter:brightness(1.08)}
+  footer{border-top:1px solid var(--line);padding:28px 0;color:var(--dim);font-size:13.5px}
+  footer .wrap{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+  [dir=rtl] .cmd code,[dir=rtl] .step small{text-align:left}
+  [lang=ar] body,html[lang=ar]{font-family:"Segoe UI","Noto Naskh Arabic",Tahoma,sans-serif}
+  @media(max-width:640px){.hero{padding:52px 0 30px}.cmd{flex-direction:column;align-items:stretch}.copy{width:100%}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="brand">Flow<span>Forge</span> &#9881;</div>
+  <nav>
+    <a href="#how" data-en="How it works" data-ar="إزاي بيشتغل">How it works</a>
+    <a href="#features" data-en="Features" data-ar="المميزات">Features</a>
+    <a href="https://www.npmjs.com/package/flowforge-cli">npm</a>
+    <a href="https://github.com/Eng-MMustafa/FlowForge">GitHub</a>
+    <button class="lang" id="lang" type="button">العربية</button>
+  </nav>
+</div></header>
+
+<div class="wrap hero">
+  <h1 data-en="One sentence in.<br>A <em>whole engineering pipeline</em> out."
+      data-ar="جملة واحدة تكتبها.<br>يطلعلك <em>خط إنتاج هندسي كامل</em>.">One sentence in.<br>A <em>whole engineering pipeline</em> out.</h1>
+  <p class="sub" data-en="FlowForge runs your task through specialised AI subagents - plan, analyse, implement, test, debug, ship - each handing the next a focused artifact, with quality gates you approve and a live dashboard you actually control."
+     data-ar="فلو‌فورج بيمرّر التاسك على وكلاء متخصصين بالترتيب: تفكير، تحليل، كود، اختبار، تصحيح، رفع - وكل واحد بيسلّم اللي بعده ملف مركّز، مع بوابات موافقة إنت اللي بتقرّرها وشاشة تحكم لايف.">FlowForge runs your task through specialised AI subagents - plan, analyse, implement, test, debug, ship - each handing the next a focused artifact, with quality gates you approve and a live dashboard you actually control.</p>
+
+  <div class="cmd">
+    <code id="cmd">iwr -useb https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/get.mjs -o "$env:TEMP\ff.mjs"; node "$env:TEMP\ff.mjs"</code>
+    <button class="copy" id="copy" type="button" data-en="Copy" data-ar="نسخ">Copy</button>
+  </div>
+  <p class="alt" data-en='No npm install, no dependencies, no config. Or run it straight away: <code>npx flowforge-cli</code>'
+     data-ar='من غير npm install ولا مكتبات ولا إعدادات. أو شغّلها على طول: <code>npx flowforge-cli</code>'>No npm install, no dependencies, no config. Or run it straight away: <code>npx flowforge-cli</code></p>
+
+  <div class="badges">
+    <a href="https://www.npmjs.com/package/flowforge-cli"><img alt="npm" src="https://img.shields.io/npm/v/flowforge-cli?color=cb3837&logo=npm&logoColor=white"></a>
+    <img alt="dependencies 0" src="https://img.shields.io/badge/dependencies-0-6fb8ff">
+    <img alt="tests" src="https://img.shields.io/badge/tests-255%20passing-3ecc6b">
+    <img alt="license MIT" src="https://img.shields.io/badge/license-MIT-f0a92e">
+  </div>
+
+  <div class="shot"><img src="screenshots/01-overview.png" alt="The FlowForge dashboard" loading="lazy"></div>
+</div>
+
+<section id="how" class="wrap">
+  <h2 data-en="How it works" data-ar="إزاي بيشتغل">How it works</h2>
+  <p class="lead" data-en="Six roles, one artifact each. Nothing ships until the reviewer writes PASS."
+     data-ar="ستة أدوار، كل واحد بيسلّم ملف واحد. ومفيش رفع غير لما المراجع يقول PASS.">Six roles, one artifact each. Nothing ships until the reviewer writes PASS.</p>
+  <div class="pipe">
+    <div class="step"><b data-en="Think" data-ar="تفكير">Think</b><small>plan.md</small></div>
+    <div class="step"><b data-en="Analyse" data-ar="تحليل">Analyse</b><small>analysis.md</small></div>
+    <div class="step"><b data-en="Code" data-ar="كود">Code</b><small>code-notes.md</small></div>
+    <div class="step"><b data-en="Review" data-ar="مراجعة">Review</b><small>review.md</small></div>
+    <div class="step"><b data-en="Debug" data-ar="تصحيح">Debug</b><small>debug.md</small></div>
+    <div class="step"><b data-en="Ship" data-ar="رفع">Ship</b><small>ship.md</small></div>
+  </div>
+</section>
+
+<section id="features" class="wrap">
+  <h2 data-en="What you get" data-ar="بتاخد إيه">What you get</h2>
+  <div class="grid">
+    <div class="card"><span class="ico">&#9889;</span>
+      <h3 data-en="Install in one command" data-ar="تسطيب بأمر واحد">Install in one command</h3>
+      <p data-en="One line downloads it, wires it into your agent CLI and opens the dashboard. Run it again to update."
+         data-ar="سطر واحد بينزّله ويربطه بالـCLI بتاعك ويفتح الشاشة. وشغّله تاني عشان يحدّث.">One line downloads it, wires it into your agent CLI and opens the dashboard. Run it again to update.</p></div>
+    <div class="card"><span class="ico">&#129517;</span>
+      <h3 data-en="Zero dependencies" data-ar="صفر مكتبات">Zero dependencies</h3>
+      <p data-en="No npm packages, no lockfile, no supply chain. A test fails the build if an import is not a Node builtin."
+         data-ar="مفيش أي حزمة خارجية ولا lockfile. وفيه تست بيفشّل البيلد لو أي import مش من Node نفسه.">No npm packages, no lockfile, no supply chain. A test fails the build if an import is not a Node builtin.</p></div>
+    <div class="card"><span class="ico">&#128272;</span>
+      <h3 data-en="Gates you control" data-ar="بوابات إنت مالكها">Gates you control</h3>
+      <p data-en="Approve or reject each stage from the dashboard or the terminal - or let it run unattended. Your call, per run."
+         data-ar="توافق أو ترفض كل مرحلة من الشاشة أو الترمنال - أو تسيبه يكمّل لوحده. قرارك، وكل مرة لوحدها.">Approve or reject each stage from the dashboard or the terminal - or let it run unattended. Your call, per run.</p></div>
+    <div class="card"><span class="ico">&#129513;</span>
+      <h3 data-en="Visual flow editor" data-ar="محرر فلو بالسحب">Visual flow editor</h3>
+      <p data-en="Drag labelled nodes, wire the next step and the on-failure jump, pin a model and a thinking level per stage."
+         data-ar="تسحب النودات، وتوصّل الخطوة الجاية ومسار الفشل، وتثبّت موديل ومستوى تفكير لكل مرحلة.">Drag labelled nodes, wire the next step and the on-failure jump, pin a model and a thinking level per stage.</p></div>
+    <div class="card"><span class="ico">&#129302;</span>
+      <h3 data-en="Four executors" data-ar="أربع أدوات">Four executors</h3>
+      <p data-en="Devin, Copilot, Cursor and Trae are detected from what is really installed, with login state read live and reported honestly."
+         data-ar="ديفن وكوبايلوت وكارسر وتري بيتقروا من اللي متسطّب فعلًا، وحالة تسجيل الدخول بتتقرا لايف وبتتقال بأمانة.">Devin, Copilot, Cursor and Trae are detected from what is really installed, with login state read live and reported honestly.</p></div>
+    <div class="card"><span class="ico">&#127760;</span>
+      <h3 data-en="Arabic and English" data-ar="عربي وإنجليزي">Arabic and English</h3>
+      <p data-en="The whole UI switches instantly, RTL included - and a test fails if a single string is missing in either language."
+         data-ar="الواجهة كلها بتتقلب فورًا مع RTL - وفيه تست بيفشل لو سترنج واحدة ناقصة في أي لغة.">The whole UI switches instantly, RTL included - and a test fails if a single string is missing in either language.</p></div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2 data-en="See it" data-ar="شوفه بعينك">See it</h2>
+  <p class="lead" data-en="Every image is the real UI, captured from a running instance."
+     data-ar="كل صورة هنا هي الواجهة الحقيقية، متصوّرة من نسخة شغالة.">Every image is the real UI, captured from a running instance.</p>
+  <div class="gallery">
+    <figure><img src="screenshots/14-pipeline.png" alt="Pipeline view" loading="lazy">
+      <figcaption data-en="Live pipeline: stage, model, thinking level, retries." data-ar="الخط لايف: المرحلة والموديل ومستوى التفكير وعدد المحاولات.">Live pipeline: stage, model, thinking level, retries.</figcaption></figure>
+    <figure><img src="screenshots/04-flows-canvas.png" alt="Flow editor" loading="lazy">
+      <figcaption data-en="Flow editor - drag, wire, and it stays plain JSON." data-ar="محرر الفلو - اسحب ووصّل، والناتج JSON عادي.">Flow editor - drag, wire, and it stays plain JSON.</figcaption></figure>
+    <figure><img src="screenshots/10-providers.png" alt="Executors" loading="lazy">
+      <figcaption data-en="Executors, built from what is really on the machine." data-ar="الأدوات، مبنية على اللي متسطّب فعلًا على الجهاز.">Executors, built from what is really on the machine.</figcaption></figure>
+    <figure><img src="screenshots/03-artifacts.png" alt="Artifacts" loading="lazy">
+      <figcaption data-en="Artifacts, exportable to PDF, Word, Excel and more." data-ar="ملفات التسليم، وتقدر تصدّرها PDF وWord وExcel وغيرهم.">Artifacts, exportable to PDF, Word, Excel and more.</figcaption></figure>
+  </div>
+</section>
+
+<section class="wrap">
+  <div class="cta">
+    <h2 data-en="Start in about a minute" data-ar="ابدأ في دقيقة تقريبًا">Start in about a minute</h2>
+    <p class="lead" style="margin:8px auto 0" data-en="Windows, Node 18 or newer. MIT licensed."
+       data-ar="ويندوز، ونود 18 أو أحدث. رخصة MIT.">Windows, Node 18 or newer. MIT licensed.</p>
+    <div class="btns">
+      <a class="btn primary" href="https://github.com/Eng-MMustafa/FlowForge#install-in-one-command" data-en="Install now" data-ar="سطّبه دلوقتي">Install now</a>
+      <a class="btn" href="https://github.com/Eng-MMustafa/FlowForge" data-en="Read the docs" data-ar="اقرا التوثيق">Read the docs</a>
+      <a class="btn" href="README.ar.md" data-en="بالعربي" data-ar="النسخة العربية">بالعربي</a>
+    </div>
+  </div>
+</section>
+
+<footer><div class="wrap">
+  <span>FlowForge &#9881; - MIT - Mohammed Mustafa</span>
+  <span><a href="https://github.com/Eng-MMustafa/FlowForge">GitHub</a> &middot; <a href="https://www.npmjs.com/package/flowforge-cli">npm</a></span>
+</div></footer>
+
+<script>
+  var btn = document.getElementById('copy');
+  btn.addEventListener('click', function () {
+    var text = document.getElementById('cmd').textContent;
+    var done = function () {
+      btn.classList.add('done');
+      btn.textContent = document.documentElement.lang === 'ar' ? 'اتنسخ' : 'Copied';
+      setTimeout(function () { btn.classList.remove('done'); paint(); }, 1600);
+    };
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, fallback);
+    else fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+  });
+
+  function paint() {
+    var ar = document.documentElement.lang === 'ar';
+    document.querySelectorAll('[data-en]').forEach(function (el) {
+      el.innerHTML = ar ? el.dataset.ar : el.dataset.en;
+    });
+    document.getElementById('lang').textContent = ar ? 'English' : 'العربية';
+  }
+  document.getElementById('lang').addEventListener('click', function () {
+    var ar = document.documentElement.lang !== 'ar';
+    document.documentElement.lang = ar ? 'ar' : 'en';
+    document.documentElement.dir = ar ? 'rtl' : 'ltr';
+    try { localStorage.setItem('ff.site.lang', ar ? 'ar' : 'en'); } catch (e) {}
+    paint();
+  });
+  try {
+    if (localStorage.getItem('ff.site.lang') === 'ar') {
+      document.documentElement.lang = 'ar'; document.documentElement.dir = 'rtl';
+    }
+  } catch (e) {}
+  paint();
+</script>
+</body>
+</html>
