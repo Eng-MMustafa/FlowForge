@@ -7,7 +7,7 @@
 [![npm](https://img.shields.io/npm/v/flowforge-cli?color=cb3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/flowforge-cli)
 [![Node](https://img.shields.io/badge/node-%E2%89%A518-3ecc6b?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-6fb8ff)](#zero-dependencies)
-[![Tests](https://img.shields.io/badge/tests-253%20passing-3ecc6b)](#tests)
+[![Tests](https://img.shields.io/badge/tests-255%20passing-3ecc6b)](#tests)
 [![License](https://img.shields.io/badge/license-MIT-f0a92e)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows-6fb8ff)](#requirements)
 
@@ -25,7 +25,7 @@ That is the whole setup. It downloads FlowForge, wires it into Devin if Devin is
 
 <div align="center">
 
-![FlowForge dashboard](docs/screenshots/01-overview.png)
+![FlowForge dashboard](https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/docs/screenshots/01-overview.png)
 
 </div>
 
@@ -217,7 +217,7 @@ Every screenshot below is the real UI, captured from a running instance.
 
 ### 1. Run bar & prompt generator
 
-![Run bar](docs/screenshots/13-runbar.png)
+![Run bar](https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/docs/screenshots/13-runbar.png)
 
 The composer is deliberately one screen: **who** executes, **which** flow, **what** you want, and **how** it should behave.
 
@@ -233,29 +233,29 @@ The prompt generator tries your existing Devin login first, then any OpenAI-comp
 
 ### 2. Pipeline view
 
-![Pipeline](docs/screenshots/14-pipeline.png)
+![Pipeline](https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/docs/screenshots/14-pipeline.png)
 
 The live spine of a run: refined task on top (with the raw text you typed underneath), then one row per stage showing the role, the pinned **model** and **thinking level**, the status colour, a per-stage note and the retry counter. Beside it sits the tail of the artifact currently being written, an inbox to send the agent a mid-run instruction, the file-change feed and the log.
 
 ### 3. Live activity
 
-![Activity](docs/screenshots/02-activity.png)
+![Activity](https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/docs/screenshots/02-activity.png)
 
 A filesystem watcher on the active project (build noise excluded), plus real Git state: current branch, changed files, the diffstat, and a click-to-open unified diff — so you can watch exactly what the agent is touching while it works.
 
 ### 4. Artifacts & export
 
-![Artifacts](docs/screenshots/03-artifacts.png)
+![Artifacts](https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/docs/screenshots/03-artifacts.png)
 
 Every stage output rendered as markdown, with `VERDICT: PASS/FAIL` lines and checkboxes styled as badges, and a raw toggle. The **Export as** control converts any artifact into **PDF, Word, Excel, CSV, HTML, TXT, Markdown or JSON** and writes it to `<project>/.workbench/exports/` — using the project's own converter, with no external library.
 
 ### 5. Visual flow editor
 
-![Flow canvas](docs/screenshots/04-flows-canvas.png)
+![Flow canvas](https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/docs/screenshots/04-flows-canvas.png)
 
 A flow is a JSON file, but you never have to write one. Drag labelled icon nodes onto a canvas and wire them:
 
-![Palette](docs/screenshots/06-flow-palette.png)
+![Palette](https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/docs/screenshots/06-flow-palette.png)
 
 - **Agent steps** — the six roles, plus analytics and performance specialists.
 - **Understand steps** — architecture, conventions and rules extraction.
@@ -263,25 +263,25 @@ A flow is a JSON file, but you never have to write one. Drag labelled icon nodes
 
 Wiring rules: the **blue port on the right** is the next stage; the **amber port at the bottom** is the on-failure jump (with its own retry count); clicking a wire deletes it; the gate button on a node cycles auto → dashboard → terminal → default; the green dot marks the entry step.
 
-![Step inspector](docs/screenshots/05-flow-inspector.png)
+![Step inspector](https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/docs/screenshots/05-flow-inspector.png)
 
 Selecting a node opens the **step inspector** — labelled dropdowns only, no free typing: model family, thinking level, gate mode, retry loops, pre-script toggles and the artifact name. The same overrides appear as chips on the node itself. Node positions round-trip through the flow file and are ignored by the orchestrator.
 
 ### 6. Agents
 
-![Agents](docs/screenshots/07-agents.png)
+![Agents](https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/docs/screenshots/07-agents.png)
 
 Role contracts are markdown with front-matter, and you get three ways to edit them: a **visual** editor (presets, model, tools, artifact, sections and rules as toggles), a **form** view, and the **raw** file. The preview underneath shows exactly what will be written to disk.
 
 ### 7. Skills
 
-![Skills](docs/screenshots/08-skills.png)
+![Skills](https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/docs/screenshots/08-skills.png)
 
 The same three-way editing for the chat commands (`/flow`, `/understand`, `/flow-status`, …), including which flow a skill launches and its default gate mode.
 
 ### 8. Executors — who does the work
 
-![Executors](docs/screenshots/10-providers.png)
+![Executors](https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/docs/screenshots/10-providers.png)
 
 One card per tool, built entirely from what is really on the machine:
 
@@ -292,13 +292,13 @@ One card per tool, built entirely from what is really on the machine:
 
 ### 9. Studio — the wordless builder
 
-![Studio](docs/screenshots/12-studio.png)
+![Studio](https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/docs/screenshots/12-studio.png)
 
 A second screen at `/studio` with **no text at all** — only icons, sliders, toggles and drag handles. Build a pipeline, set quality and gates, and hit play. It emits ordinary flow JSON, so anything built here opens in the normal editor.
 
 ### 10. Themes and language
 
-![Light theme](docs/screenshots/11-overview-light.png)
+![Light theme](https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/docs/screenshots/11-overview-light.png)
 
 Dark and light themes, and a full **Arabic ⇄ English** UI (RTL included) that switches instantly — every string is covered by a test that fails if a key is missing in either language.
 
@@ -515,7 +515,7 @@ The dashboard is a plain `node:http` server; every screen is built on this API, 
 node dashboard\test\run-tests.mjs
 ```
 
-**253 checks, no test framework.** The suite spawns its own server on a spare port with a temporary scratch project, and restores your registry afterwards. It covers UI script syntax, complete bilingual i18n key coverage, the Studio's text-free guarantee, the flow↔graph round trip and cycle rejection, every API endpoint, the watcher feed, the gate protocol, provider detection/auth/model mapping, path-traversal guards, and the document converter (real PDF bytes, and `.docx`/`.xlsx` opened with Windows' own ZIP reader).
+**255 checks, no test framework.** The suite spawns its own server on a spare port with a temporary scratch project, and restores your registry afterwards. It covers UI script syntax, complete bilingual i18n key coverage, the Studio's text-free guarantee, the flow↔graph round trip and cycle rejection, every API endpoint, the watcher feed, the gate protocol, provider detection/auth/model mapping, path-traversal guards, and the document converter (real PDF bytes, and `.docx`/`.xlsx` opened with Windows' own ZIP reader).
 
 ---
 
@@ -534,7 +534,7 @@ FlowForge/
 │   ├── acp-client.mjs   Devin ACP session client
 │   ├── ui/index.html    the dashboard (single file)
 │   ├── ui/studio.html   the wordless builder
-│   └── test/            the 253-check suite
+│   └── test/            the 255-check suite
 ├── docs/screenshots/    the images in this README
 ├── bin/flowforge.mjs     the global CLI
 ├── get.mjs               the one-command installer

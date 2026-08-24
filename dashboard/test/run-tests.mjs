@@ -111,6 +111,20 @@ console.log('# static checks');
   const absent = needed.filter((n) => !packed.includes(n));
   ok('package: the tarball is actually runnable (all runtime files present)',
     absent.length === 0, absent.join(', '));
+
+  // The README travels to npmjs.com without docs/, so every image it shows
+  // must be an absolute URL - and must still exist in this repo.
+  const readme = fs.readFileSync(path.join(WORKBENCH, 'README.md'), 'utf8');
+  const imgs = [...readme.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)].map((m) => m[1]);
+  const relative = imgs.filter((u) => !/^https?:\/\//.test(u));
+  ok('package: every README image is an absolute URL (docs/ is not packed)',
+    imgs.length > 0 && relative.length === 0, relative.join(', '));
+  const own = /^https:\/\/raw\.githubusercontent\.com\/[^/]+\/[^/]+\/[^/]+\//;
+  const localMisses = imgs.filter((u) => own.test(u))
+    .map((u) => u.replace(own, ''))
+    .filter((rel) => !fs.existsSync(path.join(WORKBENCH, rel)));
+  ok('package: every screenshot the README links to exists in the repo',
+    localMisses.length === 0, localMisses.join(', '));
 }
 
 // The one-command installer must stay dependency-free and never hard-code a
