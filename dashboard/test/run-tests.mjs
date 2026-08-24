@@ -13,6 +13,11 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DASHBOARD = path.resolve(__dirname, '..');
 const WORKBENCH = path.resolve(DASHBOARD, '..');
+// `docs/` (screenshots + landing page) is deliberately left out of the npm
+// tarball, so the checks that read it only apply to a git checkout. Running
+// this suite from an installed copy must not report failures about files that
+// were never meant to ship.
+const HAS_DOCS = fs.existsSync(path.join(WORKBENCH, 'docs', 'index.html'));
 const PORT = 4890;
 const BASE = `http://127.0.0.1:${PORT}`;
 
@@ -60,6 +65,89 @@ console.log('# static checks');
     r.status === 0 && rep && path.resolve(rep.repo).toLowerCase() === WORKBENCH.toLowerCase()
     && typeof rep.ready === 'boolean' && typeof rep.skills === 'boolean',
     (r.stdout || '').slice(0, 120) + (r.stderr || '').slice(0, 120));
+}
+
+// A fresh machine: no Devin, a busy default port, a read-only install. None of
+// these may stop the dashboard from coming up.
+{
+  const P = await import('../../scripts/lib/platform.mjs');
+
+  // An explicit override must win even before the directory exists, or a typo
+  // silently resolves to a different machine location.
+  const ghost = path.join(os.tmpdir(), 'ff-ghost-devin-' + Date.now());
+  ok('fresh: DEVIN_CONFIG_DIR wins even when it does not exist yet',
+    P.agentConfigDir({ env: { ...process.env, DEVIN_CONFIG_DIR: ghost } }) === ghost);
+
+  // The launcher must hand the port to the server, not just poll it.
+  const launcher = fs.readFileSync(path.join(WORKBENCH, 'start.mjs'), 'utf8');
+  ok('fresh: the launcher passes the port to the server',
+    /serverArgs = \[[\s\S]*?String\(PORT\)/.test(launcher));
+  ok('fresh: a missing Devin does not stop the dashboard',
+    /starting the dashboard anyway/.test(launcher)
+    && !/Devin config directory not found[\s\S]{0,200}process\.exit\(1\)/.test(launcher));
+
+  // Really start it with no Devin and a non-default port, then talk to it.
+  const port = 4893;
+  const proc = spawnSync(process.execPath, ['-e', `
+    const { spawn } = require('child_process');
+    const p = spawn(process.execPath, [${JSON.stringify(path.join(WORKBENCH, 'start.mjs'))},
+      '--port=${port}', '--no-open'], { stdio: 'ignore',
+      env: { ...process.env, DEVIN_CONFIG_DIR: ${JSON.stringify(ghost)}, FF_REGISTRY: ${JSON.stringify(path.join(os.tmpdir(), 'ff-fresh-registry.json'))} } });
+    const stop = () => { try { process.kill(p.pid); } catch {} };
+    setTimeout(async () => {
+      let ok = false;
+      try { ok = (await fetch('http://127.0.0.1:${port}/api/health')).ok; } catch {}
+      stop();
+      console.log(ok ? 'ALIVE' : 'DEAD');
+      process.exit(0);
+    }, 4000);
+  `], { encoding: 'utf8', timeout: 25000 });
+  ok('fresh: the dashboard starts with no Devin, on the port asked for',
+    /ALIVE/.test(proc.stdout || ''), (proc.stdout || proc.stderr || '').slice(0, 200));
+
+  // A port already taken must be one clear message and exit 3, not a restart
+  // storm - so hold the port here and let the server run into it.
+  const net = await import('node:net');
+  const blocker = net.createServer(() => {});
+  const takenPort = 4894;
+  await new Promise((r) => blocker.listen(takenPort, '127.0.0.1', r));
+  const busy = spawnSync(process.execPath, [path.join(DASHBOARD, 'server.mjs'), '', String(takenPort)], {
+    encoding: 'utf8',
+    timeout: 15000,
+    env: { ...process.env, FF_REGISTRY: path.join(os.tmpdir(), 'ff-busy-registry.json') },
+  });
+  blocker.close();
+  ok('fresh: a busy port exits 3 with an explanation, never a crash loop',
+    busy.status === 3 && /already in use/i.test(busy.stderr || ''),
+    `exit ${busy.status}: ${(busy.stderr || '').slice(0, 90)}`);
+
+  // A mistyped project path must be one clear line, not a restart storm.
+  const bad = spawnSync(process.execPath, [path.join(WORKBENCH, 'start.mjs'),
+    path.join(os.tmpdir(), 'ff-no-such-project'), '--port=4895', '--no-open'],
+  { encoding: 'utf8', timeout: 20000, env: { ...process.env, DEVIN_CONFIG_DIR: ghost } });
+  ok('fresh: a mistyped project folder fails once, with a readable reason',
+    bad.status === 1 && /project folder not found/i.test(bad.stderr || ''),
+    `exit ${bad.status}`);
+
+  // Paths with spaces (and non-Latin characters) are normal on real machines.
+  const spaced = path.join(os.tmpdir(), 'ff space مشروع ' + Date.now());
+  fs.mkdirSync(spaced, { recursive: true });
+  const spacedRun = spawnSync(process.execPath, [path.join(DASHBOARD, 'server.mjs'), spaced, '4896'], {
+    encoding: 'utf8',
+    timeout: 6000,
+    env: { ...process.env, FF_REGISTRY: path.join(os.tmpdir(), 'ff-spaced-registry.json') },
+  });
+  // It is killed by the timeout, which means it accepted the folder and served.
+  ok('fresh: a project path with spaces and non-Latin characters is accepted',
+    !/not found/i.test(spacedRun.stderr || '') && /url:\s+http/.test(spacedRun.stdout || ''),
+    (spacedRun.stderr || '').slice(0, 90));
+  fs.rmSync(spaced, { recursive: true, force: true });
+
+  // A root-owned install must not make the tool unusable: state moves to the
+  // user's own directory instead of failing to write next to the code.
+  ok('fresh: state falls back to a user directory when the install is read-only',
+    P.stateDir('/some/root/owned', { writable: () => false }) === P.userStateDir()
+    && P.stateDir(os.tmpdir()) === os.tmpdir());
 }
 
 // Packaging: `npm publish` must ship a runnable tool and NOTHING of this
@@ -119,12 +207,14 @@ console.log('# static checks');
   const relative = imgs.filter((u) => !/^https?:\/\//.test(u));
   ok('package: every README image is an absolute URL (docs/ is not packed)',
     imgs.length > 0 && relative.length === 0, relative.join(', '));
-  const own = /^https:\/\/raw\.githubusercontent\.com\/[^/]+\/[^/]+\/[^/]+\//;
-  const localMisses = imgs.filter((u) => own.test(u))
-    .map((u) => u.replace(own, ''))
-    .filter((rel) => !fs.existsSync(path.join(WORKBENCH, rel)));
-  ok('package: every screenshot the README links to exists in the repo',
-    localMisses.length === 0, localMisses.join(', '));
+  if (HAS_DOCS) {
+    const own = /^https:\/\/raw\.githubusercontent\.com\/[^/]+\/[^/]+\/[^/]+\//;
+    const localMisses = imgs.filter((u) => own.test(u))
+      .map((u) => u.replace(own, ''))
+      .filter((rel) => !fs.existsSync(path.join(WORKBENCH, rel)));
+    ok('package: every screenshot the README links to exists in the repo',
+      localMisses.length === 0, localMisses.join(', '));
+  }
 }
 
 // Cross-platform layer: every OS difference is a pure function taking the
@@ -215,7 +305,7 @@ console.log('# static checks');
 
 // The landing page (GitHub Pages, served from docs/) follows the same rules as
 // the dashboard: no external code, bilingual, and every image really there.
-{
+if (HAS_DOCS) {
   const site = fs.readFileSync(path.join(WORKBENCH, 'docs', 'index.html'), 'utf8');
   const scripts = [...site.matchAll(/<script\b([^>]*)>/g)].map((m) => m[1]);
   const links = [...site.matchAll(/<link\b[^>]*href="([^"]+)"/g)].map((m) => m[1]);

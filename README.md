@@ -7,7 +7,7 @@
 [![npm](https://img.shields.io/npm/v/flowforge-cli?color=cb3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/flowforge-cli)
 [![Node](https://img.shields.io/badge/node-%E2%89%A518-3ecc6b?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-6fb8ff)](#zero-dependencies)
-[![Tests](https://img.shields.io/badge/tests-279%20passing-3ecc6b)](#tests)
+[![Tests](https://img.shields.io/badge/tests-288%20passing-3ecc6b)](#tests)
 [![License](https://img.shields.io/badge/license-MIT-f0a92e)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-6fb8ff)](#requirements)
 
@@ -146,7 +146,14 @@ Every OS difference lives in one file, `scripts/lib/platform.mjs`, and each func
 | **Editor detection** | `%LOCALAPPDATA%\Programs` | `/Applications/*.app` | PATH + `~/.config` |
 | **Sign-in terminal** | `cmd /c start` | Terminal.app | first installed of `gnome-terminal`, `konsole`, `xterm`, … |
 
-Set `DEVIN_CONFIG_DIR` if your agent keeps its config somewhere else. On Linux with no terminal emulator installed, the sign-in endpoint returns the script path for you to run yourself rather than claiming a window opened.
+Set `DEVIN_CONFIG_DIR` if your agent keeps its config somewhere else — it wins even if the folder does not exist yet, so a typo is visible instead of silently resolving elsewhere. On Linux with no terminal emulator installed, the sign-in endpoint returns the script path for you to run yourself rather than claiming a window opened.
+
+**It also runs where things are not ideal:**
+
+- **No agent installed?** The dashboard still starts — flows, the editor, artifacts and export all work; only the chat skills need the wiring.
+- **Port already taken?** One clear message and exit, no restart storm. `flowforge --port=4830`.
+- **Install folder owned by root** (`sudo npm i -g`)? State moves to your own directory instead of failing to write next to the code.
+- **Spaces or non-Latin characters in the project path?** Fine — covered by a test.
 
 > **Honest caveat:** the author develops on Windows, so that is the most heavily exercised path. macOS and Linux are covered by the platform tests and by careful path work — if something is off on your machine, please [open an issue](https://github.com/Eng-MMustafa/FlowForge/issues).
 
@@ -541,7 +548,7 @@ The dashboard is a plain `node:http` server; every screen is built on this API, 
 node dashboard\test\run-tests.mjs
 ```
 
-**279 checks, no test framework.** The suite spawns its own server on a spare port with a temporary scratch project, and restores your registry afterwards. It covers UI script syntax, complete bilingual i18n key coverage, the Studio's text-free guarantee, the flow↔graph round trip and cycle rejection, every API endpoint, the watcher feed, the gate protocol, provider detection/auth/model mapping, path-traversal guards, and the document converter (real PDF bytes, and `.docx`/`.xlsx` opened with Windows' own ZIP reader).
+**288 checks, no test framework.** The suite spawns its own server on a spare port with a temporary scratch project, and restores your registry afterwards. It covers UI script syntax, complete bilingual i18n key coverage, the Studio's text-free guarantee, the flow↔graph round trip and cycle rejection, every API endpoint, the watcher feed, the gate protocol, provider detection/auth/model mapping, path-traversal guards, and the document converter (real PDF bytes, and `.docx`/`.xlsx` opened with Windows' own ZIP reader).
 
 ---
 
@@ -561,7 +568,7 @@ FlowForge/
 │   ├── acp-client.mjs   Devin ACP session client
 │   ├── ui/index.html    the dashboard (single file)
 │   ├── ui/studio.html   the wordless builder
-│   └── test/            the 279-check suite
+│   └── test/            the 288-check suite
 ├── docs/index.html       the landing page (GitHub Pages)
 ├── docs/screenshots/    the images in this README
 ├── bin/flowforge.mjs     the global CLI
@@ -587,6 +594,8 @@ Runtime state lives in each **target project** under `.workbench/` — never in 
 ---
 
 ## Troubleshooting
+
+**Port 4820 is already in use.** Either FlowForge is already running on it (open <http://127.0.0.1:4820/>), or something else took it: `flowforge --port=4830`.
 
 **The skills do not appear in the chat.** Run `node install.mjs`, then start a *new* session — skills are read at session start.
 

@@ -10,7 +10,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { agentConfigDir, agentConfigCandidates, openUrlCommand, samePath } from './scripts/lib/platform.mjs';
+import {
+  agentConfigDir, agentConfigCandidates, openUrlCommand, samePath, stateDir,
+} from './scripts/lib/platform.mjs';
 
 const REPO = path.dirname(fileURLToPath(import.meta.url));
 const DEVIN = agentConfigDir() || null;
@@ -70,18 +72,19 @@ if (flag('check')) {
 console.log('FlowForge');
 console.log(`  workbench: ${REPO}`);
 
-if (!DEVIN || !fs.existsSync(DEVIN)) {
-  console.error('Devin config directory not found - is Devin installed?');
-  console.error(`  looked in: ${agentConfigCandidates().join(', ')}`);
-  console.error('  set DEVIN_CONFIG_DIR if it lives somewhere else.');
-  process.exit(1);
-}
-
-if (!st.locator || !st.skills || !st.agents) {
+// No Devin on this machine is NOT a reason to refuse: the dashboard, the flow
+// editor, the artifacts and the export all work without it. Only the chat
+// skills need the wiring, so that part is skipped with a clear note.
+const devinPresent = !!DEVIN && fs.existsSync(DEVIN);
+if (!devinPresent) {
+  console.log('  Devin config not found - starting the dashboard anyway.');
+  console.log(`    looked in: ${agentConfigCandidates().join(', ')}`);
+  console.log('    install Devin (or set DEVIN_CONFIG_DIR), then run: node install.mjs');
+} else if (!st.locator || !st.skills || !st.agents) {
   console.log('  installing into Devin (first run or the folder moved)...');
   const r = spawnSync(process.execPath, [path.join(REPO, 'install.mjs')], { stdio: 'inherit' });
-  if (r.status !== 0) { console.error('install failed - fix the error above and run again'); process.exit(1); }
-  console.log('  NOTE: start a NEW Devin session so it picks up the skills.');
+  if (r.status !== 0) console.error('  wiring into Devin failed - the dashboard still starts; see the error above');
+  else console.log('  NOTE: start a NEW Devin session so it picks up the skills.');
 } else {
   console.log('  skills + agents: installed ✓');
 }
@@ -92,12 +95,30 @@ if (await serverAlive()) {
   process.exit(0);
 }
 
-const serverArgs = [path.join(REPO, 'dashboard', 'server.mjs')];
-if (projectArg) serverArgs.push(path.resolve(projectArg));
+// A path the user mistyped must be one clear line, not twenty restarts of a
+// server that cannot possibly succeed.
+if (projectArg) {
+  const p = path.resolve(projectArg);
+  if (!fs.existsSync(p) || !fs.statSync(p).isDirectory()) {
+    console.error(`  project folder not found: ${p}`);
+    console.error('  pass an existing folder, or none at all to use the current one.');
+    process.exit(1);
+  }
+}
+
+// The server takes [project, port] positionally - the port MUST be passed or a
+// --port= flag would only change what this launcher polls, not what binds.
+const serverArgs = [
+  path.join(REPO, 'dashboard', 'server.mjs'),
+  projectArg ? path.resolve(projectArg) : '',
+  String(PORT),
+];
 
 // A flow agent that force-kills node processes (or any crash) must not take the
 // user's control surface down with it: keep a log and bring the server back.
-const LOG_FILE = path.join(REPO, 'dashboard', 'server.log');
+// Next to the code when that is writable, in the per-user state directory when
+// the install belongs to someone else (a root-owned global install).
+const LOG_FILE = path.join(stateDir(path.join(REPO, 'dashboard')), 'server.log');
 const MAX_RESTARTS = 20;
 let restarts = 0;
 let stopping = false;
@@ -115,6 +136,9 @@ function launchServer() {
     log.write(`=== server exit code=${code} signal=${signal} ${new Date().toISOString()} ===\n`);
     log.end();
     if (stopping) { process.exit(code === null ? 0 : code); return; }
+    // Exit 3 = the port is taken. Restarting cannot fix that, and the server
+    // already printed what to do.
+    if (code === 3) process.exit(3);
     if (restarts >= MAX_RESTARTS) { console.error(`  server keeps exiting (${restarts} restarts) - see ${LOG_FILE}`); process.exit(1); }
     restarts++;
     console.error(`  server exited (code=${code} signal=${signal}) - restarting #${restarts}, log: ${LOG_FILE}`);
@@ -128,5 +152,9 @@ for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { stopping = true
 // Open the browser only once the server actually answers.
 for (let i = 0; i < 40; i++) {
   await new Promise((r) => setTimeout(r, 250));
-  if (await serverAlive()) { console.log(`  opening ${BASE}`); openBrowser(BASE); break; }
+  if (await serverAlive()) {
+    console.log(flag('no-open') ? `  ready -> ${BASE}` : `  opening ${BASE}`);
+    openBrowser(BASE);
+    break;
+  }
 }

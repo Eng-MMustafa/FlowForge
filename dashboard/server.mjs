@@ -22,7 +22,7 @@ import { FORMATS, FORMAT_IDS, extensionFor } from '../scripts/lib/formats.mjs';
 // Every OS difference (paths, openers, terminals, kill) lives in one place.
 import {
   openAppCommand, terminalCommand, killTreeCommand, loginScriptFormat, loginScriptLines,
-  devinCliCandidates,
+  devinCliCandidates, stateDir,
 } from '../scripts/lib/platform.mjs';
 // Executor providers (Devin, Copilot, Cursor, Trae) live in one registry file.
 import {
@@ -33,10 +33,16 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKBENCH = path.resolve(__dirname, '..');
-const PORT = Number(process.argv[3] || 4820);
+// argv: [project|'' , port]. Also accept --port= so the server can be started
+// directly the same way the launcher and the CLI are.
+const portFlag = process.argv.find((a) => a.startsWith('--port='));
+const PORT = Number((portFlag && portFlag.slice(7)) || process.argv[3] || 4820) || 4820;
 // FF_REGISTRY lets a test server keep its own project list so it can never
-// disturb the registry the real dashboard is using.
-const REGISTRY_FILE = process.env.FF_REGISTRY || path.join(__dirname, 'projects.local.json');
+// disturb the registry the real dashboard is using. Otherwise it sits next to
+// the code - unless the install is not writable (a root-owned global install),
+// in which case it moves to the per-user state directory.
+const REGISTRY_FILE = process.env.FF_REGISTRY
+  || path.join(stateDir(__dirname), 'projects.local.json');
 const FLOWS_DIR = path.join(WORKBENCH, 'flows');
 const AGENTS_DIR = path.join(WORKBENCH, 'agents');
 const SKILLS_DIR = path.join(WORKBENCH, 'skills');
@@ -73,7 +79,7 @@ async function saveRegistry(reg) {
 
 // Seed the registry from the optional CLI argument.
 {
-  const argProject = process.argv[2];
+  const argProject = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : '';
   if (argProject) {
     const p = path.resolve(argProject);
     if (!fssync.existsSync(p) || !fssync.statSync(p).isDirectory()) {
@@ -409,6 +415,9 @@ function startRun(project, { flow, task, gates, speed, permissionMode }) {
   const proc = spawn(cmd, cmdArgs, {
     cwd: project, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, NO_COLOR: '1', FORCE_COLOR: '0', TERM: 'dumb' },
+    // POSIX: lead a process group so stopping the run kills the CLI's children
+    // too. On Windows taskkill /T does that job and detaching would orphan it.
+    detached: process.platform !== 'win32',
   });
   run = {
     proc, pid: proc.pid, flow, task: safeTask, gates: gateMode,
@@ -1342,6 +1351,19 @@ const server = http.createServer(async (req, res) => {
   } catch (e) {
     return send(res, e.status || 500, { error: e.message || 'internal error' });
   }
+});
+
+// A port already taken is a normal thing on a shared machine, not a crash: say
+// what to do and exit with a distinct code the launcher recognises.
+server.on('error', (e) => {
+  if (e.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use.`);
+    console.error(`  Another FlowForge may be running: http://127.0.0.1:${PORT}/`);
+    console.error('  Or start this one elsewhere:  flowforge --port=4830');
+    process.exit(3);
+  }
+  console.error(`server error: ${e.message}`);
+  process.exit(1);
 });
 
 server.listen(PORT, '127.0.0.1', () => {

@@ -38,8 +38,11 @@ export function agentConfigCandidates(plat = plat0(), env = process.env, home = 
 
 // First candidate that exists; otherwise the platform's preferred one, so the
 // caller can report a precise "not found here" instead of a vague failure.
+// DEVIN_CONFIG_DIR is an explicit instruction: it wins even when it does not
+// exist yet, because silently using a different directory would hide the typo.
 export function agentConfigDir(opts = {}) {
   const { plat = plat0(), env = process.env, home = home0(), exists = fs.existsSync } = opts;
+  if (env.DEVIN_CONFIG_DIR) return env.DEVIN_CONFIG_DIR;
   const candidates = agentConfigCandidates(plat, env, home);
   return candidates.find((c) => exists(c)) || candidates[0] || '';
 }
@@ -242,6 +245,30 @@ export function whichSync(cmd, env = process.env, plat = plat0()) {
 
 // npm ships as a .cmd shim on Windows, which cannot be spawned without a shell.
 export const npmBin = (name = 'npm', plat = plat0()) => (plat === 'win32' ? `${name}.cmd` : name);
+
+// ---------- writable state ----------
+
+export function isWritable(dir) {
+  try { fs.accessSync(dir, fs.constants.W_OK); return true; } catch { return false; }
+}
+
+// A global install can be owned by root (`sudo npm i -g`), and then nothing may
+// be written next to the code. Per-user state goes here instead.
+export function userStateDir(plat = plat0(), env = process.env, home = home0()) {
+  if (plat === 'win32') return path.join(env.LOCALAPPDATA || home, 'FlowForge');
+  if (plat === 'darwin') return path.join(home, 'Library', 'Application Support', 'FlowForge');
+  return path.join(env.XDG_STATE_HOME || path.join(home, '.local', 'state'), 'FlowForge');
+}
+
+// `preferred` (the install folder) wins when it is writable, so existing
+// installs keep their file exactly where it already is.
+export function stateDir(preferred, opts = {}) {
+  const { plat = plat0(), env = process.env, home = home0(), writable = isWritable } = opts;
+  if (preferred && writable(preferred)) return preferred;
+  const dir = userStateDir(plat, env, home);
+  try { fs.mkdirSync(dir, { recursive: true }); } catch { /* reported by the caller's write */ }
+  return dir;
+}
 
 // Where a fresh install lands when the user names no folder.
 export function defaultInstallDir(plat = plat0(), env = process.env, home = home0()) {
