@@ -1,0 +1,9 @@
+# npm ignores .gitignore once this file exists, so the local-only files have to
+# be listed again here - a published tarball must never carry machine state.
+*.local.*
+*.log
+.workbench/
+AGENTS.md
+docs/
+Thumbs.db
+Desktop.ini

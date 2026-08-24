@@ -1,0 +1,55 @@
+{
+  "name": "flowforge-cli",
+  "version": "1.0.0",
+  "description": "Turn one sentence into a staged AI engineering pipeline - specialised subagents, quality gates you approve, and a zero-dependency live dashboard.",
+  "keywords": [
+    "ai",
+    "ai-agents",
+    "devin",
+    "pipeline",
+    "workflow",
+    "dashboard",
+    "developer-tools",
+    "zero-dependency"
+  ],
+  "homepage": "https://github.com/Eng-MMustafa/FlowForge#readme",
+  "bugs": "https://github.com/Eng-MMustafa/FlowForge/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Eng-MMustafa/FlowForge.git"
+  },
+  "license": "MIT",
+  "author": "Mohammed Mustafa",
+  "type": "module",
+  "bin": {
+    "flowforge": "bin/flowforge.mjs",
+    "ff": "bin/flowforge.mjs"
+  },
+  "files": [
+    "bin/",
+    "agents/",
+    "flows/",
+    "skills/",
+    "scripts/",
+    "dashboard/*.mjs",
+    "dashboard/ui/",
+    "dashboard/test/",
+    "install.mjs",
+    "uninstall.mjs",
+    "start.mjs",
+    "get.mjs",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node start.mjs",
+    "test": "node dashboard/test/run-tests.mjs",
+    "postinstall": "node -e \"console.log('\\n  FlowForge installed. Run: flowforge\\n')\""
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "os": [
+    "win32"
+  ]
+}

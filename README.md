@@ -6,11 +6,23 @@
 
 [![Node](https://img.shields.io/badge/node-%E2%89%A518-3ecc6b?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-6fb8ff)](#zero-dependencies)
-[![Tests](https://img.shields.io/badge/tests-245%20passing-3ecc6b)](#tests)
+[![Tests](https://img.shields.io/badge/tests-253%20passing-3ecc6b)](#tests)
 [![License](https://img.shields.io/badge/license-MIT-f0a92e)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows-6fb8ff)](#requirements)
 
-[Arabic README →](docs/README.ar.md) · [Install](#installation) · [Dashboard tour](#the-dashboard--a-guided-tour) · [Flow format](#flow-files--the-schema) · [API](#http-api)
+[Arabic README →](docs/README.ar.md) · [Install](#install-in-one-command) · [Dashboard tour](#the-dashboard--a-guided-tour) · [Flow format](#flow-files--the-schema) · [API](#http-api)
+
+</div>
+
+## Install in one command
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/get.mjs -o "$env:TEMP\ff.mjs"; node "$env:TEMP\ff.mjs"
+```
+
+That is the whole setup. It downloads FlowForge, wires it into Devin if Devin is on the machine, and opens the dashboard. **No npm install, no dependencies, no config file.** Run the same command again any time to update.
+
+<div align="center">
 
 ![FlowForge dashboard](docs/screenshots/01-overview.png)
 
@@ -23,7 +35,8 @@
 - [Why FlowForge](#why-flowforge)
 - [How it works](#how-it-works)
 - [Requirements](#requirements)
-- [Installation](#installation)
+- [Other ways to install](#other-ways-to-install)
+- [The `flowforge` command](#the-flowforge-command)
 - [Quick start](#quick-start)
 - [The dashboard — a guided tour](#the-dashboard--a-guided-tour)
   - [1. Run bar & prompt generator](#1-run-bar--prompt-generator)
@@ -108,31 +121,59 @@ Nothing here is a wrapper around a hosted service: it is a folder of markdown ro
 | **Node.js** | 18 or newer (20+ recommended; the screenshot tooling uses Node 22 features) |
 | **Executor** | [Devin CLI](https://devin.ai) — the only executor that can *run* a flow today |
 | **Optional** | GitHub CLI (`gh`) for Copilot account detection, Cursor / Trae for module detection |
-| **Dependencies** | **None.** No `npm install`, no `package.json`, no lockfile |
+| **Dependencies** | **None.** The `package.json` exists only to expose the CLI — it declares no dependencies and there is no lockfile |
 
 ---
 
-## Installation
+## Other ways to install
+
+**Run it without installing anything** — npx pulls the repo and starts the dashboard:
+
+```powershell
+npx github:Eng-MMustafa/FlowForge
+```
+
+**From source**, if you want to hack on it:
 
 ```powershell
 git clone https://github.com/Eng-MMustafa/FlowForge.git
 cd FlowForge
 node install.mjs
+node start.mjs
 ```
 
-`install.mjs` does three things and never needs admin rights:
+**What the installer actually does** (no admin rights, nothing outside these three):
 
-1. Writes a **locator** at `%APPDATA%\devin\flowforge.json` pointing at this clone, so you can put the repo anywhere.
-2. Creates **directory junctions** `%APPDATA%\devin\skills` → `skills/` and `%APPDATA%\devin\agents` → `agents/`, so edits in the repo apply live with no reinstall.
-3. Strips any machine-specific absolute path that an older copy may have baked into a skill file.
+1. Writes a **locator** at `%APPDATA%\devin\flowforge.json` pointing at your copy, so it can live anywhere.
+2. Creates **directory junctions** `%APPDATA%\devin\skills` → `skills/` and `%APPDATA%\devin\agents` → `agents/`, so edits apply live with no reinstall.
+3. Strips any machine-specific absolute path an older copy may have baked into a skill file.
 
-Then start a **new** agent session so the skills are picked up.
-
-To remove everything (junctions and locator only — your projects are never touched):
+Start a **new** agent session afterwards so the skills are picked up. To undo it all (junctions and locator only — your projects are never touched):
 
 ```powershell
 node uninstall.mjs
 ```
+
+---
+
+## The `flowforge` command
+
+Installed globally, the CLI works from any folder — the folder you are standing in becomes the project:
+
+```powershell
+npm i -g flowforge-cli     # or: npm i -g github:Eng-MMustafa/FlowForge
+```
+
+| Command | Does |
+|---|---|
+| `flowforge` | Starts the dashboard on the current folder |
+| `flowforge C:\path\to\project` | Starts it on that project |
+| `flowforge install` / `uninstall` | Wires (or unwires) the skills and agents |
+| `flowforge test` | Runs the test suite |
+| `flowforge where` | Prints the install folder |
+| `flowforge --port=5000 --no-open` | Flags are passed through to the dashboard |
+
+`ff` is a shorter alias for the same command.
 
 ---
 
@@ -151,11 +192,13 @@ node uninstall.mjs
 **From the dashboard:**
 
 ```powershell
-node start.mjs                                   # opens http://127.0.0.1:4820
-node start.mjs "C:\path\to\your\project"         # start on a specific project
-node start.mjs --port=5000 --no-open             # custom port, no browser
-node start.mjs --check                           # health check and exit
+flowforge                                        # opens http://127.0.0.1:4820
+flowforge "C:\path\to\your\project"              # start on a specific project
+flowforge --port=5000 --no-open                  # custom port, no browser
+flowforge --check                                # health check and exit
 ```
+
+(From a source checkout the same flags work with `node start.mjs`.)
 
 Pick a flow, type what you want in any language, press **Run now**.
 
@@ -465,7 +508,7 @@ The dashboard is a plain `node:http` server; every screen is built on this API, 
 node dashboard\test\run-tests.mjs
 ```
 
-**245 checks, no test framework.** The suite spawns its own server on a spare port with a temporary scratch project, and restores your registry afterwards. It covers UI script syntax, complete bilingual i18n key coverage, the Studio's text-free guarantee, the flow↔graph round trip and cycle rejection, every API endpoint, the watcher feed, the gate protocol, provider detection/auth/model mapping, path-traversal guards, and the document converter (real PDF bytes, and `.docx`/`.xlsx` opened with Windows' own ZIP reader).
+**253 checks, no test framework.** The suite spawns its own server on a spare port with a temporary scratch project, and restores your registry afterwards. It covers UI script syntax, complete bilingual i18n key coverage, the Studio's text-free guarantee, the flow↔graph round trip and cycle rejection, every API endpoint, the watcher feed, the gate protocol, provider detection/auth/model mapping, path-traversal guards, and the document converter (real PDF bytes, and `.docx`/`.xlsx` opened with Windows' own ZIP reader).
 
 ---
 
@@ -484,8 +527,10 @@ FlowForge/
 │   ├── acp-client.mjs   Devin ACP session client
 │   ├── ui/index.html    the dashboard (single file)
 │   ├── ui/studio.html   the wordless builder
-│   └── test/            the 245-check suite
+│   └── test/            the 253-check suite
 ├── docs/screenshots/    the images in this README
+├── bin/flowforge.mjs     the global CLI
+├── get.mjs               the one-command installer
 ├── install.mjs · uninstall.mjs · start.mjs
 ```
 
@@ -497,7 +542,7 @@ Runtime state lives in each **target project** under `.workbench/` — never in 
 
 <a name="zero-dependencies"></a>
 
-1. **Zero external dependencies.** No npm packages, no lockfile, no supply chain. Everything is Node builtins.
+1. **Zero external dependencies.** No npm packages, no lockfile, no supply chain — a test fails the build if an import is not a Node builtin or a local file. Everything, including the installer, is Node builtins.
 2. **No PowerShell script files.** Group Policy on the target machine is `AllSigned`, so every executable piece is a `.mjs` file.
 3. **Data over code.** Flows, roles and skills are files you can read and edit; the orchestrator interprets them.
 4. **Honest UI.** If a state cannot be read, it says *unknown* — it never guesses on your behalf. Buttons that could only fail are not rendered.

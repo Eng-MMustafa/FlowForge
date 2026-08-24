@@ -1,7 +1,21 @@
 # FlowForge ⚙ — نظام Pipeline هندسي لـ Devin
 
+[English README ←](../README.md)
+
 نظام شخصي متكامل يشغّل مهامك البرمجية كخط إنتاج منظم بأدوار متخصصة، مع شاشة تحكم تفاعلية —
-**صفر مكتبات خارجية**: كل الكود هنا ملكك (PowerShell + Node مدمج + ملفات Markdown/JSON).
+**صفر مكتبات خارجية**: كل الكود هنا ملكك (Node مدمج + ملفات Markdown/JSON).
+
+## التسطيب — أمر واحد
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/get.mjs -o "$env:TEMP\ff.mjs"; node "$env:TEMP\ff.mjs"
+```
+
+الأمر ده بينزّل FlowForge، ويربطه بـDevin لو موجود، ويفتح الداشبورد — **من غير npm install ولا أي مكتبات**.
+ولو عاوز تحدّث، شغّل نفس الأمر تاني.
+
+أو من غير تسطيب خالص: `npx github:Eng-MMustafa/FlowForge`
+، أو أمر عالمي: `npm i -g flowforge-cli` وبعدين `flowforge` من جوّا أي مشروع.
 
 ## الفكرة في سطرين
 
@@ -15,10 +29,10 @@ plan.md  analysis.md code-notes review.md         debug.md          ship.md
 
 مفيش رفع غير لما المراجع يقول **PASS** صراحة.
 
-## أمر واحد بس
+## التشغيل من نسخة محلية
 
 ```powershell
-cd "<مكان المجلد عندك>\ai-workbench"
+cd "<مكان المجلد عندك>\FlowForge"
 node start.mjs
 ```
 

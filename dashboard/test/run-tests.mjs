@@ -62,6 +62,74 @@ console.log('# static checks');
     (r.stdout || '').slice(0, 120) + (r.stderr || '').slice(0, 120));
 }
 
+// Packaging: `npm publish` must ship a runnable tool and NOTHING of this
+// machine. npm honours the `files` whitelist over .npmignore for whole
+// directories, so the whitelist itself is expanded here and audited.
+{
+  const pkg = JSON.parse(fs.readFileSync(path.join(WORKBENCH, 'package.json'), 'utf8'));
+  const deps = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']
+    .filter((k) => pkg[k] && Object.keys(pkg[k]).length);
+  ok('package: declares zero dependencies', deps.length === 0, deps.join(', '));
+
+  const binPaths = Object.values(pkg.bin || {});
+  ok('package: every bin entry exists and is executable JS',
+    binPaths.length > 0 && binPaths.every((b) => fs.existsSync(path.join(WORKBENCH, b))),
+    binPaths.join(', '));
+  const binSrc = fs.readFileSync(path.join(WORKBENCH, binPaths[0]), 'utf8');
+  ok('package: the bin starts with a shebang', binSrc.startsWith('#!/usr/bin/env node'));
+
+  // Expand the whitelist the way npm does: a trailing slash means the whole
+  // tree, a `*` means the matching files in that folder, anything else is a file.
+  const packed = [];
+  const walk = (rel) => {
+    const abs = path.join(WORKBENCH, rel);
+    if (!fs.existsSync(abs)) return;
+    for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
+      const child = `${rel}/${e.name}`;
+      if (e.isDirectory()) walk(child);
+      else packed.push(child);
+    }
+  };
+  for (const entry of pkg.files || []) {
+    if (entry.endsWith('/')) walk(entry.slice(0, -1));
+    else if (entry.includes('*')) {
+      const dir = path.dirname(entry);
+      const rx = new RegExp('^' + path.basename(entry).replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
+      const abs = path.join(WORKBENCH, dir);
+      if (fs.existsSync(abs)) {
+        for (const e of fs.readdirSync(abs, { withFileTypes: true })) {
+          if (!e.isDirectory() && rx.test(e.name)) packed.push(`${dir}/${e.name}`);
+        }
+      }
+    } else packed.push(entry);
+  }
+  const secret = packed.filter((p) => /\.local\.|\.log$|(^|\/)AGENTS\.md$|\.workbench/.test(p));
+  ok('package: the tarball carries no local machine state', secret.length === 0, secret.join(', '));
+  const needed = ['start.mjs', 'install.mjs', 'dashboard/server.mjs', 'dashboard/providers.mjs',
+    'dashboard/ui/index.html', 'dashboard/ui/studio.html', 'agents/coder.md', 'flows/task.json',
+    'skills/flow/SKILL.md', 'scripts/lib/pdf.mjs'];
+  const absent = needed.filter((n) => !packed.includes(n));
+  ok('package: the tarball is actually runnable (all runtime files present)',
+    absent.length === 0, absent.join(', '));
+}
+
+// The one-command installer must stay dependency-free and never hard-code a
+// machine path, because it is fetched and run raw from GitHub.
+{
+  const src = fs.readFileSync(path.join(WORKBENCH, 'get.mjs'), 'utf8');
+  ok('get.mjs: zero external dependencies',
+    [...src.matchAll(/from\s+'([^']+)'/g)].every((m) => m[1].startsWith('node:')));
+  ok('get.mjs: carries no machine-specific path', !/[A-Za-z]:\\+Users/.test(src));
+  // A bad branch must fail loudly, and only ever inside the throwaway target.
+  const doomed = path.join(os.tmpdir(), 'ff-nope-' + Date.now());
+  const r = spawnSync(process.execPath, [path.join(WORKBENCH, 'get.mjs'),
+    doomed, '--branch=no-such-branch', '--no-start'], { encoding: 'utf8', timeout: 90000 });
+  ok('get.mjs: refuses an unreachable branch instead of half-installing',
+    r.status === 1 && !fs.existsSync(path.join(doomed, 'start.mjs')),
+    `exit ${r.status}`);
+  fs.rmSync(doomed, { recursive: true, force: true });
+}
+
 const uiSrc = fs.readFileSync(path.join(DASHBOARD, 'ui', 'index.html'), 'utf8');
 const scriptMatch = uiSrc.match(/<script>([\s\S]*)<\/script>/);
 ok('ui has a script block', !!scriptMatch);
