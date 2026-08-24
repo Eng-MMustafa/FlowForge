@@ -4,6 +4,7 @@
 
 **Turn one rough sentence into a staged engineering pipeline — planned, analysed, implemented, tested, debugged and shipped by specialised AI subagents, with a live dashboard you actually control.**
 
+[![npm](https://img.shields.io/npm/v/flowforge-cli?color=cb3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/flowforge-cli)
 [![Node](https://img.shields.io/badge/node-%E2%89%A518-3ecc6b?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-6fb8ff)](#zero-dependencies)
 [![Tests](https://img.shields.io/badge/tests-253%20passing-3ecc6b)](#tests)
@@ -127,7 +128,13 @@ Nothing here is a wrapper around a hosted service: it is a folder of markdown ro
 
 ## Other ways to install
 
-**Run it without installing anything** — npx pulls the repo and starts the dashboard:
+**Run it without installing anything** — npx fetches the package and starts the dashboard on the folder you are in:
+
+```powershell
+npx flowforge-cli
+```
+
+**Straight from GitHub**, if you want the newest commit rather than the last release:
 
 ```powershell
 npx github:Eng-MMustafa/FlowForge
@@ -161,7 +168,7 @@ node uninstall.mjs
 Installed globally, the CLI works from any folder — the folder you are standing in becomes the project:
 
 ```powershell
-npm i -g github:Eng-MMustafa/FlowForge
+npm i -g flowforge-cli
 ```
 
 | Command | Does |

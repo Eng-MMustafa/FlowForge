@@ -14,8 +14,8 @@ iwr -useb https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/get.mjs 
 الأمر ده بينزّل FlowForge، ويربطه بـDevin لو موجود، ويفتح الداشبورد — **من غير npm install ولا أي مكتبات**.
 ولو عاوز تحدّث، شغّل نفس الأمر تاني.
 
-أو من غير تسطيب خالص: `npx github:Eng-MMustafa/FlowForge`
-، أو أمر عالمي: `npm i -g github:Eng-MMustafa/FlowForge` وبعدين `flowforge` من جوّا أي مشروع.
+أو من غير تسطيب خالص: `npx flowforge-cli`
+، أو أمر عالمي: `npm i -g flowforge-cli` وبعدين `flowforge` من جوّا أي مشروع (الفولدر اللي واقف فيه بيبقى هو المشروع).
 
 ## الفكرة في سطرين
 
