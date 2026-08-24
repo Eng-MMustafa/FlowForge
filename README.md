@@ -161,7 +161,7 @@ node uninstall.mjs
 Installed globally, the CLI works from any folder — the folder you are standing in becomes the project:
 
 ```powershell
-npm i -g flowforge-cli     # or: npm i -g github:Eng-MMustafa/FlowForge
+npm i -g github:Eng-MMustafa/FlowForge
 ```
 
 | Command | Does |

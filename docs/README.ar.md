@@ -15,7 +15,7 @@ iwr -useb https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/get.mjs 
 ولو عاوز تحدّث، شغّل نفس الأمر تاني.
 
 أو من غير تسطيب خالص: `npx github:Eng-MMustafa/FlowForge`
-، أو أمر عالمي: `npm i -g flowforge-cli` وبعدين `flowforge` من جوّا أي مشروع.
+، أو أمر عالمي: `npm i -g github:Eng-MMustafa/FlowForge` وبعدين `flowforge` من جوّا أي مشروع.
 
 ## الفكرة في سطرين
 
