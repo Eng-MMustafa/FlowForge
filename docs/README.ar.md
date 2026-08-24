@@ -7,8 +7,16 @@
 
 ## التسطيب — أمر واحد
 
+**ويندوز** (PowerShell):
+
 ```powershell
 iwr -useb https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/get.mjs -o "$env:TEMP\ff.mjs"; node "$env:TEMP\ff.mjs"
+```
+
+**ماك / لينكس**:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/get.mjs -o /tmp/ff.mjs && node /tmp/ff.mjs
 ```
 
 الأمر ده بينزّل FlowForge، ويربطه بـDevin لو موجود، ويفتح الداشبورد — **من غير npm install ولا أي مكتبات**.

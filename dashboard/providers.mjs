@@ -22,6 +22,7 @@ import fssync from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { providerRoots, loginScriptLines, whichSync as whichOn } from '../scripts/lib/platform.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKBENCH = path.resolve(__dirname, '..');
@@ -127,10 +128,15 @@ export const PROVIDERS = {
     labelAr: 'ديفين',
     models: DEVIN_MODELS,
     runnable: true,
-    editor: [{ base: 'local', rel: ['Programs', 'Devin'] }],
+    editor: [
+      { os: 'win32', base: 'local', rel: ['Programs', 'Devin'] },
+      { os: 'darwin', base: 'files', rel: ['Devin.app'] },
+      { os: 'linux', base: 'files', rel: ['devin'] },
+    ],
     cli: [
       { env: 'DEVIN_CLI' },
-      { base: 'local', rel: ['Programs', 'Devin', 'resources', 'app', 'extensions', 'windsurf', 'devin', 'bin', 'devin.exe'] },
+      { os: 'win32', base: 'local', rel: ['Programs', 'Devin', 'resources', 'app', 'extensions', 'windsurf', 'devin', 'bin', 'devin.exe'] },
+      { os: 'darwin', base: 'files', rel: ['Devin.app', 'Contents', 'Resources', 'app', 'extensions', 'windsurf', 'devin', 'bin', 'devin'] },
       { command: 'devin' },
     ],
     // `devin auth status` prints "Logged in (via Devin)." and exits 0; when it is
@@ -169,13 +175,16 @@ export const PROVIDERS = {
       { base: 'home', rel: ['.windsurf', 'extensions'], match: 'github.copilot' },
       { base: 'home', rel: ['.cursor', 'extensions'], match: 'github.copilot' },
     ],
-    cli: [{ command: 'copilot' }],
+    cli: [{ command: 'copilot' }, { command: 'github-copilot-cli' }],
     // The account itself lives in the GitHub CLI, which is a DIFFERENT binary from
     // the provider's own CLI - hence auth.cli. `gh auth status` prints
     // "Logged in to github.com account <name> (keyring)".
     auth: {
       kind: 'cli',
-      cli: [{ command: 'gh' }, { base: 'files', rel: ['GitHub CLI', 'gh.exe'] }],
+      cli: [
+        { command: 'gh' },
+        { os: 'win32', base: 'files', rel: ['GitHub CLI', 'gh.exe'] },
+      ],
       statusArgs: ['auth', 'status'],
       loginArgs: ['auth', 'login'],
       notLoggedIn: /not logged in|no accounts|You are not logged into/i,
@@ -201,7 +210,8 @@ export const PROVIDERS = {
     models: CURSOR_MODELS,
     runnable: false,
     editor: [
-      { base: 'local', rel: ['Programs', 'cursor', 'Cursor.exe'] },
+      { os: 'win32', base: 'local', rel: ['Programs', 'cursor', 'Cursor.exe'] },
+      { os: 'darwin', base: 'files', rel: ['Cursor.app'] },
       { base: 'appdata', rel: ['Cursor', 'User', 'settings.json'] },
     ],
     cli: [{ command: 'cursor' }],
@@ -237,11 +247,12 @@ export const PROVIDERS = {
     models: TRAE_MODELS,
     runnable: false,
     editor: [
-      { base: 'local', rel: ['Programs', 'Trae', 'Trae.exe'] },
+      { os: 'win32', base: 'local', rel: ['Programs', 'Trae', 'Trae.exe'] },
+      { os: 'darwin', base: 'files', rel: ['Trae.app'] },
       { base: 'appdata', rel: ['Trae', 'User', 'settings.json'] },
     ],
     cli: [
-      { base: 'local', rel: ['Programs', 'Trae', 'bin', 'trae.cmd'] },
+      { os: 'win32', base: 'local', rel: ['Programs', 'Trae', 'bin', 'trae.cmd'] },
       { command: 'trae' },
     ],
     auth: {
@@ -282,21 +293,21 @@ export const DEFAULT_PROVIDER = 'devin';
 
 // Roots are read fresh on every call (never captured at module load) so a test
 // that spawns a server with FF_PROVIDER_HOME_* actually gets the override.
+// The per-platform mapping itself lives in scripts/lib/platform.mjs, which is
+// why the descriptors above can use the same `appdata` + rel on all three.
 function rootsFor(id) {
   const override = process.env['FF_PROVIDER_HOME_' + id.toUpperCase()];
   if (override) return { local: override, appdata: override, home: override, files: override };
-  return {
-    local: process.env.LOCALAPPDATA || '',
-    appdata: process.env.APPDATA || '',
-    home: process.env.USERPROFILE || process.env.HOME || '',
-    files: process.env.ProgramFiles || '',
-  };
+  return providerRoots();
 }
 
 // `overridden` means FF_PROVIDER_HOME_<ID> is in force: the override is the whole
 // world for that provider, so environment and PATH probes are deliberately skipped
 // (otherwise a stray binary on PATH would defeat the override a test just set).
 function resolveProbe(roots, probe, overridden) {
+  // A probe may belong to one OS only (an .exe under Programs, an .app bundle);
+  // on the others it simply does not apply.
+  if (probe.os && probe.os !== process.platform) return '';
   if (probe.env) return overridden ? '' : (process.env[probe.env] || '');
   if (probe.command) return overridden ? '' : (whichSync(probe.command) || '');
   const root = roots[probe.base] || '';
@@ -323,24 +334,14 @@ function probeLabel(probe) {
 }
 
 const whichCache = new Map(); // command -> { hit, at }
-const PATHEXTS = (process.env.PATHEXT || '.COM;.EXE;.BAT;.CMD')
-  .split(';').map((x) => x.trim().toLowerCase()).filter(Boolean);
 
 // Filesystem-only PATH lookup: the same three-tier idea as resolveDevinCli(),
-// but nothing is ever executed just to learn whether it exists.
+// but nothing is ever executed just to learn whether it exists. The extension
+// rules (PATHEXT on Windows, none elsewhere) live in the platform layer.
 function whichSync(cmd) {
   const cached = whichCache.get(cmd);
   if (cached && Date.now() - cached.at < WHICH_TTL) return cached.hit;
-  let hit = null;
-  for (const dir of (process.env.PATH || '').split(path.delimiter)) {
-    if (!dir) continue;
-    const base = path.join(dir, cmd);
-    if (isFile(base)) { hit = base; break; }
-    for (const ext of PATHEXTS) {
-      if (isFile(base + ext)) { hit = base + ext; break; }
-    }
-    if (hit) break;
-  }
+  const hit = whichOn(cmd);
   whichCache.set(cmd, { hit, at: Date.now() });
   return hit;
 }
@@ -688,9 +689,10 @@ export function invalidateProviderAuth(id) {
   if (id) authCache.delete(id); else authCache.clear();
 }
 
-// Lines for the temporary .cmd the server opens in a visible terminal: the OAuth
-// dance belongs to the provider's CLI, we only start it and show the verdict.
-export function providerLoginScript(id, cliPath) {
+// Lines for the temporary script the server opens in a visible terminal: the
+// OAuth dance belongs to the provider's CLI, we only start it and show the
+// verdict. The script flavour (.cmd vs /bin/sh) comes from the platform layer.
+export function providerLoginScript(id, cliPath, plat = process.platform) {
   const provider = PROVIDERS[id];
   if (!provider) throw new Error(`unknown provider: ${id}`);
   const auth = provider.auth;
@@ -698,21 +700,15 @@ export function providerLoginScript(id, cliPath) {
   cliPath = authCliPath(id, auth, cliPath);
   if (!cliPath) return null;
   const title = auth.title || `${provider.label} login`;
-  const args = (a) => a.map((x) => `"${x}"`).join(' ');
   return {
     title,
-    lines: [
-      '@echo off',
-      `title ${title}`,
-      ...(auth.note ? [`echo ${auth.note.replace(/[<>|&^]/g, '')}`, 'echo.'] : []),
-      `"${cliPath}" ${args(auth.loginArgs || ['auth', 'login'])}`,
-      'echo.',
-      'echo Verifying...',
-      `"${cliPath}" ${args(auth.statusArgs || ['auth', 'status'])}`,
-      'echo.',
-      'echo Done - go back to the dashboard and press the refresh button.',
-      'pause',
-    ],
+    lines: loginScriptLines({
+      title,
+      note: auth.note,
+      cliPath,
+      steps: [auth.loginArgs || ['auth', 'login'], auth.statusArgs || ['auth', 'status']],
+      plat,
+    }),
   };
 }
 

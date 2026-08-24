@@ -7,18 +7,26 @@
 [![npm](https://img.shields.io/npm/v/flowforge-cli?color=cb3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/flowforge-cli)
 [![Node](https://img.shields.io/badge/node-%E2%89%A518-3ecc6b?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-6fb8ff)](#zero-dependencies)
-[![Tests](https://img.shields.io/badge/tests-260%20passing-3ecc6b)](#tests)
+[![Tests](https://img.shields.io/badge/tests-279%20passing-3ecc6b)](#tests)
 [![License](https://img.shields.io/badge/license-MIT-f0a92e)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows-6fb8ff)](#requirements)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-6fb8ff)](#requirements)
 
-[Arabic README →](docs/README.ar.md) · [Install](#install-in-one-command) · [Dashboard tour](#the-dashboard--a-guided-tour) · [Flow format](#flow-files--the-schema) · [API](#http-api)
+[**Website**](https://eng-mmustafa.github.io/FlowForge/) · [Arabic README →](docs/README.ar.md) · [Install](#install-in-one-command) · [Dashboard tour](#the-dashboard--a-guided-tour) · [Flow format](#flow-files--the-schema) · [API](#http-api)
 
 </div>
 
 ## Install in one command
 
+**Windows** (PowerShell):
+
 ```powershell
 iwr -useb https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/get.mjs -o "$env:TEMP\ff.mjs"; node "$env:TEMP\ff.mjs"
+```
+
+**macOS / Linux**:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/get.mjs -o /tmp/ff.mjs && node /tmp/ff.mjs
 ```
 
 That is the whole setup. It downloads FlowForge, wires it into Devin if Devin is on the machine, and opens the dashboard. **No npm install, no dependencies, no config file.** Run the same command again any time to update.
@@ -118,11 +126,29 @@ Nothing here is a wrapper around a hosted service: it is a folder of markdown ro
 
 | | |
 |---|---|
-| **OS** | Windows (paths, junctions and terminal handling are Windows-specific) |
+| **OS** | Windows, macOS or Linux — see [platform support](#platform-support) |
 | **Node.js** | 18 or newer (20+ recommended; the screenshot tooling uses Node 22 features) |
 | **Executor** | [Devin CLI](https://devin.ai) — the only executor that can *run* a flow today |
 | **Optional** | GitHub CLI (`gh`) for Copilot account detection, Cursor / Trae for module detection |
 | **Dependencies** | **None.** The `package.json` exists only to expose the CLI — it declares no dependencies and there is no lockfile |
+
+---
+
+## Platform support
+
+Every OS difference lives in one file, `scripts/lib/platform.mjs`, and each function there is checked against all three platforms by the test suite — from whichever machine runs it.
+
+| | Windows | macOS | Linux |
+|---|---|---|---|
+| **Dashboard, flows, gates, export** | yes | yes | yes |
+| **Agent config** | `%APPDATA%\devin` | `~/Library/Application Support/devin` | `~/.config/devin` |
+| **Skill/agent wiring** | directory junctions | symlinks | symlinks |
+| **Editor detection** | `%LOCALAPPDATA%\Programs` | `/Applications/*.app` | PATH + `~/.config` |
+| **Sign-in terminal** | `cmd /c start` | Terminal.app | first installed of `gnome-terminal`, `konsole`, `xterm`, … |
+
+Set `DEVIN_CONFIG_DIR` if your agent keeps its config somewhere else. On Linux with no terminal emulator installed, the sign-in endpoint returns the script path for you to run yourself rather than claiming a window opened.
+
+> **Honest caveat:** the author develops on Windows, so that is the most heavily exercised path. macOS and Linux are covered by the platform tests and by careful path work — if something is off on your machine, please [open an issue](https://github.com/Eng-MMustafa/FlowForge/issues).
 
 ---
 
@@ -515,7 +541,7 @@ The dashboard is a plain `node:http` server; every screen is built on this API, 
 node dashboard\test\run-tests.mjs
 ```
 
-**260 checks, no test framework.** The suite spawns its own server on a spare port with a temporary scratch project, and restores your registry afterwards. It covers UI script syntax, complete bilingual i18n key coverage, the Studio's text-free guarantee, the flow↔graph round trip and cycle rejection, every API endpoint, the watcher feed, the gate protocol, provider detection/auth/model mapping, path-traversal guards, and the document converter (real PDF bytes, and `.docx`/`.xlsx` opened with Windows' own ZIP reader).
+**279 checks, no test framework.** The suite spawns its own server on a spare port with a temporary scratch project, and restores your registry afterwards. It covers UI script syntax, complete bilingual i18n key coverage, the Studio's text-free guarantee, the flow↔graph round trip and cycle rejection, every API endpoint, the watcher feed, the gate protocol, provider detection/auth/model mapping, path-traversal guards, and the document converter (real PDF bytes, and `.docx`/`.xlsx` opened with Windows' own ZIP reader).
 
 ---
 
@@ -527,6 +553,7 @@ FlowForge/
 ├── flows/               pipeline definitions (JSON)
 ├── skills/              chat commands (/flow, /understand, /export, …)
 ├── scripts/             context, checks, gates, queue, converter
+│   ├── lib/platform.mjs  every Windows/macOS/Linux difference, in one file
 │   └── lib/             zero-dep pdf / docx / xlsx / html / markdown / zip writers
 ├── dashboard/
 │   ├── server.mjs       the whole HTTP API (node:http only)
@@ -534,7 +561,7 @@ FlowForge/
 │   ├── acp-client.mjs   Devin ACP session client
 │   ├── ui/index.html    the dashboard (single file)
 │   ├── ui/studio.html   the wordless builder
-│   └── test/            the 260-check suite
+│   └── test/            the 279-check suite
 ├── docs/index.html       the landing page (GitHub Pages)
 ├── docs/screenshots/    the images in this README
 ├── bin/flowforge.mjs     the global CLI
@@ -551,7 +578,7 @@ Runtime state lives in each **target project** under `.workbench/` — never in 
 <a name="zero-dependencies"></a>
 
 1. **Zero external dependencies.** No npm packages, no lockfile, no supply chain — a test fails the build if an import is not a Node builtin or a local file. Everything, including the installer, is Node builtins.
-2. **No PowerShell script files.** Group Policy on the target machine is `AllSigned`, so every executable piece is a `.mjs` file.
+2. **No PowerShell script files.** Group Policy on the author's machine is `AllSigned`, so every executable piece is a `.mjs` file — which is also why the installer runs identically on macOS and Linux.
 3. **Data over code.** Flows, roles and skills are files you can read and edit; the orchestrator interprets them.
 4. **Honest UI.** If a state cannot be read, it says *unknown* — it never guesses on your behalf. Buttons that could only fail are not rendered.
 5. **Your credentials stay yours.** Logins run in a real terminal against the vendor's own CLI; the dashboard never handles a token.

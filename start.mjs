@@ -10,9 +10,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { agentConfigDir, agentConfigCandidates, openUrlCommand, samePath } from './scripts/lib/platform.mjs';
 
 const REPO = path.dirname(fileURLToPath(import.meta.url));
-const DEVIN = process.env.APPDATA ? path.join(process.env.APPDATA, 'devin') : null;
+const DEVIN = agentConfigDir() || null;
 const LOCATOR = DEVIN ? path.join(DEVIN, 'flowforge.json') : null;
 
 const argv = process.argv.slice(2);
@@ -37,7 +38,7 @@ function locatorOk() {
   if (!LOCATOR || !fs.existsSync(LOCATOR)) return false;
   try {
     const cfg = JSON.parse(fs.readFileSync(LOCATOR, 'utf8'));
-    return path.resolve(cfg.workbench || '').toLowerCase() === REPO.toLowerCase();
+    return samePath(cfg.workbench || '', REPO);
   } catch { return false; }
 }
 
@@ -55,9 +56,8 @@ async function serverAlive() {
 function openBrowser(url) {
   if (flag('no-open')) return;
   try {
-    if (process.platform === 'win32') spawn('cmd', ['/c', 'start', '', url], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
-    else if (process.platform === 'darwin') spawn('open', [url], { detached: true, stdio: 'ignore' }).unref();
-    else spawn('xdg-open', [url], { detached: true, stdio: 'ignore' }).unref();
+    const { cmd, args } = openUrlCommand(url);
+    spawn(cmd, args, { detached: true, stdio: 'ignore', windowsHide: true }).unref();
   } catch { /* the URL is printed anyway */ }
 }
 
@@ -72,6 +72,8 @@ console.log(`  workbench: ${REPO}`);
 
 if (!DEVIN || !fs.existsSync(DEVIN)) {
   console.error('Devin config directory not found - is Devin installed?');
+  console.error(`  looked in: ${agentConfigCandidates().join(', ')}`);
+  console.error('  set DEVIN_CONFIG_DIR if it lives somewhere else.');
   process.exit(1);
 }
 

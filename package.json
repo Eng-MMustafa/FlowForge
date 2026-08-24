@@ -1,6 +1,6 @@
 {
   "name": "flowforge-cli",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Turn one sentence into a staged AI engineering pipeline - specialised subagents, quality gates you approve, and a zero-dependency live dashboard.",
   "keywords": [
     "ai",
@@ -10,9 +10,10 @@
     "workflow",
     "dashboard",
     "developer-tools",
-    "zero-dependency"
+    "zero-dependency",
+    "cross-platform"
   ],
-  "homepage": "https://github.com/Eng-MMustafa/FlowForge#readme",
+  "homepage": "https://eng-mmustafa.github.io/FlowForge/",
   "bugs": "https://github.com/Eng-MMustafa/FlowForge/issues",
   "repository": {
     "type": "git",
@@ -48,8 +49,5 @@
   },
   "engines": {
     "node": ">=18"
-  },
-  "os": [
-    "win32"
-  ]
+  }
 }

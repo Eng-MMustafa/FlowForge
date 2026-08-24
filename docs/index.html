@@ -46,6 +46,10 @@
     border-radius:9px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer;transition:.15s}
   .copy:hover{border-color:var(--green);color:var(--green)}
   .copy.done{border-color:var(--green);background:rgba(62,204,107,.14);color:var(--green)}
+  .os{display:flex;gap:6px;justify-content:center;margin:0 0 12px}
+  .os button{border:1px solid var(--line);background:var(--panel);color:var(--dim);
+    border-radius:9px;padding:6px 15px;font:inherit;font-size:13px;cursor:pointer}
+  .os button.on{border-color:var(--green);color:var(--green);background:rgba(62,204,107,.10)}
   .alt{margin:14px auto 0;color:var(--dim);font-size:13.5px}
   .alt code{background:var(--panel);border:1px solid var(--line);border-radius:7px;
     padding:3px 8px;color:#cfe6ff;font-size:12.5px;direction:ltr;display:inline-block}
@@ -102,6 +106,10 @@
   <p class="sub" data-en="FlowForge runs your task through specialised AI subagents - plan, analyse, implement, test, debug, ship - each handing the next a focused artifact, with quality gates you approve and a live dashboard you actually control."
      data-ar="فلو‌فورج بيمرّر التاسك على وكلاء متخصصين بالترتيب: تفكير، تحليل، كود، اختبار، تصحيح، رفع - وكل واحد بيسلّم اللي بعده ملف مركّز، مع بوابات موافقة إنت اللي بتقرّرها وشاشة تحكم لايف.">FlowForge runs your task through specialised AI subagents - plan, analyse, implement, test, debug, ship - each handing the next a focused artifact, with quality gates you approve and a live dashboard you actually control.</p>
 
+  <div class="os" id="os">
+    <button type="button" data-os="win" class="on">Windows</button>
+    <button type="button" data-os="nix">macOS / Linux</button>
+  </div>
   <div class="cmd">
     <code id="cmd">iwr -useb https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/get.mjs -o "$env:TEMP\ff.mjs"; node "$env:TEMP\ff.mjs"</code>
     <button class="copy" id="copy" type="button" data-en="Copy" data-ar="نسخ">Copy</button>
@@ -156,6 +164,10 @@
       <h3 data-en="Four executors" data-ar="أربع أدوات">Four executors</h3>
       <p data-en="Devin, Copilot, Cursor and Trae are detected from what is really installed, with login state read live and reported honestly."
          data-ar="ديفن وكوبايلوت وكارسر وتري بيتقروا من اللي متسطّب فعلًا، وحالة تسجيل الدخول بتتقرا لايف وبتتقال بأمانة.">Devin, Copilot, Cursor and Trae are detected from what is really installed, with login state read live and reported honestly.</p></div>
+    <div class="card"><span class="ico">&#128421;</span>
+      <h3 data-en="Windows, macOS, Linux" data-ar="ويندوز وماك ولينكس">Windows, macOS, Linux</h3>
+      <p data-en="Every OS difference lives in one file, and the test suite checks all three platforms from whichever machine runs it."
+         data-ar="كل فرق بين الأنظمة في ملف واحد، والتستات بتتأكد من التلاتة من أي جهاز.">Every OS difference lives in one file, and the test suite checks all three platforms from whichever machine runs it.</p></div>
     <div class="card"><span class="ico">&#127760;</span>
       <h3 data-en="Arabic and English" data-ar="عربي وإنجليزي">Arabic and English</h3>
       <p data-en="The whole UI switches instantly, RTL included - and a test fails if a single string is missing in either language."
@@ -182,8 +194,8 @@
 <section class="wrap">
   <div class="cta">
     <h2 data-en="Start in about a minute" data-ar="ابدأ في دقيقة تقريبًا">Start in about a minute</h2>
-    <p class="lead" style="margin:8px auto 0" data-en="Windows, Node 18 or newer. MIT licensed."
-       data-ar="ويندوز، ونود 18 أو أحدث. رخصة MIT.">Windows, Node 18 or newer. MIT licensed.</p>
+    <p class="lead" style="margin:8px auto 0" data-en="Windows, macOS or Linux. Node 18 or newer. MIT licensed."
+       data-ar="ويندوز أو ماك أو لينكس، ونود 18 أو أحدث. رخصة MIT.">Windows, macOS or Linux. Node 18 or newer. MIT licensed.</p>
     <div class="btns">
       <a class="btn primary" href="https://github.com/Eng-MMustafa/FlowForge#install-in-one-command" data-en="Install now" data-ar="سطّبه دلوقتي">Install now</a>
       <a class="btn" href="https://github.com/Eng-MMustafa/FlowForge" data-en="Read the docs" data-ar="اقرا التوثيق">Read the docs</a>
@@ -198,6 +210,24 @@
 </div></footer>
 
 <script>
+  // The install line differs per OS: offer the right one, and preselect it.
+  var COMMANDS = {
+    win: 'iwr -useb https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/get.mjs -o "$env:TEMP\\ff.mjs"; node "$env:TEMP\\ff.mjs"',
+    nix: 'curl -fsSL https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/get.mjs -o /tmp/ff.mjs && node /tmp/ff.mjs'
+  };
+  var osBar = document.getElementById('os');
+  function pickOs(key) {
+    document.getElementById('cmd').textContent = COMMANDS[key];
+    osBar.querySelectorAll('button').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.os === key);
+    });
+  }
+  osBar.addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-os]');
+    if (b) pickOs(b.dataset.os);
+  });
+  pickOs(/Win/i.test(navigator.platform || navigator.userAgent) ? 'win' : 'nix');
+
   var btn = document.getElementById('copy');
   btn.addEventListener('click', function () {
     var text = document.getElementById('cmd').textContent;

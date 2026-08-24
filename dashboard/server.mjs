@@ -19,6 +19,11 @@ import { startAcp, readStoredKey } from './acp-client.mjs';
 // /export skill use - one converter, three front doors.
 import { convert as convertDoc } from '../scripts/convert-doc.mjs';
 import { FORMATS, FORMAT_IDS, extensionFor } from '../scripts/lib/formats.mjs';
+// Every OS difference (paths, openers, terminals, kill) lives in one place.
+import {
+  openAppCommand, terminalCommand, killTreeCommand, loginScriptFormat, loginScriptLines,
+  devinCliCandidates,
+} from '../scripts/lib/platform.mjs';
 // Executor providers (Devin, Copilot, Cursor, Trae) live in one registry file.
 import {
   PROVIDER_IDS, DEFAULT_PROVIDER, detectProvider, buildFlowFromModules,
@@ -118,9 +123,8 @@ async function daemonStatus(project) {
 
 function resolveDevinCli() {
   if (process.env.DEVIN_CLI) return process.env.DEVIN_CLI;
-  const known = path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Devin',
-    'resources', 'app', 'extensions', 'windsurf', 'devin', 'bin', 'devin.exe');
-  if (fssync.existsSync(known)) return known;
+  const known = devinCliCandidates().find((p) => fssync.existsSync(p));
+  if (known) return known;
   return 'devin'; // hope it's on PATH
 }
 const DEVIN_CLI = resolveDevinCli();
@@ -440,11 +444,27 @@ function stopRun() {
   if (run.killAcp) {
     try { run.killAcp(); } catch {}
   } else {
-    // taskkill /T kills the whole tree (devin spawns child processes).
-    try { execFile('taskkill', ['/pid', String(run.pid), '/T', '/F'], { windowsHide: true }, () => {}); } catch {}
+    // The CLI spawns children, so the whole tree has to go: taskkill /T on
+    // Windows, the process group on POSIX.
+    const kill = killTreeCommand(run.pid);
+    try {
+      if (kill) execFile(kill.cmd, kill.args, { windowsHide: true }, () => {});
+      else { try { process.kill(-run.pid, 'SIGTERM'); } catch { process.kill(run.pid, 'SIGTERM'); } }
+    } catch {}
   }
   runPush('[runner] stop requested');
   return true;
+}
+
+// A login runs from a temp script file: that avoids every shell-quoting trap
+// with spaces in a CLI path. The flavour (.cmd + CRLF, or /bin/sh + chmod +x)
+// comes from the platform layer.
+async function writeLoginScript(name, lines) {
+  const fmt = loginScriptFormat();
+  const file = path.join(os.tmpdir(), `${name}${fmt.ext}`);
+  await fs.writeFile(file, lines.join(fmt.newline) + fmt.newline, 'utf8');
+  try { await fs.chmod(file, fmt.mode); } catch { /* Windows has no exec bit */ }
+  return file;
 }
 
 // ---------- ACP runner (preferred) ----------
@@ -1172,8 +1192,9 @@ const handlers = {
     // (it starts the editor), else the editor binary itself.
     if (providerAuthKind(id) === 'app') {
       const target = detection.cliPath || detection.editorPath;
-      if (!target || !/\.(exe|cmd|bat)$/i.test(target)) throw httpError(409, 'app_not_found');
-      spawn('cmd', ['/c', 'start', '', target], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+      const open = target ? openAppCommand(target) : null;
+      if (!open) throw httpError(409, 'app_not_found');
+      spawn(open.cmd, open.args, { detached: true, stdio: 'ignore', windowsHide: true }).unref();
       return { ok: true, opened: true, path: target };
     }
     const script = providerLoginScript(id, detection.cliPath);
@@ -1182,10 +1203,12 @@ const handlers = {
     }
     const already = await checkProviderAuth(id, detection, true);
     if (already.loggedIn) return { ok: true, already: true, account: already.account };
-    const file = path.join(os.tmpdir(), `flowforge-${id}-login.cmd`);
-    await fs.writeFile(file, script.lines.join('\r\n'), 'utf8');
-    spawn('cmd', ['/c', 'start', script.title, file],
-      { detached: true, stdio: 'ignore', windowsHide: false }).unref();
+    const file = await writeLoginScript(`flowforge-${id}-login`, script.lines);
+    const term = terminalCommand({ file, title: script.title });
+    // No terminal emulator on this machine: say so and hand back the command,
+    // rather than reporting a window that never opened.
+    if (!term) return { ok: false, noTerminal: true, script: file };
+    spawn(term.cmd, term.args, { detached: true, stdio: 'ignore', windowsHide: false }).unref();
     invalidateProviderAuth(id);
     if (id === DEFAULT_PROVIDER) cliInfo = null;
     return { ok: true, already: false };
@@ -1193,30 +1216,23 @@ const handlers = {
 
   // Opens a visible terminal window on the user's machine running the
   // one-time interactive login (browser OAuth) - the dashboard cannot do
-  // the OAuth dance itself. A temp .cmd file sidesteps cmd.exe quoting
+  // the OAuth dance itself. A temp script file sidesteps the shell quoting
   // pitfalls with spaces in the CLI path.
   'POST /api/cli/login': async () => {
     const cli = await checkCli(true);
     if (!cli.found) throw httpError(409, 'devin CLI not found');
     if (cli.authenticated) return { ok: true, already: true };
-    const script = [
-      '@echo off',
-      'title Devin CLI Login',
-      'echo IMPORTANT: choose option 1 "Log in with browser" (press 1 then Enter).',
-      'echo (The Enterprise option stores a key this CLI version rejects at runtime.)',
-      'echo.',
-      `"${DEVIN_CLI}" auth login`,
-      'echo.',
-      `echo Verifying...`,
-      `"${DEVIN_CLI}" auth status`,
-      'echo.',
-      'echo If it says "Logged in", go back to the dashboard and press Run.',
-      'pause',
-    ].join('\r\n');
-    const file = path.join(os.tmpdir(), 'flowforge-devin-login.cmd');
-    await fs.writeFile(file, script, 'utf8');
-    spawn('cmd', ['/c', 'start', 'Devin CLI Login', file],
-      { detached: true, stdio: 'ignore', windowsHide: false }).unref();
+    const title = 'Devin CLI Login';
+    const lines = loginScriptLines({
+      title,
+      note: 'IMPORTANT: choose option 1 "Log in with browser" (press 1 then Enter).',
+      cliPath: DEVIN_CLI,
+      steps: [['auth', 'login'], ['auth', 'status']],
+    });
+    const file = await writeLoginScript('flowforge-devin-login', lines);
+    const term = terminalCommand({ file, title });
+    if (!term) return { ok: false, noTerminal: true, script: file };
+    spawn(term.cmd, term.args, { detached: true, stdio: 'ignore', windowsHide: false }).unref();
     cliInfo = null;
     return { ok: true, already: false };
   },

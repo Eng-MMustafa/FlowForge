@@ -1,10 +1,12 @@
 // get.mjs - one-command installer for FlowForge.
 //
-//   iwr -useb https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/get.mjs -o "$env:TEMP\ff.mjs"; node "$env:TEMP\ff.mjs"
+//   Windows:  iwr -useb https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/get.mjs -o "$env:TEMP\ff.mjs"; node "$env:TEMP\ff.mjs"
+//   macOS/Linux:  curl -fsSL https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/get.mjs -o /tmp/ff.mjs && node /tmp/ff.mjs
 //
 // Downloads (or updates) the workbench, wires it into Devin when Devin is
-// present, and opens the dashboard. Node builtins only - no npm, no PowerShell
-// script file, nothing to trust beyond this readable file.
+// present, and opens the dashboard. Node builtins only - no npm, no shell
+// script file, nothing to trust beyond this readable file. This file is
+// fetched and run ON ITS OWN, so it must never import from the repo.
 //
 // Usage: node get.mjs [target dir] [--branch=main] [--no-start] [--no-open]
 import fs from 'node:fs';
@@ -22,8 +24,14 @@ const value = (n, d) => {
   return hit ? hit.slice(n.length + 3) : d;
 };
 const BRANCH = value('branch', 'main');
-const TARGET = path.resolve(argv.find((a) => !a.startsWith('--'))
-  || path.join(process.env.LOCALAPPDATA || os.homedir(), 'FlowForge'));
+// Where a fresh copy lands when the user names no folder (mirrors
+// defaultInstallDir() in scripts/lib/platform.mjs - kept inline on purpose).
+const defaultDir = () => {
+  if (process.platform === 'win32') return path.join(process.env.LOCALAPPDATA || os.homedir(), 'FlowForge');
+  if (process.platform === 'darwin') return path.join(os.homedir(), 'Library', 'Application Support', 'FlowForge');
+  return path.join(process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share'), 'FlowForge');
+};
+const TARGET = path.resolve(argv.find((a) => !a.startsWith('--')) || defaultDir());
 
 const ok = (m) => console.log(`  \x1b[32mok\x1b[0m    ${m}`);
 const info = (m) => console.log(`  \x1b[36m..\x1b[0m    ${m}`);
@@ -58,10 +66,11 @@ async function download() {
   const res = await fetch(url);
   if (!res.ok) die(`download failed (HTTP ${res.status}) - is the branch "${BRANCH}" right?`);
   await pipeline(Readable.fromWeb(res.body), fs.createWriteStream(tmpZip));
-  // tar.exe ships with Windows 10+ and reads zip archives.
-  if (run('tar', ['-xf', tmpZip, '-C', tmpDir]).status !== 0) {
-    die('could not extract the archive (tar not available) - install Git and retry');
-  }
+  // Windows 10+ and macOS ship a tar that reads zip archives; GNU tar on Linux
+  // does not, so `unzip` is the fallback there.
+  const extracted = (have('tar') && run('tar', ['-xf', tmpZip, '-C', tmpDir]).status === 0)
+    || (have('unzip') && run('unzip', ['-q', tmpZip, '-d', tmpDir]).status === 0);
+  if (!extracted) die('could not extract the archive - install Git (or unzip) and retry');
   const inner = path.join(tmpDir, fs.readdirSync(tmpDir)[0]);
   fs.mkdirSync(path.dirname(TARGET), { recursive: true });
   fs.cpSync(inner, TARGET, { recursive: true, force: true });
@@ -87,15 +96,16 @@ if (isClone) {
   ok(`installed ${TARGET}`);
 }
 
-// 3. Wire the skills/agents into Devin - only meaningful when Devin is here.
-// The dashboard is fully usable without it, so a missing Devin is a warning.
-const devinDir = process.env.APPDATA ? path.join(process.env.APPDATA, 'devin') : '';
-if (devinDir && fs.existsSync(devinDir)) {
-  const r = run(process.execPath, [path.join(TARGET, 'install.mjs')], TARGET);
+// 3. Wire the skills/agents into Devin. install.mjs knows where Devin's config
+// lives on each platform, so it - not this file - decides whether that is
+// possible. The dashboard is fully usable without it: a miss is a warning.
+{
+  const r = spawnSync(process.execPath, [path.join(TARGET, 'install.mjs')],
+    { cwd: TARGET, encoding: 'utf8' });
   if (r.status === 0) ok('skills and agents wired into Devin');
-  else warn('wiring into Devin failed - run "node install.mjs" inside the folder to see why');
-} else {
-  warn('Devin was not found - the dashboard still works; run "node install.mjs" after installing Devin');
+  else if (/not found/i.test(`${r.stdout || ''}${r.stderr || ''}`)) {
+    warn('Devin was not found - the dashboard still works; run "node install.mjs" after installing Devin');
+  } else warn('wiring into Devin failed - run "node install.mjs" inside the folder to see why');
 }
 
 console.log('');

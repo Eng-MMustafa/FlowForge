@@ -1,12 +1,13 @@
 // run-checks.mjs - Run the project's build/lint/test commands and write a verdict to .workbench/artifacts/checks.md
 // Command sources (first match wins):
 //   1. .workbench/knowledge.json -> commands.build/.lint/.test (strings, run from project root via cmd shell)
-//   2. package.json scripts (build/lint/test) via npm.cmd
+//   2. package.json scripts (build/lint/test) via npm (npm.cmd on Windows)
 // Exit code: 0 = all PASS (or SKIPPED), 1 = any FAIL.
-// Usage: node run-checks.mjs "C:\path\to\project"
+// Usage: node run-checks.mjs "<path to project>"
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { npmBin } from './lib/platform.mjs';
 
 const PROJECT = path.resolve(process.argv[2] || '.');
 const TAIL = 150;
@@ -32,7 +33,7 @@ if (!Object.keys(commands).length) {
   const pkg = readJson(path.join(PROJECT, 'package.json'));
   if (pkg && pkg.scripts) {
     for (const k of ['build', 'lint', 'test']) {
-      if (pkg.scripts[k]) commands[k] = `npm.cmd run ${k}`;
+      if (pkg.scripts[k]) commands[k] = `${npmBin()} run ${k}`;
     }
   }
 }

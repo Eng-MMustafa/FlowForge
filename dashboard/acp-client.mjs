@@ -9,13 +9,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { devinCliCandidates, agentCredentialsFile } from '../scripts/lib/platform.mjs';
 
-const DEFAULT_CLI = path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Devin',
-  'resources', 'app', 'extensions', 'windsurf', 'devin', 'bin', 'devin.exe');
+// Installed-with-the-editor path first, then whatever is on PATH.
+const DEFAULT_CLI = devinCliCandidates().find((p) => {
+  try { return fs.statSync(p).isFile(); } catch { return false; }
+}) || 'devin';
 
 export function readStoredKey() {
   // Never print or return the key to logs beyond use in env.
-  const credFile = path.join(process.env.APPDATA || '', 'devin', 'credentials.toml');
+  const credFile = agentCredentialsFile();
   try {
     const m = fs.readFileSync(credFile, 'utf8').match(/windsurf_api_key\s*=\s*"([^"]+)"/);
     return m ? m[1] : null;

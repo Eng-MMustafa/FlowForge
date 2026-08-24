@@ -1,29 +1,33 @@
-// install.mjs - Wire the FlowForge workbench into Devin's global config (%APPDATA%\devin).
-// Creates directory junctions so edits in this repo apply live. No admin rights needed.
+// install.mjs - Wire the FlowForge workbench into Devin's global config
+// (%APPDATA%\devin on Windows, ~/Library/Application Support/devin on macOS,
+// ~/.config/devin on Linux - see scripts/lib/platform.mjs).
+// Creates directory links so edits in this repo apply live. No admin rights needed.
 // Usage: node install.mjs [--force]
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { agentConfigDir, agentConfigCandidates, linkType, isLink, removeLink } from './scripts/lib/platform.mjs';
 
 const REPO = path.dirname(fileURLToPath(import.meta.url));
-const APPDATA = process.env.APPDATA;
 const FORCE = process.argv.includes('--force');
+const LINK = linkType();
 
-if (!APPDATA) { console.error('APPDATA is not set.'); process.exit(1); }
-const DEVIN = path.join(APPDATA, 'devin');
-if (!fs.existsSync(DEVIN)) {
-  console.error(`Devin config directory not found: ${DEVIN} - is Devin installed?`);
+const DEVIN = agentConfigDir();
+if (!DEVIN || !fs.existsSync(DEVIN)) {
+  console.error(`Devin config directory not found - is Devin installed?`);
+  console.error(`  looked in: ${agentConfigCandidates().join(', ')}`);
+  console.error('  set DEVIN_CONFIG_DIR if it lives somewhere else.');
   process.exit(1);
 }
 
 function installLink(link, target, label) {
-  if (fs.existsSync(link)) {
-    let reparse = false;
-    try { reparse = fs.realpathSync(link) !== path.resolve(link); } catch {}
+  if (fs.existsSync(link) || isLink(link)) {
+    let reparse = isLink(link);
+    try { reparse = reparse || fs.realpathSync(link) !== path.resolve(link); } catch {}
     if (reparse) {
-      fs.rmdirSync(link); // removes only the junction, never target content
-      fs.symlinkSync(target, link, 'junction');
-      console.log(`OK  ${label}: junction repointed -> ${target}`);
+      removeLink(link); // removes only the link, never target content
+      fs.symlinkSync(target, link, LINK);
+      console.log(`OK  ${label}: link repointed -> ${target}`);
       return;
     }
     // Real directory: link items individually
@@ -31,16 +35,16 @@ function installLink(link, target, label) {
     for (const name of fs.readdirSync(target)) {
       const childLink = path.join(link, name);
       const childTarget = path.join(target, name);
-      if (fs.existsSync(childLink)) {
-        let childReparse = false;
-        try { childReparse = fs.realpathSync(childLink) !== path.resolve(childLink); } catch {}
-        if (childReparse) fs.rmdirSync(childLink);
+      if (fs.existsSync(childLink) || isLink(childLink)) {
+        let childReparse = isLink(childLink);
+        try { childReparse = childReparse || fs.realpathSync(childLink) !== path.resolve(childLink); } catch {}
+        if (childReparse) removeLink(childLink);
         else if (FORCE) fs.rmSync(childLink, { recursive: true, force: true });
         else { console.log(`SKIP ${label}: ${name} already exists (use --force to replace)`); continue; }
       }
       if (fs.statSync(childTarget).isDirectory()) {
-        fs.symlinkSync(childTarget, childLink, 'junction');
-        console.log(`OK  ${label}: junction ${name}`);
+        fs.symlinkSync(childTarget, childLink, LINK);
+        console.log(`OK  ${label}: link ${name}`);
       } else {
         fs.copyFileSync(childTarget, childLink);
         console.log(`OK  ${label}: copied ${name} (file copy - rerun install after edits)`);
@@ -48,8 +52,8 @@ function installLink(link, target, label) {
     }
     return;
   }
-  fs.symlinkSync(target, link, 'junction');
-  console.log(`OK  ${label}: junction created -> ${target}`);
+  fs.symlinkSync(target, link, LINK);
+  console.log(`OK  ${label}: link created -> ${target}`);
 }
 
 // Where the workbench lives differs per machine, so it must NOT be baked into
@@ -66,7 +70,7 @@ function writeLocator() {
 // Older copies hard-coded an absolute path in the skill text. Strip it so a
 // shared clone never carries someone else's machine layout.
 function stripHardcodedPaths() {
-  const stale = /`[A-Za-z]:\\[^`\n]*?ai-workbench(?=[`\\])/g;
+  const stale = /`(?:[A-Za-z]:\\|\/)[^`\n]*?ai-workbench(?=[`\\/])/g;
   const skillsDir = path.join(REPO, 'skills');
   for (const name of fs.readdirSync(skillsDir)) {
     const file = path.join(skillsDir, name, 'SKILL.md');

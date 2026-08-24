@@ -127,6 +127,92 @@ console.log('# static checks');
     localMisses.length === 0, localMisses.join(', '));
 }
 
+// Cross-platform layer: every OS difference is a pure function taking the
+// platform, so all three can be checked from whichever machine runs the suite.
+{
+  const P = await import('../../scripts/lib/platform.mjs');
+  const homes = { win32: 'C:\\Users\\x', darwin: '/Users/x', linux: '/home/x' };
+  const envs = {
+    win32: { APPDATA: 'C:\\Users\\x\\AppData\\Roaming', LOCALAPPDATA: 'C:\\Users\\x\\AppData\\Local', ProgramFiles: 'C:\\Program Files' },
+    darwin: {},
+    linux: {},
+  };
+
+  const cfg = {};
+  for (const p of P.PLATFORMS) cfg[p] = P.agentConfigCandidates(p, envs[p], homes[p]);
+  ok('platform: every OS resolves a Devin config directory',
+    P.PLATFORMS.every((p) => cfg[p].length > 0 && cfg[p].every((c) => c.includes('devin'))));
+  ok('platform: macOS looks in Application Support, Linux in ~/.config',
+    cfg.darwin[0].includes('Application Support') && cfg.linux[0].includes('.config'));
+  ok('platform: DEVIN_CONFIG_DIR overrides the guess on every OS',
+    P.PLATFORMS.every((p) => P.agentConfigCandidates(p, { ...envs[p], DEVIN_CONFIG_DIR: '/tmp/dv' }, homes[p])[0] === '/tmp/dv'));
+
+  ok('platform: junction on Windows, plain symlink elsewhere',
+    P.linkType('win32') === 'junction' && P.linkType('darwin') === 'dir' && P.linkType('linux') === 'dir');
+  ok('platform: path comparison follows the filesystem, not the code',
+    P.caseInsensitivePaths('win32') && P.caseInsensitivePaths('darwin') && !P.caseInsensitivePaths('linux'));
+
+  const roots = {};
+  for (const p of P.PLATFORMS) roots[p] = P.providerRoots(p, envs[p], homes[p]);
+  ok('platform: provider roots are non-empty on every OS',
+    P.PLATFORMS.every((p) => ['local', 'appdata', 'home', 'files'].every((k) => !!roots[p][k])));
+  // The whole point of the roots table: one descriptor rel, three real paths.
+  const cursorSettings = (p) => path.posix.join(String(roots[p].appdata).replace(/\\/g, '/'), 'Cursor', 'User');
+  ok('platform: the same descriptor finds Cursor on all three OSes',
+    cursorSettings('win32').includes('AppData/Roaming/Cursor')
+    && cursorSettings('darwin').includes('Application Support/Cursor')
+    && cursorSettings('linux').includes('.config/Cursor'));
+
+  ok('platform: the browser opener is right per OS',
+    P.openUrlCommand('http://x', 'win32').cmd === 'cmd'
+    && P.openUrlCommand('http://x', 'darwin').cmd === 'open'
+    && P.openUrlCommand('http://x', 'linux').cmd === 'xdg-open');
+  ok('platform: a macOS .app is opened with `open -a`',
+    P.openAppCommand('/Applications/Cursor.app', 'darwin').args[0] === '-a');
+  ok('platform: a Windows non-executable is never "opened"',
+    P.openAppCommand('C:/x/readme.txt', 'win32') === null);
+
+  ok('platform: taskkill only on Windows, process group elsewhere',
+    P.killTreeCommand(123, 'win32').cmd === 'taskkill'
+    && P.killTreeCommand(123, 'darwin') === null && P.killTreeCommand(123, 'linux') === null);
+
+  ok('platform: login script is .cmd on Windows, executable sh elsewhere',
+    P.loginScriptFormat('win32').ext === '.cmd' && P.loginScriptFormat('linux').mode === 0o755
+    && P.loginScriptFormat('darwin').newline === '\n');
+  const win = P.loginScriptLines({ title: 'T', note: 'hi', cliPath: 'C:/gh.exe', steps: [['auth', 'login'], ['auth', 'status']], plat: 'win32' });
+  const nix = P.loginScriptLines({ title: 'T', note: 'hi', cliPath: '/usr/bin/gh', steps: [['auth', 'login'], ['auth', 'status']], plat: 'linux' });
+  ok('platform: each login script speaks its own shell',
+    win[0] === '@echo off' && win.includes('pause')
+    && nix[0] === '#!/bin/sh' && nix.some((l) => l.includes('read _')));
+  ok('platform: the login script runs login then status, both quoted',
+    win.some((l) => l.includes('"auth" "login"')) && nix.some((l) => l.includes('"auth" "status"')));
+
+  // Linux: the first terminal that exists wins, and none means none - the
+  // server must not claim it opened a window that does not exist.
+  const fakeHave = (want) => (cmd) => cmd === want;
+  ok('platform: Linux picks an installed terminal',
+    P.terminalCommand({ file: '/tmp/a.sh', plat: 'linux', have: fakeHave('konsole') }).cmd === 'konsole');
+  ok('platform: Linux with no terminal returns null instead of pretending',
+    P.terminalCommand({ file: '/tmp/a.sh', plat: 'linux', have: () => false }) === null);
+
+  ok('platform: npm is a .cmd shim only on Windows',
+    P.npmBin('npm', 'win32') === 'npm.cmd' && P.npmBin('npm', 'linux') === 'npm');
+  ok('platform: a fresh install lands somewhere sane on every OS',
+    P.PLATFORMS.every((p) => P.defaultInstallDir(p, envs[p], homes[p]).includes('FlowForge')));
+
+  // The rule the whole layer exists for: OS branching lives HERE, not scattered.
+  const scattered = [];
+  for (const rel of ['dashboard/server.mjs', 'dashboard/providers.mjs', 'dashboard/acp-client.mjs',
+    'install.mjs', 'uninstall.mjs', 'start.mjs', 'scripts/run-checks.mjs']) {
+    const src = fs.readFileSync(path.join(WORKBENCH, rel), 'utf8');
+    for (const m of src.matchAll(/process\.env\.(APPDATA|LOCALAPPDATA|USERPROFILE|ProgramFiles)/g)) {
+      scattered.push(`${rel}: ${m[0]}`);
+    }
+  }
+  ok('platform: no runtime module reads a Windows-only environment root',
+    scattered.length === 0, scattered.join(', '));
+}
+
 // The landing page (GitHub Pages, served from docs/) follows the same rules as
 // the dashboard: no external code, bilingual, and every image really there.
 {
@@ -155,6 +241,9 @@ console.log('# static checks');
   const cmd = site.match(/<code id="cmd">([^<]+)<\/code>/);
   ok('site: the copy button offers the documented install command',
     !!cmd && cmd[1].includes('get.mjs') && cmd[1].includes('Eng-MMustafa/FlowForge'));
+  // A Mac visitor must not be handed a PowerShell line.
+  ok('site: offers a command for Windows and one for macOS/Linux',
+    /win:\s*'iwr[^']*get\.mjs[^']*'/.test(site) && /nix:\s*'curl[^']*get\.mjs[^']*'/.test(site));
 }
 
 // The one-command installer must stay dependency-free and never hard-code a
