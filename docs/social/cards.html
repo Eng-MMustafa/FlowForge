@@ -1,0 +1,150 @@
+<!doctype html>
+<!--
+  LinkedIn cards, built from the real screenshots in docs/screenshots.
+  Render:  node docs/social/render.mjs        -> docs/social/*.png (1200x1500 @2x)
+  Preview: open this file and add ?c=1 / ?c=2 / ?c=3 to see one card at a time.
+-->
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>FlowForge - social cards</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#121821; --panel2:#171f2b; --line:#26374a;
+    --ink:#e9f1f8; --dim:#93a7bb; --green:#3ecc6b; --blue:#6fb8ff; --amber:#f0a92e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#05080b;font-family:"Segoe UI","Noto Naskh Arabic",Tahoma,sans-serif;
+    display:flex;flex-direction:column;align-items:center;gap:40px;padding:40px}
+  .card{width:1200px;height:1500px;position:relative;overflow:hidden;background:var(--bg);
+    color:var(--ink);display:flex;flex-direction:column;padding:70px 66px 56px}
+  .card::before{content:"";position:absolute;inset:-380px -200px auto;height:820px;
+    background:radial-gradient(760px 420px at 50% 50%,rgba(62,204,107,.20),transparent 70%)}
+  .card > *{position:relative}
+  /* The product name is a Latin word: force LTR or RTL reorders "Flow" and "Forge". */
+  .brand{direction:ltr;display:flex;align-items:center;gap:14px;font-size:34px;font-weight:700;letter-spacing:.3px}
+  .brand .dot{width:52px;height:52px;border-radius:14px;background:linear-gradient(140deg,var(--green),#1f9e50);
+    display:grid;place-items:center;font-size:28px;color:#052a13}
+  .brand span{color:var(--green)}
+  .kicker{margin-top:44px;color:var(--green);font-size:26px;font-weight:600;letter-spacing:.4px}
+  h1{margin-top:16px;font-size:76px;line-height:1.18;font-weight:700;letter-spacing:-.5px}
+  h1 em{font-style:normal;color:var(--green)}
+  h1 small{display:block;font-size:44px;font-weight:600;color:var(--dim);margin-top:14px;line-height:1.4}
+  .sub{margin-top:26px;font-size:31px;line-height:1.62;color:var(--dim);max-width:1000px}
+  .shot{margin-top:auto;border:1px solid var(--line);border-radius:20px;overflow:hidden;
+    box-shadow:0 40px 90px rgba(0,0,0,.6);direction:ltr}
+  .shot .bar{height:44px;background:var(--panel2);display:flex;align-items:center;gap:9px;padding:0 18px;
+    border-bottom:1px solid var(--line)}
+  .shot .bar i{width:13px;height:13px;border-radius:50%;background:#3a4b5f;display:block}
+  /* Show the whole window - cropping the sides makes it look broken - and fade
+     the bottom instead of chopping a row in half. */
+  .shot .win{height:540px;overflow:hidden;position:relative}
+  .shot .win img{display:block;width:100%}
+  /* Scroll the window down to the part that proves the point (the wired canvas). */
+  .shot .win.canvas img{margin-top:-470px}
+  .shot .win::after{content:"";position:absolute;left:0;right:0;bottom:0;height:130px;
+    background:linear-gradient(transparent,var(--bg))}
+  .strip{display:flex;gap:14px;margin-top:34px;flex-wrap:wrap}
+  .chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;
+    padding:14px 26px;font-size:26px;color:var(--ink)}
+  .chip b{color:var(--green)}
+  .foot{margin-top:34px;display:flex;align-items:center;justify-content:space-between;
+    border-top:1px solid var(--line);padding-top:28px;font-size:27px;color:var(--dim);direction:ltr}
+  .foot code{font-family:Consolas,ui-monospace,monospace;color:var(--blue);direction:ltr}
+  .foot .ar{direction:rtl}
+  .cmd{margin-top:34px;background:#0a0e13;border:1px solid var(--line);border-radius:18px;padding:30px 34px;
+    direction:ltr;text-align:left;font-family:Consolas,ui-monospace,monospace;font-size:25px;line-height:1.75;
+    color:#d6ecff;overflow:hidden}
+  .cmd .p{color:var(--green)}
+  .cmd .c{color:#6b8299}
+  .rows{margin-top:38px;display:flex;flex-direction:column;gap:18px}
+  .row{display:flex;align-items:center;gap:20px;background:var(--panel);border:1px solid var(--line);
+    border-radius:18px;padding:26px 30px;font-size:31px}
+  .row .n{width:56px;height:56px;flex:none;border-radius:14px;background:var(--panel2);
+    display:grid;place-items:center;font-size:28px;color:var(--green);font-weight:700}
+  .row .t{color:var(--dim);font-size:26px;margin-top:4px}
+  .grid2{margin-top:36px;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px 28px}
+  .tile b{display:block;font-size:30px;margin-bottom:8px}
+  .tile span{color:var(--dim);font-size:25px;line-height:1.5}
+  .big{font-size:120px;font-weight:700;color:var(--green);line-height:1}
+</style>
+</head>
+<body>
+
+<!-- 1 - hero -->
+<section class="card" id="c1">
+  <div class="brand"><span class="dot">&#9881;</span>Flow<span>Forge</span></div>
+  <div class="kicker">مفتوح المصدر · مجاني · MIT</div>
+  <h1>جملة واحدة تكتبها.<br><em>خط إنتاج هندسي كامل</em> يشتغل.
+    <small>تفكير ← تحليل ← كود ← اختبار ← تصحيح ← رفع</small></h1>
+  <p class="sub">ستة وكلاء AI متخصصين، كل واحد بيسلّم اللي بعده ملف مركّز،
+    وبوابات موافقة إنت اللي بتقرّرها — وشاشة تحكم بتشوف فيها كل خطوة لايف.</p>
+  <div class="strip">
+    <div class="chip"><b>0</b> مكتبات خارجية</div>
+    <div class="chip"><b>288</b> اختبار ناجح</div>
+    <div class="chip">ويندوز · ماك · لينكس</div>
+  </div>
+  <div class="shot">
+    <div class="bar"><i></i><i></i><i></i></div>
+    <div class="win"><img src="../screenshots/01-overview.png" alt=""></div>
+  </div>
+  <div class="foot"><code>npm i -g flowforge-cli</code><code>github.com/Eng-MMustafa/FlowForge</code></div>
+</section>
+
+<!-- 2 - the flow editor -->
+<section class="card" id="c2">
+  <div class="brand"><span class="dot">&#9881;</span>Flow<span>Forge</span></div>
+  <div class="kicker">من غير ما تكتب سطر JSON واحد</div>
+  <h1>ارسم الـ<em>Pipeline</em> بالسحب<small>وثبّت لكل مرحلة الموديل ومستوى التفكير ومسار الفشل</small></h1>
+  <div class="grid2">
+    <div class="tile"><b>الخط الأزرق</b><span>الخطوة اللي بعدها</span></div>
+    <div class="tile"><b>الخط البرتقالي</b><span>مسار الفشل وعدد المحاولات</span></div>
+    <div class="tile"><b>بوابة لكل مرحلة</b><span>تلقائي · الشاشة · الترمنال</span></div>
+    <div class="tile"><b>الناتج JSON عادي</b><span>ملف تقدر تقراه وتعدّله بإيدك</span></div>
+  </div>
+  <div class="shot">
+    <div class="bar"><i></i><i></i><i></i></div>
+    <div class="win canvas"><img src="../screenshots/04-flows-canvas.png" alt=""></div>
+  </div>
+  <div class="foot"><span class="ar">عربي وإنجليزي بالكامل · RTL</span><code>eng-mmustafa.github.io/FlowForge</code></div>
+</section>
+
+<!-- 3 - install -->
+<section class="card" id="c3">
+  <div class="brand"><span class="dot">&#9881;</span>Flow<span>Forge</span></div>
+  <div class="kicker">التسطيب</div>
+  <h1>أمر <em>واحد</em>.<small>من غير npm install، من غير مكتبات، من غير إعدادات</small></h1>
+  <div class="cmd">
+    <span class="c"># Windows</span><br>
+    <span class="p">iwr</span> -useb https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/get.mjs -o "$env:TEMP\ff.mjs"; <span class="p">node</span> "$env:TEMP\ff.mjs"<br><br>
+    <span class="c"># macOS / Linux</span><br>
+    <span class="p">curl</span> -fsSL https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/get.mjs -o /tmp/ff.mjs &amp;&amp; <span class="p">node</span> /tmp/ff.mjs
+  </div>
+  <div class="rows">
+    <div class="row"><span class="n">1</span><div><b>ينزّل ويربط ويفتح الشاشة</b><div class="t">وشغّل نفس الأمر تاني عشان يحدّث</div></div></div>
+    <div class="row"><span class="n">2</span><div><b>أو من غير تسطيب خالص</b><div class="t" style="direction:ltr;text-align:left">npx flowforge-cli</div></div></div>
+    <div class="row"><span class="n">3</span><div><b>أو أمر عالمي من أي مشروع</b><div class="t" style="direction:ltr;text-align:left">npm i -g flowforge-cli &nbsp;→&nbsp; flowforge</div></div></div>
+  </div>
+  <div class="strip" style="margin-top:auto">
+    <div class="chip"><b>MIT</b> رخصة حرة</div>
+    <div class="chip"><b style="direction:ltr;display:inline-block">Node 18+</b></div>
+    <div class="chip">4 أدوات: Devin · Copilot · Cursor · Trae</div>
+  </div>
+  <div class="foot"><span class="ar"><code>flowforge-cli</code> على npm</span><code>github.com/Eng-MMustafa/FlowForge</code></div>
+</section>
+
+<script>
+  // ?c=2 renders only that card - the renderer screenshots one per run.
+  var only = new URLSearchParams(location.search).get('c');
+  if (only) {
+    document.querySelectorAll('.card').forEach(function (el) {
+      if (el.id !== 'c' + only) el.remove();
+    });
+    document.body.style.padding = '0';
+    document.body.style.gap = '0';
+    document.body.style.background = '#0b0f14';
+  }
+</script>
+</body>
+</html>
