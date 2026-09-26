@@ -1,0 +1,85 @@
+{
+  "name": "security",
+  "title": "Security audit - threat model, scan, triage, verify (defensive, no changes)",
+  "titleAr": "مراجعة أمنية — نموذج تهديدات ← فحص ← فرز ← تحقق (دفاعي، من غير تعديل)",
+  "description": "Defensive security assessment of the project repository. Builds a threat model from the code, runs the secret, dependency, static-analysis and IaC scanners that are already installed, triages findings by tracing source to sink, and has an independent reviewer verify every finding. Scope is the local repository only: no network scanning, no exploitation of external systems, no product code changes.",
+  "defaultGate": "dashboard",
+  "stages": [
+    {
+      "id": "scan",
+      "title": "Collect context",
+      "titleAr": "تجميع السياق",
+      "agent": null,
+      "prompt": "",
+      "pre": [
+        "scripts/collect-context.mjs"
+      ],
+      "post": [],
+      "gate": "auto",
+      "artifact": "context.md",
+      "done": [
+        "context.md exists"
+      ]
+    },
+    {
+      "id": "threat-model",
+      "title": "Threat model",
+      "titleAr": "نموذج التهديدات",
+      "agent": "security",
+      "model": "claude-opus-5-high",
+      "prompt": "Security scope: {TASK}\n\nProject root: {PROJECT} (inventory in .workbench/artifacts/context.md). Build a threat model from the code only: assets (data, credentials, money-moving actions), actors, entry points (HTTP routes, CLI arguments, file and archive parsers, IPC, webhooks, LLM prompts), trust boundaries and the data flows across them with file:line, security controls in place (authentication, authorization, validation, encoding, crypto, CSRF/CORS, rate limits), and STRIDE threats per boundary ranked by likelihood x impact. End with `## Audit targets` - the ranked code paths and tool categories the audit must cover. Follow your role contract's rules of engagement and write .workbench/artifacts/threat-model.md. Do not modify any project file.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "threat-model.md",
+      "done": [
+        "threat-model.md lists assets, entry points and trust boundaries with file:line citations",
+        "threat-model.md contains STRIDE threats per boundary ranked by likelihood and impact",
+        "threat-model.md ends with a ranked Audit targets list"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "audit",
+      "title": "Scan & triage",
+      "titleAr": "الفحص والفرز",
+      "agent": "security",
+      "model": "claude-opus-5-high",
+      "prompt": "Security scope: {TASK}\n\nProject root: {PROJECT}. Threat model: .workbench/artifacts/threat-model.md; if .workbench/artifacts/security-review.md exists from an earlier round, resolve every issue it lists first. Run the security tools already installed for this stack - secrets, dependency advisories, static analysis, IaC/container configuration - checking each with --version first and marking missing ones NOT AVAILABLE; never install tools. Manually review every Audit target for the vulnerability classes the threat model ranks highest (OWASP Top 10, CWE Top 25, OWASP LLM Top 10 where AI code exists). Triage every tool hit into a finding or a dismissal with a reason. Write .workbench/artifacts/security.md per your role contract: Tooling table with exact commands and exit codes; Findings with CWE, severity (CVSS v3.1 vector or rationale), confidence, file:line, redacted evidence and reachability; Dismissed; Coverage & gaps; and a ranked Remediation roadmap. Do not modify any project file.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "security.md",
+      "done": [
+        "security.md Tooling table records each tool with version, exact command and exit code, or NOT AVAILABLE",
+        "Every finding has a CWE, a severity with rationale or CVSS vector, a confidence, a file:line and reachability reasoning",
+        "Any secret appears redacted, never in full",
+        "security.md contains Dismissed, Coverage & gaps and a ranked Remediation roadmap"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "verify",
+      "title": "Verify findings",
+      "titleAr": "التحقق من الثغرات",
+      "agent": "tester",
+      "model": "gpt-5-6-sol-high",
+      "prompt": "Independently verify .workbench/artifacts/security.md for the project at {PROJECT}. For every finding, trace the cited source-to-sink path in the code and mark it CONFIRMED, FALSE POSITIVE or NEEDS MORE EVIDENCE; check severity against reachability; re-run at least two tool commands from the Tooling table and compare counts; check every Audit target in threat-model.md was covered or listed under Coverage & gaps; confirm no secret appears unredacted. Stay defensive: confirm by reading code or by a local unit-level check only, never against a running external system. Write .workbench/artifacts/security-review.md with `## Verdict: PASS | FAIL` (the verdict judges the audit's accuracy and coverage, not whether the code is secure), the per-finding table and the required fixes. Do not modify any project file. Lead your reply with VERDICT: PASS or VERDICT: FAIL.",
+      "pre": [],
+      "post": [],
+      "gate": "default",
+      "gateQuestion": "Security findings independently verified - accept the audit?",
+      "gateQuestionAr": "الثغرات اتأكدت بشكل مستقل — نعتمد المراجعة الأمنية؟",
+      "artifact": "security-review.md",
+      "onFail": "audit",
+      "maxLoops": 2,
+      "done": [
+        "security-review.md exists with an explicit Verdict line",
+        "Every finding in security.md is marked CONFIRMED, FALSE POSITIVE or NEEDS MORE EVIDENCE with a citation",
+        "At least two tool commands were re-run with their results compared",
+        "security-review.md confirms every Audit target was covered or listed as a gap"
+      ],
+      "effort": "high"
+    }
+  ]
+}

@@ -89,7 +89,7 @@
   nav .tab.active{color:var(--accent); border-color:color-mix(in srgb, var(--accent) 45%, var(--border)); background:color-mix(in srgb, var(--accent) 12%, transparent);}
   nav .tab .livedot{margin-inline-start:6px;}
 
-  main{padding:var(--space-lg) var(--space-lg) 56px; max-width:1360px; margin:0 auto;}
+  main{padding:var(--space-lg) clamp(12px, 2vw, 40px) 56px; max-width:1760px; margin:0 auto;}
   .page{display:none;}
   .page.active{display:block; animation:fadein .18s ease;}
   @keyframes fadein{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
@@ -118,15 +118,143 @@
   .promptbar .btncol .btn{white-space:nowrap; justify-content:flex-start;}
   .runbar .btn.primary{padding:9px 20px;}
   /* Settings > providers: one card per executor, active one accented. */
-  .provgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:var(--space-md);}
-  .provcard{border:1px solid var(--border); border-radius:var(--radius); background:var(--panel2); padding:12px 14px;}
+  .provgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:var(--space-md);}
+  .provcard{border:1px solid var(--border); border-radius:var(--radius); background:var(--panel2); padding:12px 14px;
+    display:flex; flex-direction:column; gap:8px; transition:border-color .15s, box-shadow .15s;}
+  .provcard:hover{border-color:var(--dim);}
   .provcard.active{border-color:var(--accent2); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent2) 22%, transparent);}
-  .provcard h3{margin:0 0 8px; font-size:14.5px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
-  .provcard .paths{font-size:11px; color:var(--dim); direction:ltr; text-align:start; word-break:break-all; margin:6px 0; line-height:1.6;}
-  .provcard .why{font-size:11.5px; color:var(--dim); line-height:1.7; margin:6px 0;}
-  .provcard .row{margin-top:10px;}
+  .provcard.off{opacity:.62;}
+  .provhead{display:flex; align-items:center; gap:10px;}
+  .provicon{width:36px; height:36px; flex:0 0 36px; border-radius:10px; display:grid; place-items:center; font-size:19px;
+    background:linear-gradient(135deg, color-mix(in srgb, var(--accent2) 22%, transparent), color-mix(in srgb, var(--accent) 10%, transparent));
+    border:1px solid color-mix(in srgb, var(--accent2) 30%, var(--border));}
+  .provname{flex:1; min-width:0; font-size:14.5px; font-weight:600; display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .provdot{width:9px; height:9px; flex:0 0 9px; border-radius:50%; background:var(--dim);}
+  .provdot.on{background:var(--green); box-shadow:0 0 6px color-mix(in srgb, var(--green) 60%, transparent);}
+  .provdot.off{background:var(--red);}
+  .provchips{display:flex; gap:6px; flex-wrap:wrap;}
+  .provcard details{border-top:1px dashed var(--border); padding-top:6px;}
+  .provcard summary{cursor:pointer; font-size:11.5px; color:var(--dim); list-style:none;}
+  .provcard summary::-webkit-details-marker{display:none;}
+  .provcard summary::before{content:'▸ '; font-size:9px;}
+  .provcard details[open] summary::before{content:'▾ ';}
+  .provcard .paths{font-size:11px; color:var(--dim); direction:ltr; text-align:start; word-break:break-all; margin:6px 0 0; line-height:1.6;}
+  .provcard .why{font-size:11.5px; color:var(--dim); line-height:1.7; margin:0;}
+  .provcard .row{margin-top:auto; display:flex; gap:6px; flex-wrap:wrap;}
+  /* Modal: dimmed blurred backdrop, a panel that floats up. Opened by adding
+     .open; nothing about it depends on the card that launched it. */
+  .modalwrap{position:fixed; inset:0; z-index:60; display:none; align-items:center; justify-content:center;
+    background:rgba(4,8,16,.6); backdrop-filter:blur(3px); padding:20px;}
+  .modalwrap.open{display:flex;}
+  .modal{width:min(440px,100%); background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px 20px; display:flex; flex-direction:column; gap:10px;
+    box-shadow:0 18px 60px rgba(0,0,0,.55); animation:modalin .16s ease;}
+  @keyframes modalin{from{opacity:0; transform:translateY(10px) scale(.98);} to{opacity:1; transform:none;}}
+  .modalhead{display:flex; align-items:center; gap:10px; font-size:15px; font-weight:600;}
+  .modalhead .provicon{width:30px; height:30px; font-size:16px;}
+  .modalhead .x{margin-inline-start:auto; background:none; border:none; color:var(--dim); font-size:16px; cursor:pointer; padding:4px 6px;}
+  .modalhead .x:hover{color:var(--text);}
+  .modal .kv{display:flex; flex-direction:column; gap:4px; align-items:stretch;}
+  .modal .kv label{font-size:12px; color:var(--dim);}
+  .modal .kv input[type=text], .modal .kv input[type=password]{width:100%;}
+  .modal .checkline{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text);}
+  .modal .mrow{display:flex; gap:8px; justify-content:flex-end; margin-top:4px;}
+  /* Usage: pre-run estimate chip, live run counter, the Usage page. */
+  .estbox{display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; font-size:12px; color:var(--dim);
+    padding:7px 10px; border:1px dashed var(--border); border-radius:var(--radius-sm); background:color-mix(in srgb, var(--panel2) 60%, transparent);}
+  .estbox b{color:var(--text); font-weight:600; font-family:var(--mono);}
+  .estbox .sep{opacity:.4;}
+  .estbox{flex-direction:column; align-items:stretch;}
+  .esthead{display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; font-size:12.5px; color:var(--text);}
+  .estbig{font-size:17px; font-weight:700; font-family:var(--mono); color:var(--accent);}
+  .estbig .estusd{font-size:13px; color:var(--green); margin-inline-start:4px;}
+  .estusd{color:var(--green); font-family:var(--mono); font-weight:700;}
+  .estacu{font-size:11px; color:var(--dim); font-family:var(--mono); font-weight:500;}
+  .estsub{font-size:11.5px;}
+  .estdim{font-size:11px; color:var(--dim);}
+  .estbox tr.estmuted td{opacity:.6;}
+  .estbox tr.esttotal td{font-weight:700; border-top:1px solid var(--border); color:var(--text);}
+  .estbox details{flex-basis:100%;}
+  .estbox summary{cursor:pointer; font-size:11.5px; list-style:none;}
+  .estbox summary::-webkit-details-marker{display:none;}
+  .estbox summary::before{content:'▸ '; font-size:9px;}
+  .estbox details[open] summary::before{content:'▾ ';}
+  .runusage{font-size:11.5px; font-weight:500; color:var(--dim); font-family:var(--mono); margin-inline-start:8px;}
+  .kpis{display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:var(--space-sm); margin:10px 0;}
+  .kpi{border:1px solid var(--border); border-radius:var(--radius); background:var(--panel2); padding:10px 12px;}
+  .kpi .k{font-size:11.5px; color:var(--dim);}
+  .kpi .v{font-size:20px; font-weight:650; font-family:var(--mono); margin-top:2px;}
+  .kpi .s{font-size:11.5px; color:var(--dim); margin-top:2px;}
+  .delta.up{color:var(--red);} .delta.down{color:var(--green);}
+  .ubudget{height:8px; border-radius:999px; background:var(--panel2); border:1px solid var(--border); overflow:hidden; margin:6px 0 2px;}
+  .ubudget > i{display:block; height:100%; background:var(--accent2);}
+  .ubudget.warn > i{background:var(--amber);} .ubudget.over > i{background:var(--red);}
+  .uchart{display:flex; align-items:flex-end; gap:3px; height:140px; padding:8px 4px 0; border-bottom:1px solid var(--border); margin-top:8px;}
+  .uchart .b{flex:1; min-width:4px; background:color-mix(in srgb, var(--accent2) 70%, transparent); border-radius:3px 3px 0 0; position:relative; transition:background .15s;}
+  .uchart .b:hover{background:var(--accent);}
+  .uchart .b.today{background:var(--accent);}
+  .uchart .b.zero{background:var(--border); height:2px !important;}
+  .uaxis{display:flex; justify-content:space-between; font-size:10.5px; color:var(--dim); margin-top:3px; direction:ltr;}
+  .utable{width:100%; border-collapse:collapse; font-size:12.5px;}
+  .utable th,.utable td{padding:6px 8px; border-bottom:1px solid var(--border); text-align:start; white-space:nowrap;}
+  .utable th{color:var(--dim); font-weight:500; font-size:11.5px; cursor:default;}
+  .utable td.num,.utable th.num{text-align:end; font-family:var(--mono);}
+  .utable td.wrap{white-space:normal; overflow-wrap:anywhere; max-width:420px;}
+  .utable tr:hover td{background:color-mix(in srgb, var(--panel2) 70%, transparent);}
+  .ushare{display:inline-block; height:6px; border-radius:3px; background:var(--accent2); vertical-align:middle; margin-inline-end:6px;}
+  .uscroll{overflow-x:auto;}
   .livedot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--green); animation:pulse 1.2s infinite;}
   .hint{font-size:11.5px; color:var(--dim); margin-top:var(--space-sm); line-height:1.6; padding-inline-start:10px; border-inline-start:2px solid var(--border);}
+  /* Long explanations fold to one line; a click opens them. */
+  .hint.help{max-height:1.7em; overflow:hidden; cursor:pointer; position:relative; padding-inline-end:20px;}
+  .hint.help::after{content:'ⓘ'; position:absolute; inset-inline-end:2px; top:0; font-size:12px; color:var(--accent); opacity:.8;}
+  .hint.help.open{max-height:none;}
+  .hint.help.open::after{content:'×';}
+  .hint.help:not(.open){-webkit-mask-image:linear-gradient(90deg,#000 80%,transparent); mask-image:linear-gradient(90deg,#000 80%,transparent);}
+  [dir=rtl] .hint.help:not(.open){-webkit-mask-image:linear-gradient(270deg,#000 80%,transparent); mask-image:linear-gradient(270deg,#000 80%,transparent);}
+  /* A gate waiting for a decision is visible from every tab. */
+  #gateBar{display:none; position:sticky; top:0; z-index:40; margin:0 0 var(--space-md); padding:10px 14px; border-radius:var(--radius-md);
+    background:color-mix(in srgb, var(--amber) 16%, var(--panel)); border:1px solid color-mix(in srgb, var(--amber) 45%, transparent);
+    color:var(--text); align-items:center; gap:10px; box-shadow:var(--shadow-md); font-size:13.5px;}
+  #gateBar.on{display:flex;}
+  #gateBar b{color:var(--amber);}
+  /* Structured event log. */
+  .logrow{display:grid; grid-template-columns:52px 1fr; gap:8px; padding:3px 0; border-bottom:1px dashed color-mix(in srgb, var(--border) 60%, transparent); font-family:var(--mono); font-size:11.5px; direction:ltr; text-align:left;}
+  .logrow .t{color:var(--dim);} .logrow.ok .m{color:var(--green);} .logrow.bad .m{color:var(--red);} .logrow.gate .m{color:var(--amber);} .logrow.start .m{color:var(--accent);}
+  /* Recent runs. */
+  .runrow{display:grid; grid-template-columns:auto minmax(0,1fr) auto auto; gap:10px; align-items:center; padding:8px 10px; border-radius:var(--radius-sm); border:1px solid var(--hairline); margin-bottom:6px; background:var(--panel2);}
+  .runrow > div{min-width:0;}
+  .runrow:hover{border-color:var(--border);}
+  .runrow .task{font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .runrow .meta{font-size:11px; color:var(--dim); white-space:nowrap; font-family:var(--mono);}
+  .runrow .cost{color:var(--green); font-family:var(--mono); font-size:12px; font-weight:600; white-space:nowrap;}
+  .act-row .n{display:inline-block; min-width:18px; padding:0 5px; margin-inline-start:6px; border-radius:9px; background:var(--panel2); color:var(--dim); font-size:10.5px; text-align:center;}
+  .gitcode{display:inline-block; min-width:18px; padding:0 5px; margin-inline-end:8px; border-radius:6px; font-size:10.5px; font-weight:600; text-align:center; color:#fff;}
+  .gitcode.M{background:color-mix(in srgb, var(--amber) 70%, #000);} .gitcode.A,.gitcode.U{background:color-mix(in srgb, var(--green) 65%, #000);}
+  .gitcode.D{background:color-mix(in srgb, var(--red) 65%, #000);} .gitcode.R{background:color-mix(in srgb, var(--accent2) 70%, #000);}
+  /* Runs board. */
+  .boardgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:var(--space-md);}
+  .runcard{border:1px solid var(--border); border-radius:var(--radius-md); background:var(--panel2); padding:12px 14px; display:flex; flex-direction:column; gap:8px;}
+  .runcard.gate{border-color:color-mix(in srgb, var(--amber) 55%, transparent); box-shadow:0 0 0 2px color-mix(in srgb, var(--amber) 18%, transparent);}
+  .runcard .proj{font-weight:600; font-size:13.5px; display:flex; align-items:center; gap:8px;}
+  .runcard .task{font-size:12.5px; color:var(--dim); line-height:1.5; max-height:3em; overflow:hidden;}
+  .runcard .prog{height:6px; border-radius:3px; background:var(--code-bg); overflow:hidden; border:1px solid var(--hairline);}
+  .runcard .prog i{display:block; height:100%; background:var(--accent2); transition:width .4s ease;}
+  .runcard .meta{font-size:11px; color:var(--dim); font-family:var(--mono); display:flex; gap:10px; flex-wrap:wrap;}
+  .runcard .row{margin-top:auto;}
+  /* minmax(0,1fr) + min-width:0: a long task clamps to two lines instead of
+     stretching the row past the panel. */
+  .qrow{display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:12px; align-items:center; padding:9px 12px; border:1px solid var(--hairline); border-radius:var(--radius-sm); margin-bottom:6px; background:var(--panel2);}
+  .qrow > div{min-width:0;}
+  .qrow .pos{font-family:var(--mono); color:var(--dim); min-width:22px; text-align:center;}
+  .qrow .task{font-size:12.5px; line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; white-space:normal; word-break:break-word;}
+  .qrow .task .badge{vertical-align:middle;}
+  .qrow .meta{font-size:11px; color:var(--dim); font-family:var(--mono); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .qrow .st{min-width:22px; text-align:center; font-weight:700;}
+  .qrow .st.done{color:var(--green);} .qrow .st.failed{color:var(--red);} .qrow .st.cancelled{color:var(--dim);}
+  .boardform summary{cursor:pointer; color:var(--accent); font-size:12.5px;}
+  .fnode .cost{position:absolute; top:-9px; inset-inline-end:10px; background:var(--panel); border:1px solid color-mix(in srgb, var(--green) 55%, transparent); color:var(--green);
+    font-family:var(--mono); font-size:10.5px; font-weight:600; padding:1px 7px; border-radius:9px; pointer-events:none;}
   .btn{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--border); background:var(--panel2); color:var(--text); padding:7px 16px; border-radius:var(--radius-sm); cursor:pointer; font-size:13px; font-family:inherit; font-weight:500; white-space:nowrap; transition:border-color .15s ease, background-color .15s ease, color .15s ease, transform .12s ease, box-shadow .15s ease;}
   .btn:hover{border-color:var(--accent); color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, var(--panel2)); transform:translateY(-1px);}
   .btn:active{transform:translateY(0);}
@@ -154,6 +282,10 @@
   .stage.running .dot{background:var(--blue); box-shadow:0 0 0 3px color-mix(in srgb, var(--blue) 22%, transparent); animation:pulse 1s infinite;}
   .stage.waiting_gate{border-color:color-mix(in srgb, var(--amber) 45%, var(--border)); border-inline-start-color:var(--amber); background:color-mix(in srgb, var(--amber) 8%, var(--panel2));}
   .stage.waiting_gate .dot{background:var(--amber); box-shadow:0 0 0 3px color-mix(in srgb, var(--amber) 22%, transparent); animation:pulse 1s infinite;}
+  .resumebar{display:flex; align-items:center; gap:10px; padding:9px 12px; margin-bottom:10px; border-radius:var(--radius-sm); font-size:12.5px;
+    background:color-mix(in srgb, var(--amber) 12%, var(--panel2)); border:1px solid color-mix(in srgb, var(--amber) 40%, transparent);}
+  .stage.interrupted{opacity:.85; border-inline-start-color:var(--amber);}
+  .stage.interrupted .dot{background:var(--amber);}
   .stage.done{border-inline-start-color:var(--green);}
   .stage.done .dot{background:var(--green); box-shadow:0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent);}
   .stage.failed{border-color:color-mix(in srgb, var(--red) 45%, var(--border)); border-inline-start-color:var(--red); background:color-mix(in srgb, var(--red) 8%, var(--panel2));}
@@ -394,14 +526,20 @@
 </header>
 <nav>
   <div class="tab active" data-page="overview"><span data-i18n="tab_overview"></span></div>
+  <div class="tab" data-page="runs"><span data-i18n="tab_runs"></span><span class="badge running" id="runsTabBadge" style="display:none; margin-inline-start:6px; padding:0 6px"></span></div>
   <div class="tab" data-page="activity"><span data-i18n="tab_activity"></span><span class="livedot" id="actDot" style="display:none"></span></div>
   <div class="tab" data-page="artifacts"><span data-i18n="tab_artifacts"></span></div>
   <div class="tab" data-page="flows"><span data-i18n="tab_flows"></span></div>
   <div class="tab" data-page="agents"><span data-i18n="tab_agents"></span></div>
   <div class="tab" data-page="skills"><span data-i18n="tab_skills"></span></div>
+  <div class="tab" data-page="usage"><span data-i18n="tab_usage"></span></div>
   <div class="tab" data-page="settings"><span data-i18n="tab_settings"></span></div>
 </nav>
 <main>
+  <div id="gateBar" role="status">
+    <span>🔔</span><span id="gateBarText"></span><span class="spacer"></span>
+    <button class="btn small primary" id="gateBarOpen" data-i18n="gate_open"></button>
+  </div>
 
   <!-- ================ OVERVIEW ================ -->
   <div class="page active" id="page-overview">
@@ -431,6 +569,7 @@
             <button class="btn small" id="btnRefineUndo" data-i18n="refine_undo" style="display:none"></button>
           </div>
         </div>
+        <div class="estbox" id="estBox" style="display:none"></div>
         <div class="hint" data-i18n="prompt_hint"></div>
         <div class="row">
           <select id="runGates">
@@ -438,6 +577,7 @@
             <option value="terminal" data-i18n="gates_terminal"></option>
             <option value="dashboard" data-i18n="gates_dashboard"></option>
             <option value="auto" data-i18n="gates_auto"></option>
+            <option value="ai" data-i18n="gates_ai"></option>
           </select>
           <select id="runSpeed">
             <option value="" data-i18n="speed_flow"></option>
@@ -461,7 +601,7 @@
     </section>
 
     <section id="runConsoleSec" style="display:none">
-      <h2><span data-i18n="run_console"></span> <span class="livedot" id="runDot" style="display:none"></span></h2>
+      <h2><span data-i18n="run_console"></span> <span class="livedot" id="runDot" style="display:none"></span><span class="runusage" id="runUsage"></span></h2>
       <pre id="runConsole" style="max-height:340px"></pre>
       <div class="hint" data-i18n="auth_hint"></div>
     </section>
@@ -471,9 +611,17 @@
         <h2 data-i18n="pipeline_title"></h2>
         <div class="task-line" id="taskText"></div>
         <div class="task-raw" id="taskRawText" style="display:none"></div>
+        <div id="resumeBar" class="resumebar" style="display:none">
+          <span id="resumeText"></span><span class="spacer"></span>
+          <button class="btn primary small" id="btnResume" data-i18n="resume_btn"></button>
+        </div>
         <div id="stages"><div class="empty" data-i18n="no_flow"></div></div>
       </section>
       <div>
+        <section id="runsSec" style="display:none">
+          <h2 data-i18n="runs_title"></h2>
+          <div id="runsList"></div>
+        </section>
         <section id="liveSection">
           <h2><span data-i18n="live_output"></span> <span class="badge running" id="liveArtifactName" style="direction:ltr"></span></h2>
           <pre id="liveTail"></pre>
@@ -496,6 +644,87 @@
         </section>
       </div>
     </div>
+  </div>
+
+  <!-- ================ RUNS (all projects: in flight, queued, scheduled) ================ -->
+  <div class="page" id="page-runs">
+    <section>
+      <h2><span data-i18n="board_active"></span> <span class="badge" id="boardCap"></span></h2>
+      <div id="boardActive" class="boardgrid"><div class="empty" data-i18n="board_none_active"></div></div>
+      <div class="hint" data-i18n="board_hint"></div>
+    </section>
+    <div class="grid2">
+      <section>
+        <h2 data-i18n="board_queue"></h2>
+        <div id="boardQueue"><div class="empty" data-i18n="board_queue_empty"></div></div>
+        <details class="boardform" style="margin-top:10px">
+          <summary data-i18n="board_add_tasks"></summary>
+          <div class="row" style="margin-top:8px">
+            <select id="qProject"></select>
+            <select id="qFlow"></select>
+            <select id="qGates">
+              <option value="dashboard" data-i18n="gates_dashboard"></option>
+              <option value="auto" data-i18n="gates_auto"></option>
+              <option value="ai" data-i18n="gates_ai"></option>
+              <option value="terminal" data-i18n="gates_terminal"></option>
+            </select>
+            <select id="qSpeed">
+              <option value="" data-i18n="speed_flow"></option>
+              <option value="fast" data-i18n="speed_fast"></option>
+              <option value="balanced" data-i18n="speed_balanced"></option>
+              <option value="quality" data-i18n="speed_quality"></option>
+            </select>
+          </div>
+          <textarea id="qTasks" rows="4" style="width:100%; margin-top:8px"></textarea>
+          <div class="row" style="margin-top:8px">
+            <span class="hint" style="border:none; padding:0; margin:0" data-i18n="board_tasks_hint"></span>
+            <span class="spacer"></span>
+            <button class="btn primary" id="qAdd" data-i18n="board_add"></button>
+          </div>
+        </details>
+      </section>
+      <section>
+        <h2 data-i18n="board_schedules"></h2>
+        <div id="boardSchedules"><div class="empty" data-i18n="board_sched_empty"></div></div>
+        <details class="boardform" style="margin-top:10px">
+          <summary data-i18n="board_add_schedule"></summary>
+          <div class="row" style="margin-top:8px">
+            <select id="sProject"></select>
+            <select id="sFlow"></select>
+            <select id="sGates">
+              <option value="auto" data-i18n="gates_auto"></option>
+              <option value="ai" data-i18n="gates_ai"></option>
+              <option value="dashboard" data-i18n="gates_dashboard"></option>
+            </select>
+            <select id="sSpeed">
+              <option value="" data-i18n="speed_flow"></option>
+              <option value="fast" data-i18n="speed_fast"></option>
+              <option value="balanced" data-i18n="speed_balanced"></option>
+              <option value="quality" data-i18n="speed_quality"></option>
+            </select>
+          </div>
+          <textarea id="sTask" rows="2" style="width:100%; margin-top:8px"></textarea>
+          <div class="row" style="margin-top:8px">
+            <select id="sKind">
+              <option value="daily" data-i18n="rep_daily"></option>
+              <option value="weekly" data-i18n="rep_weekly"></option>
+              <option value="hours" data-i18n="rep_hours"></option>
+              <option value="once" data-i18n="rep_once"></option>
+            </select>
+            <input type="time" id="sAt" value="09:00" style="direction:ltr">
+            <input type="number" id="sEvery" min="1" step="1" value="6" style="width:80px; direction:ltr; display:none">
+            <input type="datetime-local" id="sOnce" style="direction:ltr; display:none">
+            <span id="sDays" style="display:none"></span>
+            <span class="spacer"></span>
+            <button class="btn primary" id="sAdd" data-i18n="board_add"></button>
+          </div>
+        </details>
+      </section>
+    </div>
+    <section>
+      <h2 data-i18n="board_history"></h2>
+      <div id="boardHistory"><div class="empty" data-i18n="u_none"></div></div>
+    </section>
   </div>
 
   <!-- ================ ACTIVITY (live) ================ -->
@@ -581,6 +810,7 @@
             <select id="insGate">
               <option value="default" data-i18n="gate_default"></option>
               <option value="auto">auto</option>
+              <option value="ai" data-i18n="gates_ai_short"></option>
               <option value="dashboard">dashboard</option>
               <option value="terminal">terminal</option>
             </select>
@@ -603,6 +833,8 @@
           <button class="btn primary" id="btnSaveCanvas" data-i18n="save"></button>
           <button class="btn" id="btnAutoLayout" data-i18n="auto_layout"></button>
           <button class="btn" id="btnClearCanvas" data-i18n="clear_canvas"></button>
+          <span class="spacer"></span>
+          <span class="badge done" id="canvasTotal" style="font-family:var(--mono)"></span>
         </div>
         <div class="hint" data-i18n="canvas_hint"></div>
       </div>
@@ -738,6 +970,69 @@
     </section>
   </div>
 
+  <!-- ================ USAGE ================ -->
+  <div class="page" id="page-usage">
+    <section>
+      <div class="row">
+        <h2 style="margin:0" data-i18n="usage_title"></h2>
+        <span class="spacer"></span>
+        <button class="iconbtn" id="useMonthPrev" title="‹">‹</button>
+        <select id="useMonth"></select>
+        <button class="iconbtn" id="useMonthNext" title="›">›</button>
+        <select id="useTool"><option value="" data-i18n="usage_all_tools"></option></select>
+        <select id="useScope">
+          <option value="all" data-i18n="usage_scope_all"></option>
+          <option value="flowforge" data-i18n="usage_scope_ff"></option>
+        </select>
+        <button class="btn small" id="useRefresh" data-i18n="usage_refresh"></button>
+      </div>
+      <div class="hint" id="useNote"></div>
+      <div class="kpis" id="useKpis"></div>
+      <div id="useBudget"></div>
+      <div class="uchart" id="useChart"></div>
+      <div class="uaxis" id="useAxis"></div>
+    </section>
+    <div class="grid2">
+      <section><h2 data-i18n="usage_by_tool"></h2><div class="uscroll" id="useTools"></div></section>
+      <section><h2 data-i18n="usage_tracking"></h2><div class="uscroll" id="useTracking"></div>
+        <div class="hint" data-i18n="usage_tracking_hint"></div></section>
+    </div>
+    <div class="grid2">
+      <section><h2 data-i18n="usage_by_model"></h2><div class="uscroll" id="useModels"></div>
+        <div class="hint" data-i18n="usage_rate_hint"></div></section>
+      <section><h2 data-i18n="usage_by_project"></h2><div class="uscroll" id="useProjects"></div>
+        <h2 style="margin-top:14px" data-i18n="usage_by_flow"></h2><div class="uscroll" id="useFlows"></div></section>
+    </div>
+    <section>
+      <div class="row">
+        <h2 style="margin:0" data-i18n="usage_tasks"></h2>
+        <span class="spacer"></span>
+        <select id="useSort">
+          <option value="new" data-i18n="usage_sort_new"></option>
+          <option value="cost" data-i18n="usage_sort_cost"></option>
+        </select>
+        <button class="btn small" id="useCsv" data-i18n="usage_csv"></button>
+        <select id="useReportFmt">
+          <option value="md">Markdown</option><option value="pdf">PDF</option>
+          <option value="docx">Word</option><option value="xlsx">Excel</option><option value="html">HTML</option>
+        </select>
+        <button class="btn small primary" id="useReport" data-i18n="usage_report"></button>
+      </div>
+      <div class="uscroll" id="useTasks" style="margin-top:8px"></div>
+    </section>
+    <section>
+      <h2 data-i18n="usage_rates"></h2>
+      <div class="row">
+        <label data-i18n="usage_usd_per_acu"></label>
+        <input type="number" id="useUsdAcu" step="0.01" min="0" style="width:110px; direction:ltr" placeholder="2.25">
+        <label data-i18n="usage_budget"></label>
+        <input type="number" id="useBudgetIn" step="1" min="0" style="width:110px; direction:ltr" placeholder="100">
+      </div>
+      <div class="hint" id="useUsdNote"></div>
+      <div class="hint" data-i18n="usage_hint"></div>
+    </section>
+  </div>
+
   <!-- ================ SETTINGS ================ -->
   <div class="page" id="page-settings">
     <div class="grid2">
@@ -762,6 +1057,7 @@
             <option value="terminal">terminal</option>
             <option value="dashboard">dashboard</option>
             <option value="auto">auto</option>
+            <option value="ai" data-i18n="gates_ai_short"></option>
           </select>
         </div>
         <div class="hint" data-i18n="gate_mode_hint"></div>
@@ -769,19 +1065,7 @@
           <label data-i18n="refine_provider"></label>
           <select id="setRefineProvider">
             <option value="auto" data-i18n="refine_auto"></option>
-            <option value="acp" data-i18n="refine_acp"></option>
-            <option value="cli" data-i18n="refine_cli"></option>
-            <option value="http" data-i18n="refine_http"></option>
-            <option value="local" data-i18n="refine_local"></option>
           </select>
-        </div>
-        <div id="refineHttpBox" style="display:none">
-          <div class="kv"><label data-i18n="refine_base"></label>
-            <input type="text" id="setRefineBase" style="direction:ltr" placeholder="https://api.groq.com/openai/v1"></div>
-          <div class="kv"><label data-i18n="refine_model"></label>
-            <input type="text" id="setRefineModel" style="direction:ltr" placeholder="llama-3.3-70b-versatile"></div>
-          <div class="kv"><label data-i18n="refine_key"></label>
-            <input type="password" id="setRefineKey" style="direction:ltr" placeholder="gsk_..."></div>
         </div>
         <div class="row" style="margin-top:8px">
           <button class="btn" id="btnSaveRefine" data-i18n="save"></button>
@@ -828,6 +1112,23 @@
     </div>
   </div>
 </div>
+<div class="modalwrap" id="apiModal">
+  <div class="modal">
+    <div class="modalhead"><div class="provicon">⌁</div><span data-i18n="refine_http"></span>
+      <button class="x" id="apiModalX" title="close">✕</button></div>
+    <div class="kv"><label data-i18n="refine_base"></label>
+      <input type="text" id="setRefineBase" style="direction:ltr" placeholder="https://api.groq.com/openai/v1"></div>
+    <div class="kv"><label data-i18n="refine_model"></label>
+      <input type="text" id="setRefineModel" style="direction:ltr" placeholder="llama-3.3-70b-versatile"></div>
+    <div class="kv"><label data-i18n="refine_key"></label>
+      <input type="password" id="setRefineKey" style="direction:ltr" placeholder="gsk_..."></div>
+    <label class="checkline"><input type="checkbox" id="setRefineHttpOnly"> <span data-i18n="refine_http_only"></span></label>
+    <div class="mrow">
+      <button class="btn small" id="apiModalCancel" data-i18n="cancel"></button>
+      <button class="btn small primary" id="btnSaveApi" data-i18n="save"></button>
+    </div>
+  </div>
+</div>
 <div id="toasts"></div>
 
 <script>
@@ -835,12 +1136,78 @@
 const I18N = {
   en: {
     tab_overview: 'Overview', tab_activity: 'Live activity', tab_artifacts: 'Artifacts', tab_flows: 'Flows',
-    tab_agents: 'Agents', tab_skills: 'Skills', tab_settings: 'Settings',
+    tab_agents: 'Agents', tab_skills: 'Skills', tab_settings: 'Settings', tab_usage: 'Usage',
+    usage_title: 'Usage & cost', usage_scope_all: 'all my Devin sessions', usage_scope_ff: 'FlowForge only',
+    usage_refresh: '↻ Refresh', usage_by_model: 'By model', usage_by_project: 'By project', usage_by_flow: 'By flow',
+    usage_rate_hint: 'Rate = ACUs per 1M effective tokens on YOUR account (cache reads weighted at 10%, as providers bill them). It is what the pre-run estimate prices each stage with.',
+    usage_tasks: 'Every task', usage_sort_new: 'newest first', usage_sort_cost: 'most expensive first',
+    usage_csv: '⬇ CSV', usage_report: '📄 Monthly report', usage_rates: 'Money & budget',
+    usage_usd_per_acu: 'Contract $ per ACU (optional)', usage_budget: 'Monthly budget ($)',
+    usage_all_tools: 'all tools', usage_by_tool: 'By tool', usage_tracking: 'Tracking — where each tool\'s numbers come from',
+    usage_tracking_hint: 'Local records are read as they are. Cursor, Aider and the Copilot CLI only record usage once switched on here — each switch shows exactly what it changes and can be switched off again. Copilot dollars are what GitHub billed you (premium requests), read through your gh login.',
+    u_premium: 'premium requests',
+    trk_tool: 'Tool', trk_how: 'Where the numbers come from', trk_state: 'State', trk_local: 'local records', trk_setup: 'switch on once',
+    trk_billing: 'vendor billing', trk_unsupported: 'not available', trk_on: 'on', trk_off: 'off', trk_none: 'nothing on this machine',
+    trk_found: '{n} sessions', trk_na: 'no usage data exists', trk_enable: 'Switch on', trk_disable: 'Switch off', trk_saved: 'Saved',
+    trk_grant: 'Grant billing access', trk_grant_started: 'A terminal opened — approve the extra permission there, then refresh',
+    trk_no_terminal: 'No terminal found - run this script yourself:',
+    trk_billing_ok: 'billing read', trk_billing_bad: 'billing refused', trk_unpriced: 'no price known for: {m}',
+    trk_devin: 'Devin\'s own session log: exact tokens and ACUs per model call.',
+    trk_how_claude: '~/.claude/projects — tokens per assistant message, priced at list price.',
+    trk_how_codex: '~/.codex/sessions — token_count events, priced at list price.',
+    trk_how_gemini: '~/.gemini/tmp — tokens per model message, priced at list price.',
+    trk_how_opencode: 'OpenCode\'s message store — tokens plus the cost OpenCode computed.',
+    trk_how_cline: 'Editor extension storage — tokens plus the cost Cline / Roo / Kilo computed per request.',
+    trk_how_zed: 'Zed\'s threads.db — token usage per request, priced at list price.',
+    trk_how_antigravity: 'Antigravity\'s conversation databases — tokens per call, priced at list price.',
+    trk_how_cursor: 'Cursor\'s official stop hook (added to ~/.cursor/hooks.json) records the model and tokens of every reply; priced at list price.',
+    trk_how_aider: 'Sets AIDER_ANALYTICS_LOG so Aider logs tokens and its own cost per message.',
+    trk_how_copilot: 'Reads GitHub\'s official premium-request billing report (real dollars) and switches on the Copilot CLI token export.',
+    trk_how_windsurf: 'Windsurf keeps usage on its servers; per-request numbers exist only in its Enterprise analytics API. See the plan page at windsurf.com/subscription/manage-plan.',
+    trk_how_kiro: 'Kiro shows credits only inside the IDE status bar and the CLI\'s /usage — there is no file or API to read yet.',
+    trk_how_trae: 'Trae keeps usage on its servers with no local record or public API — check it in Trae\'s account settings.',
+    u_spent: 'Spent this month', est_cost: 'Cost', est_priced_by: 'Priced by', est_price_list: 'official price list',
+    est_price_tip: 'Devin list price per 1M tokens: input ${in} · output ${out} · cache write ${cw} · cache read ${cr}',
+    usd_measured: 'Dollars at Devin\'s official list prices: 1 ACU = ${rate} — verified on {ok} of {n} of your calls against the published per-token price list ({tier} tier, fetched {when}).',
+    usd_contract: 'Dollars at your contract rate: ${rate} per ACU.',
+    usd_default: 'Dollars at ${rate} per ACU — Devin\'s price list could not be reached to verify the rate yet.',
+    usage_hint: 'Numbers come from Devin\'s own local session log - the exact input/output/cache tokens, model and ACU cost of every model call, de-duplicated. Nothing is estimated here. The $ rate and budget stay in this browser.',
+    u_acu: 'ACUs this month', u_vs_prev: 'vs last month', u_projection: 'Month-end projection', u_tokens: 'Tokens processed',
+    u_in_out: 'in / out', u_cache: 'cache', u_sessions: 'Sessions', u_runs: 'flow runs', u_avg_run: 'Average flow run',
+    u_cache_share: 'Served from cache', u_budget_of: 'of budget', u_none: 'No usage recorded in this month.',
+    u_date: 'Date', u_kind: 'Kind', u_task: 'Task', u_project: 'Project', u_model: 'Model', u_dur: 'Time',
+    u_tokens_col: 'Tokens', u_status: 'Status', u_calls: 'Calls', u_share: 'Share', u_rate: 'Rate',
+    u_saved: 'Report saved', u_loading: 'Reading Devin\'s session log…', u_live: 'live', u_more: 'show all',
+    est_typed: 'typed', est_sent: 'sent with every run', est_context: 'Devin context / turn',
+    est_forecast: 'Run forecast', est_from_runs: 'from {n} past runs of this flow', est_from_other: 'scaled from {n} runs of other flows',
+    est_no_history: 'no past runs yet - the first run calibrates it', est_unavailable: 'exact usage unavailable',
+    est_stages: 'per stage — model, effort, calls, tokens, cost', est_stage: 'Stage', est_rate: 'ACU / 1M tok', est_open: 'Opening cost',
+    est_account_avg: 'account avg rate', est_family: 'same-family rate', est_measured: 'measured rate', est_range: 'range',
+    est_pipeline: 'for this pipeline ({n} agent stages)', est_upto: 'up to', est_if_fail: 'if a check fails once ({path})',
+    est_model_tag: 'pipeline model — calibrates after the first run', est_calibrated: 'calibrated on {n} real runs',
+    est_speed: 'speed', est_script: 'script, no model', est_retry_only: 'only if a check fails',
+    gate_open: 'Open the gate', notif_gate: 'FlowForge: "{stage}" is waiting for your decision', notif_done: 'FlowForge: the run finished ✓', notif_failed: 'FlowForge: the run stopped with an error',
+    runs_title: 'Recent runs', runs_rerun: 'Run this again', ago_now: 'just now', ago_min: '{n} min ago', ago_hr: '{n} h ago',
+    tab_runs: 'Runs', run_queue_btn: '＋ Queue this task', run_queued_pos: 'Queued — position {n}. It starts when this project is free.',
+    board_active: 'In flight — all projects', board_none_active: 'Nothing is running right now.', board_starting: 'starting…',
+    board_hint: 'Projects run in parallel (one run per project at a time, up to the cap shown). Tasks for a busy project wait in the queue and start on their own; schedules drop their task into the queue when due. Everything survives a dashboard restart.',
+    board_queue: 'Queue', board_queue_empty: 'The queue is empty.', board_add_tasks: '＋ Add tasks', board_add: 'Add',
+    board_tasks_hint: 'One task per line — each becomes its own run.', board_added: '{n} task(s) queued',
+    board_schedules: 'Schedules', board_sched_empty: 'No scheduled jobs.', board_add_schedule: '＋ Add a schedule',
+    board_history: 'Queue history', board_show: 'Show', board_up: 'Move up', board_remove: 'Remove', board_waiting_exec: 'waiting for an executor',
+    board_next: 'next', board_last: 'last', board_run_now: 'Run now', board_pause: 'Pause', board_resume: 'Resume', board_cancelled: 'removed',
+    board_gate_elsewhere: 'stage "{stage}" is waiting for your decision in another project',
+    rep_daily: 'daily at', rep_weekly: 'weekly on', rep_hours: 'every N hours', rep_once: 'once at', rep_every: 'every', rep_h: 'h',
+    rep_day_names: 'Sun,Mon,Tue,Wed,Thu,Fri,Sat',
+    est_orchestrator: 'Orchestrator (main session)', est_total: 'Total (happy path)', est_effort: 'Effort',
+    est_assume: 'Assumes ~{out} output tokens per call and ~{growth} tokens of new context per call ({src}); calls per stage follow the role and effort.',
+    est_src_measured: 'measured on your account', est_src_default: 'defaults until your log has enough calls',
     gate_title: 'Approval required', approve: '✔ Approve — continue', reject: '✖ Reject — revise',
     gate_note_ph: 'Optional note delivered to the agent with your decision…',
     run_title: 'Run a flow', copy: 'Copy', copied: 'Copied to clipboard', clipboard_blocked: 'Clipboard blocked by the browser',
     run_task_ph: 'Describe what you want… a rough line is enough, then hit Generate.',
     gates_default: 'Gates: default', gates_terminal: 'Gates: terminal', gates_dashboard: 'Gates: dashboard', gates_auto: 'Gates: auto',
+    gates_ai: 'Gates: AI review (the critic approves or sends back, then continues)', gates_ai_short: 'ai - the critic reviews',
     speed_flow: 'Speed: as the flow says', speed_fast: 'Speed: fast ⚡', speed_balanced: 'Speed: balanced', speed_quality: 'Speed: max quality',
     speed_hint: 'Speed overrides the model and thinking level of every stage. Fast uses the lightning models with low thinking and one retry — minutes instead of tens of minutes; max quality pins opus at max effort.',
     run_hint: 'Run now executes the flow right here (headless Devin CLI, cwd = active project) — approvals arrive as dashboard gates, and you watch everything live below. Copy is there if you prefer pasting into a Devin chat instead.',
@@ -849,11 +1216,13 @@ const I18N = {
     refine_done: 'Prompt generated', refine_empty: 'Type what you want first',
     optimize_btn: '⚡ Optimize', optimize_working: '⚡ Optimizing…', optimize_done: 'Prompt optimized',
     prompt_hint: 'Write in any language — the box grows as you type. ✨ Generate turns a rough idea into a full task statement (adds the outcome and the acceptance criteria). ⚡ Optimize keeps the prompt you already wrote and only sharpens it: same scope, clearer wording, testable finish line. ↶ Undo brings your original text back, and the text stays editable before you run.',
-    refine_provider: 'Prompt generator', refine_auto: 'auto (Devin, then fallbacks)',
+    refine_provider: 'Prompt generator', refine_auto: 'auto (any connected tool)',
     refine_acp: 'Devin (ACP key)', refine_cli: 'Devin CLI', refine_http: 'Free/any API (OpenAI-compatible)',
     refine_local: 'offline template (no model)',
     refine_base: 'API base URL', refine_model: 'Model id', refine_key: 'API key',
-    refine_hint: 'Auto tries Devin first (no extra key, uses your existing login), then a configured API, then an offline template. For a free model use an OpenAI-compatible endpoint, e.g. Groq https://api.groq.com/openai/v1, OpenRouter https://openrouter.ai/api/v1 (…:free models), Gemini https://generativelanguage.googleapis.com/v1beta/openai, or a local Ollama at http://localhost:11434/v1. The key is stored in the project\'s .workbench/settings.json and never sent back to the browser.',
+    refine_http_only: 'use ONLY this endpoint (skip the tools above)',
+    refine_http_hint_card: 'Any OpenAI-compatible endpoint - Groq, OpenRouter, Ollama…',
+    refine_hint: 'Auto tries Devin first (no extra key, uses your existing login), then every connected provider CLI on this machine - Claude, Codex, Gemini, OpenCode, Augment, Copilot - then a configured API, then an offline template. Picking a provider pins that one tool. For a free model use an OpenAI-compatible endpoint, e.g. Groq https://api.groq.com/openai/v1, OpenRouter https://openrouter.ai/api/v1 (…:free models), or a local Ollama at http://localhost:11434/v1. The key is stored in the project\'s .workbench/settings.json and never sent back to the browser.',
     run_started: 'Run started — watch the console, pipeline and file feed', run_exit_ok: 'finished ✓', run_exit_bad: 'exited',
     auth_hint: 'One-time setup: if the CLI is not logged in, use the Login CLI button (opens a terminal + browser), then hit Run again.',
     cli_login: '🔑 Login CLI', cli_not_auth: 'CLI not logged in — one-time login needed',
@@ -875,6 +1244,7 @@ const I18N = {
     git_changes: 'Working-tree changes', no_changes: 'No uncommitted changes.', no_git: 'Not a git repository.', close: 'Close',
     changes_hint: 'Click a changed file to view its diff. Refreshes automatically while this tab is open.',
     new_flow: '+ New flow', new_skill: '+ New skill', delete: 'Delete', save: '💾 Save', saved: 'Saved', raw: 'Raw',
+    cancel: 'Cancel', prov_configure: '⚙ Configure', prov_configured_at: 'endpoint set',
     export_as: 'Export as', export_btn: '⬇ Export', export_done: 'Exported:',
     export_pick_first: 'Pick an artifact from the list first.',
     view_canvas: '⬡ Visual', view_json: '{ } JSON', auto_layout: '⇄ Auto layout', clear_canvas: '✖ Clear',
@@ -883,7 +1253,7 @@ const I18N = {
     canvas_no_nodes: 'Add at least one step first', canvas_no_start: 'Every step has an incoming wire — remove one so the flow has an entry point',
     pal_group_agents: 'Agent steps', pal_group_understand: 'Understand steps', pal_group_scripts: 'Script & custom',
     pal_thinker: 'Plan', pal_analyst: 'Analyze', pal_coder: 'Code', pal_tester: 'Test', pal_debugger: 'Debug', pal_shipper: 'Ship',
-    pal_researcher: 'Analytics', pal_optimizer: 'Performance',
+    pal_researcher: 'Analytics', pal_optimizer: 'Performance', pal_security: 'Security',
     pal_architecture: 'Architecture', pal_conventions: 'Conventions', pal_rules: 'Rules',
     pal_scan: 'Scan', pal_checks: 'Checks', pal_script: 'Script', pal_custom: 'Custom',
     ins_title: 'Step settings:', ins_model: 'Model family', ins_effort: 'Model level', ins_gate: 'Gate',
@@ -930,6 +1300,10 @@ const I18N = {
     project_added: 'Project added', project_removed: 'Project removed', project_activated: 'Project switched',
     settings_saved: 'Settings saved', invalid_json: 'Invalid JSON', select_artifact: 'No artifacts yet',
     st_pending: 'pending', st_running: 'running', st_waiting_gate: 'waiting approval', st_done: 'done', st_failed: 'failed', st_skipped: 'skipped',
+    st_interrupted: 'interrupted', resume_btn: '▶ Resume from here', resume_started: 'Resuming the pipeline…',
+    resume_stopped: 'This run stopped at "{stage}". Completed stages are kept; resume continues from there.',
+    resume_failed: 'This run failed at "{stage}". Resume retries that stage with the failure note.',
+    resume_nothing: 'Nothing to resume in this project.',
     fs_running: 'running', fs_waiting_gate: 'waiting approval', fs_done: 'done', fs_failed: 'failed', fs_stopped: 'stopped',
     conn_ok: '🟢 connected', conn_bad: '🔴 disconnected', no_state: 'no state', no_flow_badge: 'no flow',
     script_stage: 'script', task_original: 'Original text',
@@ -941,10 +1315,11 @@ const I18N = {
     provider_modules: 'Detected modules', provider_no_modules: 'No modules found for this provider',
     provider_looked_for: 'Looked for', provider_editor: 'Editor', provider_cli: 'CLI',
     providers_title: 'Executors — who does the work',
-    providers_hint: 'Each card is what was actually found on this machine. "Connected" is read live from that provider\'s own CLI — the login opens a real terminal on ITS login command, so your password or token never passes through this dashboard. Devin is the only provider that can execute a flow; the others are here so the flow list, the model list and the module detection follow the tool you actually use. Cursor and Trae keep the session inside their own window, so their button opens the editor on its sign-in screen instead of pretending to authenticate you here. Switching executor also retargets the models pinned on the flow canvas to the closest model the new tool actually has.',
+    providers_hint: 'Each card is what was actually found on this machine. "Connected" is read live from that provider\'s own CLI — the login opens a real terminal on ITS login command, so your password or token never passes through this dashboard. Devin is the only provider that can execute a flow; the others are here so the flow list, the model list and the module detection follow the tool you actually use. Cursor, Trae and Windsurf keep the session inside their own window, so their button opens the editor on its sign-in screen instead of pretending to authenticate you here. Switching executor also retargets the models pinned on the flow canvas to the closest model the new tool actually has.',
     prov_installed: 'installed', prov_missing: 'not installed', prov_runs: 'runs flows',
     prov_detect_only: 'detection only', prov_connected: 'connected', prov_disconnected: 'not connected',
     prov_in_app: 'sign-in lives in the app', prov_active: 'active',
+    prov_configured: 'configured', prov_not_configured: 'not configured', prov_pinned: 'pinned',
     prov_login: '🔑 Connect', prov_relogin: '🔑 Sign in again', prov_use: 'Use this one',
     prov_recheck: '↻ Re-check everything', prov_switched: 'Executor switched',
     prov_login_started: 'A terminal opened — finish the login there, then press Re-check',
@@ -953,6 +1328,8 @@ const I18N = {
     prov_no_login: 'no login', models_retargeted: 'Stage models switched to the new executor',
     prov_unknown: 'sign-in state not readable',
     prov_account_only: 'account connected, tool not installed',
+    prov_details: 'details', prov_stale: 'verified earlier', prov_expired: 'session expired',
+    prov_login_token: '🔑 Sign in with a token', prov_login_token_hint: 'Paste a long-lived API key — no repeated sign-ins',
     retarget_all: '⇄ Retarget every flow to this executor',
     retarget_none: 'Every flow already uses models this executor supports',
     retarget_confirm: 'These flows will get a copy retargeted to the selected executor:',
@@ -965,12 +1342,78 @@ const I18N = {
   },
   ar: {
     tab_overview: 'نظرة عامة', tab_activity: 'النشاط لايف', tab_artifacts: 'المخرجات', tab_flows: 'الفلوز',
-    tab_agents: 'الوكلاء', tab_skills: 'المهارات', tab_settings: 'الإعدادات',
+    tab_agents: 'الوكلاء', tab_skills: 'المهارات', tab_settings: 'الإعدادات', tab_usage: 'الاستهلاك',
+    usage_title: 'الاستهلاك والتكلفة', usage_scope_all: 'كل جلسات Devin بتاعتي', usage_scope_ff: 'FlowForge بس',
+    usage_refresh: '↻ حدّث', usage_by_model: 'حسب الموديل', usage_by_project: 'حسب المشروع', usage_by_flow: 'حسب الفلو',
+    usage_rate_hint: 'السعر = ACU لكل مليون توكن فعلي على حسابك إنت (الكاش المقروء محسوب بـ 10% زي ما الشركات بتحاسب). ده اللي التقدير قبل التشغيل بيسعّر بيه كل مرحلة.',
+    usage_tasks: 'كل تاسك', usage_sort_new: 'الأحدث الأول', usage_sort_cost: 'الأغلى الأول',
+    usage_csv: '⬇ CSV', usage_report: '📄 التقرير الشهري', usage_rates: 'الفلوس والميزانية',
+    usage_usd_per_acu: 'سعر عقدك بالدولار لكل ACU (اختياري)', usage_budget: 'الميزانية الشهرية ($)',
+    usage_all_tools: 'كل الأدوات', usage_by_tool: 'حسب الأداة', usage_tracking: 'التتبّع — أرقام كل أداة جاية منين',
+    usage_tracking_hint: 'السجلات المحلية بتتقرا زي ما هي. Cursor وAider وCopilot CLI بيسجّلوا الاستهلاك بس بعد ما تشغّلهم من هنا — وكل زرار بيقول بالظبط هيغيّر إيه وتقدر تقفله تاني. دولارات Copilot هي اللي GitHub حاسبك بيها فعلاً (premium requests) عن طريق تسجيل دخول gh.',
+    u_premium: 'premium requests',
+    trk_tool: 'الأداة', trk_how: 'الأرقام جاية منين', trk_state: 'الحالة', trk_local: 'سجلات محلية', trk_setup: 'تتشغّل مرة',
+    trk_billing: 'فاتورة الشركة', trk_unsupported: 'مش متاح', trk_on: 'شغّال', trk_off: 'مقفول', trk_none: 'مفيش حاجة على الجهاز',
+    trk_found: '{n} جلسات', trk_na: 'مفيش بيانات استهلاك', trk_enable: 'شغّل', trk_disable: 'اقفل', trk_saved: 'اتحفظ',
+    trk_grant: 'اسمح بقراءة الفاتورة', trk_grant_started: 'اتفتح ترمنال — وافق على الصلاحية الزيادة هناك وبعدين حدّث',
+    trk_no_terminal: 'مفيش ترمنال على الجهاز — شغّل السكربت ده بنفسك:',
+    trk_billing_ok: 'الفاتورة اتقرت', trk_billing_bad: 'الفاتورة مرفوضة', trk_unpriced: 'مفيش سعر معروف لـ: {m}',
+    trk_devin: 'سجل جلسات Devin نفسه: التوكنز والـ ACU بالظبط لكل نداء.',
+    trk_how_claude: '~/.claude/projects — توكنز كل رد، متسعّرة بالسعر الرسمي.',
+    trk_how_codex: '~/.codex/sessions — أحداث token_count، متسعّرة بالسعر الرسمي.',
+    trk_how_gemini: '~/.gemini/tmp — توكنز كل رد، متسعّرة بالسعر الرسمي.',
+    trk_how_opencode: 'مخزن رسائل OpenCode — التوكنز والتكلفة اللي OpenCode حسبها.',
+    trk_how_cline: 'تخزين إضافة المحرر — التوكنز والتكلفة اللي Cline / Roo / Kilo حسبوها لكل طلب.',
+    trk_how_zed: 'threads.db بتاع Zed — التوكنز لكل طلب، متسعّرة بالسعر الرسمي.',
+    trk_how_antigravity: 'قواعد محادثات Antigravity — التوكنز لكل نداء، متسعّرة بالسعر الرسمي.',
+    trk_how_cursor: 'الـ stop hook الرسمي بتاع Cursor (بيتضاف لـ ~/.cursor/hooks.json) بيسجّل الموديل والتوكنز لكل رد؛ متسعّرة بالسعر الرسمي.',
+    trk_how_aider: 'بيظبط AIDER_ANALYTICS_LOG عشان Aider يسجّل التوكنز وتكلفته هو لكل رسالة.',
+    trk_how_copilot: 'بيقرا تقرير فواتير premium requests الرسمي من GitHub (دولار حقيقي) وبيشغّل تصدير توكنز Copilot CLI.',
+    trk_how_windsurf: 'Windsurf بيحتفظ بالاستهلاك على سيرفراته؛ أرقام كل طلب موجودة بس في Enterprise analytics API. صفحة الباقة: windsurf.com/subscription/manage-plan.',
+    trk_how_kiro: 'Kiro بيوري الـ credits بس في شريط الحالة جوّا الـ IDE وفي /usage بتاع الـ CLI — مفيش ملف ولا API يتقرا لسه.',
+    trk_how_trae: 'Trae بيحتفظ بالاستهلاك على سيرفراته من غير سجل محلي أو API عام — شوفه في إعدادات الحساب جوّا Trae.',
+    u_spent: 'المصروف الشهر ده', est_cost: 'التكلفة', est_priced_by: 'متسعّر بـ', est_price_list: 'جدول الأسعار الرسمي',
+    est_price_tip: 'سعر Devin الرسمي لكل مليون توكن: داخل ${in} · خارج ${out} · كتابة كاش ${cw} · قراءة كاش ${cr}',
+    usd_measured: 'الدولارات بأسعار Devin الرسمية: الـ ACU = ${rate} — متأكد منها على {ok} من {n} نداء من نداءاتك مقارنة بجدول أسعار التوكن المنشور (فئة {tier}، اتنزّل {when}).',
+    usd_contract: 'الدولارات بسعر عقدك: ${rate} لكل ACU.',
+    usd_default: 'الدولارات بسعر ${rate} لكل ACU — جدول أسعار Devin لسه ماتنزّلش عشان نتأكد من السعر.',
+    usage_hint: 'الأرقام جاية من سجل جلسات Devin المحلي نفسه — التوكنز الداخلة والخارجة والكاش والموديل وتكلفة الـ ACU لكل نداء بالظبط ومن غير تكرار. مفيش أي تقدير هنا. سعر الدولار والميزانية بيتحفظوا في المتصفح ده بس.',
+    u_acu: 'ACU الشهر ده', u_vs_prev: 'عن الشهر اللي فات', u_projection: 'المتوقع لآخر الشهر', u_tokens: 'التوكنز المعالجة',
+    u_in_out: 'داخل / خارج', u_cache: 'كاش', u_sessions: 'الجلسات', u_runs: 'تشغيل فلو', u_avg_run: 'متوسط تشغيل الفلو',
+    u_cache_share: 'اتخدم من الكاش', u_budget_of: 'من الميزانية', u_none: 'مفيش استخدام متسجل في الشهر ده.',
+    u_date: 'التاريخ', u_kind: 'النوع', u_task: 'التاسك', u_project: 'المشروع', u_model: 'الموديل', u_dur: 'الوقت',
+    u_tokens_col: 'توكنز', u_status: 'الحالة', u_calls: 'نداءات', u_share: 'النسبة', u_rate: 'السعر',
+    u_saved: 'التقرير اتحفظ', u_loading: 'بقرا سجل جلسات Devin…', u_live: 'مباشر', u_more: 'اعرض الكل',
+    est_typed: 'اللي كتبته', est_sent: 'بيتبعت مع كل تشغيل', est_context: 'سياق Devin / نداء',
+    est_forecast: 'تقدير التشغيل', est_from_runs: 'من {n} تشغيلات قبل كده للفلو ده', est_from_other: 'متقاس من {n} تشغيلات لفلوهات تانية',
+    est_no_history: 'مفيش تشغيلات قبل كده — أول تشغيل هيظبط التقدير', est_unavailable: 'الاستهلاك الحقيقي مش متاح',
+    est_stages: 'لكل مرحلة — الموديل والمجهود والنداءات والتوكنز والتكلفة', est_stage: 'المرحلة', est_rate: 'ACU / مليون توكن', est_open: 'تكلفة البداية',
+    est_account_avg: 'سعر متوسط الحساب', est_family: 'سعر نفس العيلة', est_measured: 'سعر متقاس', est_range: 'المدى',
+    est_pipeline: 'للبايبلاين ده ({n} مراحل بوكلاء)', est_upto: 'لحد', est_if_fail: 'لو فحص فشل مرة ({path})',
+    est_model_tag: 'تقدير من البايبلاين — بيتظبط بعد أول تشغيل', est_calibrated: 'متظبط على {n} تشغيلات حقيقية',
+    est_speed: 'السرعة', est_script: 'سكربت، من غير موديل', est_retry_only: 'بس لو فحص فشل',
+    gate_open: 'افتح البوابة', notif_gate: 'FlowForge: مرحلة "{stage}" مستنية قرارك', notif_done: 'FlowForge: التشغيل خلص ✓', notif_failed: 'FlowForge: التشغيل وقف بخطأ',
+    runs_title: 'آخر التشغيلات', runs_rerun: 'شغّله تاني', ago_now: 'دلوقتي', ago_min: 'قبل {n} دقيقة', ago_hr: 'قبل {n} ساعة',
+    tab_runs: 'التشغيلات', run_queue_btn: '＋ ضيف للطابور', run_queued_pos: 'دخل الطابور — رقم {n}. هيبدأ أول ما المشروع ده يفضى.',
+    board_active: 'شغّال دلوقتي — كل المشاريع', board_none_active: 'مفيش حاجة شغّالة دلوقتي.', board_starting: 'بيبدأ…',
+    board_hint: 'المشاريع بتشتغل جنب بعض (تشغيل واحد لكل مشروع في نفس الوقت، لحد الحد اللي فوق). التاسكات لمشروع مشغول بتستنى في الطابور وبتبدأ لوحدها؛ والجدولة بتنزّل تاسكها في الطابور في وقتها. كل ده بيفضل موجود لو الداشبورد اتقفل واتفتح.',
+    board_queue: 'الطابور', board_queue_empty: 'الطابور فاضي.', board_add_tasks: '＋ ضيف تاسكات', board_add: 'ضيف',
+    board_tasks_hint: 'تاسك في كل سطر — كل سطر بيبقى تشغيل لوحده.', board_added: 'دخل الطابور {n} تاسك',
+    board_schedules: 'الجدولة', board_sched_empty: 'مفيش جوبات مجدولة.', board_add_schedule: '＋ ضيف جدولة',
+    board_history: 'سجل الطابور', board_show: 'اعرض', board_up: 'قدّم', board_remove: 'شيل', board_waiting_exec: 'مستني منفّذ',
+    board_next: 'الجاية', board_last: 'آخر مرة', board_run_now: 'شغّل دلوقتي', board_pause: 'وقّف', board_resume: 'كمّل', board_cancelled: 'اتشال',
+    board_gate_elsewhere: 'مرحلة "{stage}" مستنية قرارك في مشروع تاني',
+    rep_daily: 'كل يوم الساعة', rep_weekly: 'كل أسبوع أيام', rep_hours: 'كل N ساعة', rep_once: 'مرة واحدة في', rep_every: 'كل', rep_h: 'ساعة',
+    rep_day_names: 'الأحد,الاتنين,التلات,الأربع,الخميس,الجمعة,السبت',
+    est_orchestrator: 'المنسّق (الجلسة الرئيسية)', est_total: 'الإجمالي (لو كله عدّى)', est_effort: 'المجهود',
+    est_assume: 'بفرض حوالي {out} توكن خارج لكل نداء وحوالي {growth} توكن سياق جديد لكل نداء ({src})؛ وعدد النداءات لكل مرحلة حسب الدور والمجهود.',
+    est_src_measured: 'متقاس على حسابك', est_src_default: 'قيم افتراضية لحد ما سجلك يبقى فيه نداءات كفاية',
     gate_title: 'موافقة مطلوبة', approve: '✔ موافقة — كمّل', reject: '✖ رفض — راجع',
     gate_note_ph: 'ملاحظة اختيارية توصل للوكيل مع قرارك…',
     run_title: 'تشغيل فلو', copy: 'نسخ', copied: 'اتنسخ في الحافظة', clipboard_blocked: 'المتصفح منع النسخ',
     run_task_ph: 'اوصف اللي انت عاوزه… سطر مبدئي يكفي، وبعدين دوس «ولّد».',
     gates_default: 'الموافقات: الافتراضي', gates_terminal: 'الموافقات: الترمنال', gates_dashboard: 'الموافقات: الشاشة', gates_auto: 'الموافقات: أوتوماتيك',
+    gates_ai: 'الموافقات: مراجعة AI (الناقد يوافق أو يرجّع، وبعدين يكمّل لوحده)', gates_ai_short: 'ai — الناقد يراجع',
     speed_flow: 'السرعة: زي ما الفلو مظبوط', speed_fast: 'السرعة: صاروخ ⚡', speed_balanced: 'السرعة: متوازن', speed_quality: 'السرعة: أعلى جودة',
     speed_hint: 'السرعة بتغيّر موديل ومستوى تفكير كل المراحل. «صاروخ» بيستخدم موديلات اللايتنينج بتفكير منخفض ومحاولة إعادة واحدة — دقايق بدل عشرات الدقايق؛ و«أعلى جودة» بيثبّت opus على أقصى تفكير.',
     run_hint: 'زرار "شغّل دلوقتي" بينفذ الفلو من هنا مباشرة (Devin CLI بوضع headless على المشروع النشط) — الموافقات بتجيلك كبوابات على الشاشة، وبتتفرج على كل حاجة لايف تحت. زرار النسخ موجود لو تحب تلصق الأمر في شات Devin بدلًا من كده.',
@@ -979,11 +1422,13 @@ const I18N = {
     refine_done: 'البرومبت اتولّد', refine_empty: 'اكتب اللي انت عاوزه الأول',
     optimize_btn: '⚡ حسّن', optimize_working: '⚡ بيحسّن…', optimize_done: 'البرومبت اتحسّن',
     prompt_hint: 'اكتب بأي لغة — المربع بيكبر مع الكتابة. ✨ «ولّد» بياخد فكرة مبدئية ويطلّع منها طلب كامل (بيضيف النتيجة المطلوبة ومعايير القبول). ⚡ «حسّن» بيسيب البرومبت اللي كتبته ويشحتو بس: نفس النطاق، صياغة أوضح، ونهاية قابلة للقياس. ↶ «تراجع» بيرجّع نصك الأصلي، والنص فاضل قابل للتعديل قبل ما تشغّل.',
-    refine_provider: 'مولّد البرومبت', refine_auto: 'أوتوماتيك (Devin الأول وبعدين البدايل)',
+    refine_provider: 'مولّد البرومبت', refine_auto: 'أوتوماتيك (أي أداة متصلة)',
     refine_acp: 'Devin (مفتاح ACP)', refine_cli: 'Devin CLI', refine_http: 'أي API مجاني (متوافق OpenAI)',
     refine_local: 'قالب محلي (بدون موديل)',
     refine_base: 'رابط الـ API', refine_model: 'اسم الموديل', refine_key: 'مفتاح الـ API',
-    refine_hint: 'الأوتوماتيك بيجرّب Devin الأول (مفيش مفتاح زيادة — بيستخدم تسجيل دخولك)، وبعدين الـ API اللي ظبطته، وفي الآخر قالب محلي. لو عايز موديل مجاني استخدم أي إندبوينت متوافق مع OpenAI، مثلاً Groq على https://api.groq.com/openai/v1 أو OpenRouter على https://openrouter.ai/api/v1 (موديلات بتنتهي بـ ‎:free) أو Gemini على https://generativelanguage.googleapis.com/v1beta/openai أو Ollama محلي على http://localhost:11434/v1. المفتاح بيتخزن في ‎.workbench/settings.json بتاع المشروع ومابيرجعش للمتصفح أبدًا.',
+    refine_http_only: 'استخدم الـ endpoint ده بس (متجرّبش الأدوات اللي فوق)',
+    refine_http_hint_card: 'أي إندبوينت متوافق مع OpenAI — Groq أو OpenRouter أو Ollama…',
+    refine_hint: 'الأوتوماتيك بيجرّب Devin الأول (مفيش مفتاح زيادة — بيستخدم تسجيل دخولك)، وبعدين كل أداة متصلة على الجهاز — كلود، كودكس، جيميناي، أوبن كود، أوجمنت، كوبايلوت — وبعدين الـ API اللي ظبطته، وفي الآخر قالب محلي. لو اخترت أداة معينة بتتثبت عليها. لو عايز موديل مجاني استخدم أي إندبوينت متوافق مع OpenAI، مثلاً Groq على https://api.groq.com/openai/v1 أو OpenRouter على https://openrouter.ai/api/v1 (موديلات بتنتهي بـ ‎:free) أو Ollama محلي على http://localhost:11434/v1. المفتاح بيتخزن في ‎.workbench/settings.json بتاع المشروع ومابيرجعش للمتصفح أبدًا.',
     run_started: 'التشغيل بدأ — تابع الكونسول والمراحل وبث الملفات', run_exit_ok: 'خلّص ✓', run_exit_bad: 'خرج',
     auth_hint: 'إعداد لمرة واحدة: لو الـ CLI مش مسجل، استخدم زرار تسجيل الدخول (بيفتح ترمنال + متصفح) وبعدين ارجع دوس تشغيل.',
     cli_login: '🔑 تسجيل دخول CLI', cli_not_auth: 'الـ CLI مش مسجل دخول — محتاج تسجيل مرة واحدة',
@@ -1005,6 +1450,7 @@ const I18N = {
     git_changes: 'تغييرات الشجرة (git)', no_changes: 'مفيش تغييرات غير مرفوعة.', no_git: 'المجلد ده مش ريبو git.', close: 'إغلاق',
     changes_hint: 'دوس على أي ملف متغير تشوف الـ diff بتاعه. بيتحدث تلقائيًا طول ما التاب ده مفتوح.',
     new_flow: '+ فلو جديد', new_skill: '+ مهارة جديدة', delete: 'حذف', save: '💾 حفظ', saved: 'اتحفظ', raw: 'خام',
+    cancel: 'إلغاء', prov_configure: '⚙ ظبط', prov_configured_at: 'الرابط متظبط',
     export_as: 'صدّر كـ', export_btn: '⬇ تصدير', export_done: 'اتصدّر:',
     export_pick_first: 'اختار مخرج من القائمة الأول.',
     view_canvas: '⬡ مرئي', view_json: '{ } JSON', auto_layout: '⇄ ترتيب تلقائي', clear_canvas: '✖ تفريغ',
@@ -1013,7 +1459,7 @@ const I18N = {
     canvas_no_nodes: 'ضيف خطوة واحدة على الأقل الأول', canvas_no_start: 'كل الخطوات داخل عليها خط — امسح واحد عشان يبقى في نقطة بداية',
     pal_group_agents: 'خطوات الوكلاء', pal_group_understand: 'خطوات الفهم', pal_group_scripts: 'سكربت ومخصص',
     pal_thinker: 'تخطيط', pal_analyst: 'تحليل', pal_coder: 'كود', pal_tester: 'اختبار', pal_debugger: 'تصحيح', pal_shipper: 'رفع',
-    pal_researcher: 'إحصائيات', pal_optimizer: 'أداء',
+    pal_researcher: 'إحصائيات', pal_optimizer: 'أداء', pal_security: 'أمان',
     pal_architecture: 'معمارية', pal_conventions: 'أعراف', pal_rules: 'قواعد',
     pal_scan: 'مسح', pal_checks: 'فحوص', pal_script: 'سكربت', pal_custom: 'مخصصة',
     ins_title: 'إعدادات الخطوة:', ins_model: 'عائلة الموديل', ins_effort: 'درجة الموديل', ins_gate: 'البوابة',
@@ -1060,6 +1506,10 @@ const I18N = {
     project_added: 'المشروع اتضاف', project_removed: 'المشروع اتشال', project_activated: 'اتبدّل المشروع',
     settings_saved: 'الإعدادات اتحفظت', invalid_json: 'JSON غير صالح', select_artifact: 'لا مخرجات بعد',
     st_pending: 'في الانتظار', st_running: 'شغّال', st_waiting_gate: 'مستني موافقة', st_done: 'خلّص', st_failed: 'فشل', st_skipped: 'متخطى',
+    st_interrupted: 'اتقطع', resume_btn: '▶ كمّل من هنا', resume_started: 'بيكمّل الفلو…',
+    resume_stopped: 'التشغيل ده وقف عند "{stage}". المراحل اللي خلّصت محفوظة، والتكملة بتبدأ من هناك.',
+    resume_failed: 'التشغيل ده فشل عند "{stage}". التكملة بتعيد المرحلة دي ومعاها سبب الفشل.',
+    resume_nothing: 'مفيش حاجة تتكمّل في المشروع ده.',
     fs_running: 'شغّال', fs_waiting_gate: 'مستني موافقة', fs_done: 'خلّص', fs_failed: 'فشل', fs_stopped: 'متوقف',
     conn_ok: '🟢 متصل', conn_bad: '🔴 غير متصل', no_state: 'لا حالة', no_flow_badge: 'لا يوجد فلو',
     script_stage: 'سكربت', task_original: 'النص الأصلي',
@@ -1071,10 +1521,11 @@ const I18N = {
     provider_modules: 'الوحدات المكتشفة', provider_no_modules: 'مفيش وحدات للمزوّد ده',
     provider_looked_for: 'دوّرنا في', provider_editor: 'المحرر', provider_cli: 'الأداة',
     providers_title: 'المنفّذين — مين اللي بيشتغل',
-    providers_hint: 'كل كارت ده اللي اتلقى فعلًا على الجهاز ده. «متصل» بتتقرا لايف من الـCLI بتاع المزوّد نفسه — وزرار الاتصال بيفتح ترمنال حقيقي على أمر اللوجن بتاعه، يعني باسوردك أو توكنك عمره ما بيعدي من الشاشة دي. «ديفين» هو الوحيد اللي بينفّذ فلوز؛ والباقين موجودين عشان قايمة الفلوز والموديلات واكتشاف الوحدات تمشي ورا الأداة اللي بتستخدمها. كيرسر وتراي بيحتفظوا بالجلسة جوّا البرنامج، عشان كده زرارهم بيفتح المحرر على شاشة تسجيل الدخول بدل ما يدّعي إنه سجّلك من هنا. ولمّا تغيّر المنفّذ، موديلات المراحل المثبّتة على الكانفاس بتتحوّل لوحدها لأقرب موديل موجود فعلًا عند الأداة الجديدة.',
+    providers_hint: 'كل كارت ده اللي اتلقى فعلًا على الجهاز ده. «متصل» بتتقرا لايف من الـCLI بتاع المزوّد نفسه — وزرار الاتصال بيفتح ترمنال حقيقي على أمر اللوجن بتاعه، يعني باسوردك أو توكنك عمره ما بيعدي من الشاشة دي. «ديفين» هو الوحيد اللي بينفّذ فلوز؛ والباقين موجودين عشان قايمة الفلوز والموديلات واكتشاف الوحدات تمشي ورا الأداة اللي بتستخدمها. كيرسر وتراي وويندسيرف بيحتفظوا بالجلسة جوّا البرنامج، عشان كده زرارهم بيفتح المحرر على شاشة تسجيل الدخول بدل ما يدّعي إنه سجّلك من هنا. ولمّا تغيّر المنفّذ، موديلات المراحل المثبّتة على الكانفاس بتتحوّل لوحدها لأقرب موديل موجود فعلًا عند الأداة الجديدة.',
     prov_installed: 'متركّب', prov_missing: 'مش متركّب', prov_runs: 'بيشغّل فلوز',
     prov_detect_only: 'اكتشاف بس', prov_connected: 'متصل', prov_disconnected: 'مش متصل',
     prov_in_app: 'التسجيل جوّا البرنامج', prov_active: 'المستخدم حاليًا',
+    prov_configured: 'مظبوط', prov_not_configured: 'مش مظبوط', prov_pinned: 'مثبّت',
     prov_login: '🔑 اتصل', prov_relogin: '🔑 سجّل دخول تاني', prov_use: 'خليه المنفّذ',
     prov_recheck: '↻ افحص كل حاجة تاني', prov_switched: 'المنفّذ اتغير',
     prov_login_started: 'اتفتح ترمنال — كمّل الدخول هناك وبعدين دوس «افحص تاني»',
@@ -1083,6 +1534,8 @@ const I18N = {
     prov_no_login: 'مفيش لوجن', models_retargeted: 'موديلات المراحل اتحوّلت للمنفّذ الجديد',
     prov_unknown: 'حالة الدخول مش مقروءة',
     prov_account_only: 'الحساب متصل، بس الأداة مش متركّبة',
+    prov_details: 'التفاصيل', prov_stale: 'اتأكد منها قبل كده', prov_expired: 'الجلسة انتهت',
+    prov_login_token: '🔑 سجّل بتوكن دائم', prov_login_token_hint: 'الصق API key طويل العمر — مش هيتطلب دخول تاني',
     retarget_all: '⇄ حوّل كل الفلوز للمنفّذ ده',
     retarget_none: 'كل الفلوز بتستخدم موديلات المنفّذ ده خلاص',
     retarget_confirm: 'الفلوز دي هياخدوا نسخة محوّلة للمنفّذ المختار:',
@@ -1161,13 +1614,23 @@ function renderMd(src) {
   return x.split(/(<pre>[\s\S]*?<\/pre>)/).map((seg) => seg.startsWith('<pre>') ? seg : badgify(seg)).join('');
 }
 /* Rebuild a <select>'s option list only when items change; preserve selection. */
-function syncSelect(sel, items, selected) {
+// `label` turns a value into what the option shows (the value stays intact).
+function syncSelect(sel, items, selected, label = (v) => v) {
   const sig = JSON.stringify(items) + '|' + LANG;
   if (sel.dataset.sig !== sig) {
-    sel.innerHTML = items.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+    sel.innerHTML = items.map((v) => `<option value="${esc(v)}" title="${esc(v)}">${esc(label(v))}</option>`).join('');
     sel.dataset.sig = sig;
   }
   if (selected !== undefined && sel.value !== selected && items.includes(selected)) sel.value = selected;
+  if (sel.id === 'projectSelect') sel.title = sel.value || '';
+}
+// A project is shown by its folder name; the full path lives in the tooltip
+// and in Settings. Two projects with the same name get their parent too.
+function projectLabel(p, all) {
+  const parts = String(p).split(/[\\/]/).filter(Boolean);
+  const name = parts[parts.length - 1] || p;
+  const dup = all.filter((x) => (String(x).split(/[\\/]/).filter(Boolean).pop() || x) === name).length > 1;
+  return dup && parts.length > 1 ? `${parts[parts.length - 2]}/${name}` : name;
 }
 
 /* ============================== language & theme ============================== */
@@ -1176,6 +1639,7 @@ function applyLang() {
   document.documentElement.dir = LANG === 'ar' ? 'rtl' : 'ltr';
   $('langBtn').textContent = LANG === 'ar' ? 'EN' : 'ع';
   document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  foldLongHints();
   $('gateNote').placeholder = t('gate_note_ph');
   $('runTask').placeholder = t('run_task_ph');
   $('inboxText').placeholder = t('inbox_ph');
@@ -1199,6 +1663,8 @@ function applyLang() {
   fetchModels();
   // Provider cards are built from data, not from data-i18n nodes.
   if (activeTab === 'settings') loadProviders(false);
+  if (activeTab === 'usage') renderUsage();
+  renderEstimate();
 }
 $('langBtn').onclick = () => { LANG = LANG === 'ar' ? 'en' : 'ar'; localStorage.setItem('ff.lang', LANG); applyLang(); };
 $('setLang').onchange = () => { LANG = $('setLang').value; localStorage.setItem('ff.lang', LANG); applyLang(); };
@@ -1224,8 +1690,19 @@ document.querySelectorAll('nav .tab').forEach((tab) => tab.onclick = () => {
   if (activeTab === 'agents') { loadAgents(); fetchModels(); renderAgentVisual(); }
   if (activeTab === 'skills') { loadSkills(); renderSkillVisual(); }
   if (activeTab === 'activity') { fetchActivity(); fetchChanges(); }
+  if (activeTab === 'usage') loadUsage(false);
   if (activeTab === 'settings') loadProviders(false);
+  if (activeTab === 'runs') loadBoard();
+  if (location.hash !== `#${activeTab}`) history.replaceState(null, '', `#${activeTab}`);
+  if (lastData) renderGate(lastData.gate);
 });
+// Deep links: /#usage opens that tab (and the address bar follows the tabs).
+const openTabFromHash = () => {
+  const want = location.hash.replace('#', '');
+  const tab = want && document.querySelector(`nav .tab[data-page="${want}"]`);
+  if (tab && !tab.classList.contains('active')) tab.onclick();
+};
+window.addEventListener('hashchange', openTabFromHash);
 
 /* ============================== polling ============================== */
 let lastData = null;
@@ -1251,6 +1728,8 @@ async function poll() {
   fetchActivity();
   fetchRun();
   if (activeTab === 'activity' && pollCount % 2 === 0) fetchChanges();
+  if (pollCount === 1 || pollCount % 40 === 0) loadRuns();
+  if (activeTab === 'runs' && pollCount % 2 === 0) loadBoard();
 }
 function startPolling() {
   if (pollTimer) clearInterval(pollTimer);
@@ -1267,6 +1746,7 @@ function renderAll(d) {
   renderProjectSettings(d);
   renderLiveTail(d);
   renderExecStatus(d);
+  renderBoardSignals(d);
 }
 
 /* Execution-path indicators: ACP key > daemon heartbeat; queued request. */
@@ -1300,8 +1780,15 @@ function renderHeader(d) {
     badge.className = 'badge ' + (s.status || '');
     $('flowBadge').textContent = (LANG === 'ar' && s.flowTitleAr) ? s.flowTitleAr : (s.flowTitle || s.flow || '');
   }
-  syncSelect($('projectSelect'), d.projects || [], d.project || undefined);
+  syncSelect($('projectSelect'), d.projects || [], d.project || undefined, (p) => projectLabel(p, d.projects || []));
+  // A finished run announces itself once.
+  if (s && lastRunStatus && lastRunStatus !== s.status && ['done', 'failed', 'stopped'].includes(s.status)) {
+    notify(s.status === 'done' ? t('notif_done') : t('notif_failed'), (s.flowTitle || s.flow || '') + (s.task ? ` — ${s.task.slice(0, 80)}` : ''));
+    loadRuns();
+  }
+  if (s) lastRunStatus = s.status;
 }
+let lastRunStatus = null;
 
 $('projectSelect').onchange = async () => {
   try {
@@ -1333,10 +1820,21 @@ function renderStages(d) {
   } else {
     $('taskRawText').style.display = 'none';
   }
+  // A flow that stopped or failed can be resumed from the interrupted stage;
+  // that stage is shown as interrupted, never as "still waiting".
+  const halted = (s.status === 'stopped' || s.status === 'failed') && !(d.board && d.board.here);
+  const cut = (st) => halted && (st.status === 'running' || st.status === 'waiting_gate');
+  const bar = $('resumeBar');
+  if (halted) {
+    const at = (s.stages || []).find((st) => cut(st) || st.status === 'failed') || (s.stages || []).find((st) => st.status === 'pending');
+    $('resumeText').textContent = t(s.status === 'failed' ? 'resume_failed' : 'resume_stopped').replace('{stage}', at ? stTitle(at) : '—');
+    bar.style.display = 'flex';
+  } else bar.style.display = 'none';
   el.innerHTML = '';
   (s.stages || []).forEach((st) => {
     const div = document.createElement('div');
-    div.className = 'stage ' + (st.status || 'pending');
+    const shown = cut(st) ? 'interrupted' : (st.status || 'pending');
+    div.className = 'stage ' + shown;
     const loops = s.loops && s.loops[st.id] ? `<span class="loops">↺ ${s.loops[st.id]}</span>` : '';
     const dur = fmtDur(st.startedAt, st.endedAt);
     const note = (LANG === 'ar' && st.noteAr) ? st.noteAr : (st.note || '');
@@ -1349,13 +1847,217 @@ function renderStages(d) {
         <div class="t">${esc(stTitle(st))} <b>${esc(st.id)}</b>${loops}</div>
         <div class="note">${esc(note)}</div>
       </div>
-      <div class="meta">${esc(st.agent || t('script_stage'))} ${model}<br>${esc(t('st_' + st.status) || st.status || '')}${dur ? '<br>' + dur : ''}</div>`;
+      <div class="meta">${esc(st.agent || t('script_stage'))} ${model}<br>${esc(t('st_' + shown) || shown)}${dur ? '<br>' + dur : ''}</div>`;
     el.appendChild(div);
   });
-  const log = (s.log || []).slice(-30).map((l) => `[${(l.t || '').replace('T', ' ').slice(0, 19)}] ${l.msg}`).join('\n');
-  $('log').textContent = log || '—';
+  // Events as rows: clock, then the message coloured by what happened.
+  const cls = (m) => (/fail|error|reject|timeout/i.test(m) ? 'bad' : /gate|approval|waiting/i.test(m) ? 'gate'
+    : /done|passed|approved|complete|ok\b/i.test(m) ? 'ok' : /start|running|began/i.test(m) ? 'start' : '');
+  const rows = (s.log || []).slice(-40).map((l) => `<div class="logrow ${cls(l.msg || '')}"><span class="t">${esc((l.t || '').slice(11, 19))}</span><span class="m">${esc(l.msg || '')}</span></div>`);
+  const logEl = $('log');
+  const atBottom = logEl.scrollTop + logEl.clientHeight >= logEl.scrollHeight - 8;
+  logEl.innerHTML = rows.join('') || '—';
+  if (atBottom) logEl.scrollTop = logEl.scrollHeight;
   const stamp = JSON.stringify([s.updatedAt, s.status, s.currentStage]);
   if (stamp !== lastStamp) { lastStamp = stamp; if (selectedArtifact) viewArtifact(selectedArtifact, true); }
+}
+
+/* Recent runs: what ran, how long, what it cost, and a one-click re-run. */
+let runsCache = null;
+async function loadRuns() {
+  try {
+    const rate = contractRate();
+    const r = await api(`/api/runs?n=15${rate ? `&rate=${rate}` : ''}`);
+    runsCache = r.runs || [];
+    renderRuns();
+  } catch { /* offline */ }
+}
+function renderRuns() {
+  const sec = $('runsSec');
+  const list = runsCache || [];
+  if (!list.length) { sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+  const ago = (iso) => {
+    const m = Math.round((Date.now() - Date.parse(iso)) / 60000);
+    if (m < 1) return t('ago_now');
+    if (m < 60) return t('ago_min').replace('{n}', m);
+    if (m < 48 * 60) return t('ago_hr').replace('{n}', Math.round(m / 60));
+    return localDay(new Date(iso));
+  };
+  $('runsList').innerHTML = list.map((r, i) => {
+    const st = r.exitCode === null || r.exitCode === undefined ? `<span class="badge running">${esc(t('fs_running'))}</span>`
+      : r.exitCode === 0 ? '<span class="badge done">✓</span>' : `<span class="badge failed">✗ ${r.exitCode}</span>`;
+    const cost = typeof r.usd === 'number' ? fmtMoney(r.usd) : '';
+    return `<div class="runrow">${st}<div><div class="task" dir="auto" title="${esc(r.task || '')}"><span class="badge">${esc(r.flow || '')}</span> ${esc(r.task || '—')}</div>`
+      + `<div class="meta">${esc(ago(r.startedAt))}${r.durationSec !== null ? ` · ${fmtSecs(r.durationSec)}` : ''}${r.tokens ? ` · ${fmtTok(r.tokens)} tok` : ''}</div></div>`
+      + `<span class="cost">${cost}</span><button class="btn small" data-rerun="${i}" title="${esc(t('runs_rerun'))}">↻</button></div>`;
+  }).join('');
+  $('runsList').querySelectorAll('button[data-rerun]').forEach((b) => {
+    b.onclick = () => {
+      const r = list[Number(b.dataset.rerun)];
+      if (!r) return;
+      if ([...$('runFlow').options].some((o) => o.value === r.flow)) $('runFlow').value = r.flow;
+      $('runTask').value = r.task || '';
+      buildCmd();
+      $('runTask').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      $('runTask').focus();
+    };
+  });
+}
+/* ============================== Runs board ==============================
+   Every project's runs in one place: in flight (with progress and live cost),
+   the queue (tasks waiting for a free executor), schedules, and history. */
+let board = null;
+async function loadBoard() {
+  try { board = await api('/api/runs/board'); renderBoard(); } catch (e) { $('boardActive').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+const projName = (p) => projectLabel(p, (lastData && lastData.projects) || []);
+const elapsed = (iso, end) => fmtSecs(Math.max(0, Math.round(((end ? Date.parse(end) : Date.now()) - Date.parse(iso)) / 1000)));
+function fillProjectFlowSelects() {
+  const projects = (lastData && lastData.projects) || [];
+  const flows = (lastData && lastData.flows) || [];
+  for (const id of ['qProject', 'sProject']) syncSelect($(id), projects, lastData && lastData.project, (p) => projName(p));
+  for (const id of ['qFlow', 'sFlow']) syncSelect($(id), flows, $('runFlow').value || 'task');
+}
+function renderBoard() {
+  if (!board) return;
+  fillProjectFlowSelects();
+  $('boardCap').textContent = `${board.active.length} / ${board.maxParallel}`;
+  const stopBtn = (r) => `<button class="btn small reject" data-stop="${esc(r.id)}">${esc(t('run_stop'))}</button>`;
+  const showBtn = (p) => `<button class="btn small" data-show="${esc(p)}">${esc(t('board_show'))}</button>`;
+  const card = (r) => {
+    const st = r.state || {};
+    const pct = st.total ? Math.round((st.done / st.total) * 100) : (r.active ? 5 : 100);
+    const status = st.gate ? `<span class="badge waiting_gate">🔔 ${esc(t('fs_waiting_gate'))}</span>`
+      : r.active ? `<span class="badge running">${esc(t('fs_running'))}</span>`
+        : r.exitCode === 0 ? '<span class="badge done">✓</span>' : `<span class="badge failed">✗ ${r.exitCode}</span>`;
+    const u = r.usage;
+    const cost = u && u.turns ? `${fmtUsd(u.acu) || `${fmtAcu(u.acu)} ACU`} · ${u.turns} ${t('u_calls')}` : '';
+    return `<div class="runcard${st.gate ? ' gate' : ''}">`
+      + `<div class="proj"><span title="${esc(r.project)}">📁 ${esc(projName(r.project))}</span><span class="badge">${esc(r.flow)}</span>${status}</div>`
+      + `<div class="task" dir="auto" title="${esc(r.task || '')}">${esc(r.task || '—')}</div>`
+      + `<div class="prog"><i style="width:${pct}%"></i></div>`
+      + `<div class="meta"><span>${st.total ? `${st.done}/${st.total} · ${esc(st.stageTitle || st.currentStage || '')}` : esc(t('board_starting'))}</span>`
+      + `<span>⏱ ${elapsed(r.startedAt, r.endedAt)}</span>${cost ? `<span class="estusd">${esc(cost)}</span>` : ''}<span>${esc(r.mode || '')}</span></div>`
+      + `<div class="row">${showBtn(r.project)}${r.active ? stopBtn(r) : ''}</div></div>`;
+  };
+  $('boardActive').innerHTML = board.active.length ? board.active.map(card).join('')
+    : `<div class="empty">${esc(t('board_none_active'))}${board.executor ? '' : ` — ${esc(t('no_executor'))}`}</div>`;
+  const qrow = (q, i, arr) => {
+    const st = q.status === 'running' ? `<span class="badge running">${esc(t('fs_running'))}</span>` : `<span class="pos">${i + 1}</span>`;
+    const move = q.status === 'queued' ? `${i > 0 ? `<button class="btn small" data-up="${esc(q.id)}" title="${esc(t('board_up'))}">↑</button>` : ''}`
+      + `<button class="btn small" data-cancel="${esc(q.id)}" title="${esc(t('board_remove'))}">✕</button>` : '';
+    return `<div class="qrow">${st}<div><div class="task" dir="auto" title="${esc(q.task)}"><span class="badge">${esc(q.flow)}</span> ${esc(q.task || '—')}</div>`
+      + `<div class="meta">📁 ${esc(projName(q.project))}${q.speed ? ` · ${esc(q.speed)}` : ''} · ${esc(q.gates)}${q.waitReason ? ` · ${esc(t('board_waiting_exec'))}` : ''}${q.scheduleId ? ' · ⏰' : ''}</div></div>`
+      + `<div class="row" style="margin:0">${move}</div></div>`;
+  };
+  $('boardQueue').innerHTML = board.queue.length ? board.queue.map(qrow).join('') : `<div class="empty">${esc(t('board_queue_empty'))}</div>`;
+  const rep = (s) => {
+    const r = s.repeat || {};
+    const dayNames = t('rep_day_names').split(',');
+    if (r.kind === 'daily') return `${t('rep_daily')} ${r.at}`;
+    if (r.kind === 'weekly') return `${t('rep_weekly')} ${(r.days || []).map((d) => dayNames[d] || d).join('، ')} ${r.at}`;
+    if (r.kind === 'hours') return `${t('rep_every')} ${r.every} ${t('rep_h')}`;
+    if (r.kind === 'once') return `${t('rep_once')} ${new Date(r.at).toLocaleString()}`;
+    return '';
+  };
+  const srow = (s) => `<div class="qrow"><span class="pos">${s.enabled ? '⏰' : '⏸'}</span>`
+    + `<div><div class="task" dir="auto" title="${esc(s.task)}"><span class="badge">${esc(s.flow)}</span> ${esc(s.task || '—')}</div>`
+    + `<div class="meta">📁 ${esc(projName(s.project))} · ${esc(rep(s))} · ${esc(t('board_next'))}: ${s.nextAtIso && s.enabled ? new Date(s.nextAtIso).toLocaleString() : '—'}`
+    + `${s.lastStatus ? ` · ${esc(t('board_last'))}: ${esc(s.lastStatus)}` : ''}</div></div>`
+    + `<div class="row" style="margin:0"><button class="btn small" data-now="${esc(s.id)}" title="${esc(t('board_run_now'))}">▶</button>`
+    + `<button class="btn small" data-toggle="${esc(s.id)}" data-on="${s.enabled ? '0' : '1'}">${esc(s.enabled ? t('board_pause') : t('board_resume'))}</button>`
+    + `<button class="btn small" data-del="${esc(s.id)}" title="${esc(t('board_remove'))}">✕</button></div></div>`;
+  $('boardSchedules').innerHTML = board.schedules.length ? board.schedules.map(srow).join('') : `<div class="empty">${esc(t('board_sched_empty'))}</div>`;
+  const hrow = (q) => {
+    const stCls = q.status === 'done' ? 'done' : q.status === 'cancelled' ? 'cancelled' : 'failed';
+    const stLabel = q.status === 'done' ? t('fs_done') : q.status === 'cancelled' ? t('board_cancelled') : t('fs_failed');
+    const dur = q.startedAt && q.endedAt ? fmtSecs(Math.max(0, Math.round((Date.parse(q.endedAt) - Date.parse(q.startedAt)) / 1000))) : '';
+    return `<div class="qrow"><span class="st ${stCls}" title="${esc(stLabel)}">${q.status === 'done' ? '✓' : q.status === 'cancelled' ? '—' : '✗'}</span>`
+      + `<div><div class="task" dir="auto" title="${esc(q.task)}"><span class="badge">${esc(q.flow)}</span> ${esc(q.task || '—')}</div>`
+      + `<div class="meta">📁 ${esc(projName(q.project))} · <span class="badge ${stCls}">${esc(stLabel)}</span>${dur ? ` · ⏱ ${dur}` : ''}`
+      + `${q.error ? ` · ${esc(q.error)}` : ''} · ${q.endedAt ? new Date(q.endedAt).toLocaleString() : ''}</div></div><span></span></div>`;
+  };
+  $('boardHistory').innerHTML = board.history.length ? board.history.map(hrow).join('') : `<div class="empty">${esc(t('u_none'))}</div>`;
+  const wire = (sel, fn) => document.querySelectorAll(sel).forEach((b) => { b.onclick = async () => { b.disabled = true; try { await fn(b); await loadBoard(); } catch (e) { toast(e.message, 'err'); } b.disabled = false; }; });
+  wire('#page-runs [data-stop]', (b) => post('/api/run/stop', { id: b.dataset.stop }));
+  wire('#page-runs [data-show]', async (b) => { await post('/api/projects', { action: 'activate', path: b.dataset.show }); await poll(); document.querySelector('nav .tab[data-page="overview"]').onclick(); });
+  wire('#page-runs [data-cancel]', (b) => fetch(`/api/queue?id=${encodeURIComponent(b.dataset.cancel)}`, { method: 'DELETE' }).then((r) => r.json()));
+  wire('#page-runs [data-up]', (b) => {
+    const i = board.queue.findIndex((q) => q.id === b.dataset.up);
+    const before = board.queue.slice(0, i).reverse().find((q) => q.status === 'queued');
+    return post('/api/queue/reorder', { id: b.dataset.up, before: before ? before.id : null });
+  });
+  wire('#page-runs [data-now]', (b) => post('/api/schedules/run-now', { id: b.dataset.now }));
+  wire('#page-runs [data-toggle]', (b) => post('/api/schedules', { id: b.dataset.toggle, enabled: b.dataset.on === '1' }));
+  wire('#page-runs [data-del]', (b) => fetch(`/api/schedules?id=${encodeURIComponent(b.dataset.del)}`, { method: 'DELETE' }).then((r) => r.json()));
+}
+$('qAdd').onclick = async () => {
+  const tasks = $('qTasks').value.split('\n').map((s) => s.trim()).filter(Boolean);
+  if (!tasks.length) { toast(t('board_tasks_hint'), 'err'); return; }
+  try {
+    const items = tasks.map((task) => ({ project: $('qProject').value, flow: $('qFlow').value, task, gates: $('qGates').value, speed: $('qSpeed').value }));
+    const r = await post('/api/queue', { items });
+    toast(t('board_added').replace('{n}', r.added.length), 'ok');
+    $('qTasks').value = '';
+    await loadBoard();
+  } catch (e) { toast(e.message, 'err'); }
+};
+function repeatFromForm() {
+  const kind = $('sKind').value;
+  if (kind === 'hours') return { kind, every: Number($('sEvery').value) || 1 };
+  if (kind === 'once') return { kind, at: $('sOnce').value ? new Date($('sOnce').value).toISOString() : '' };
+  if (kind === 'weekly') return { kind, at: $('sAt').value, days: [...$('sDays').querySelectorAll('input:checked')].map((c) => Number(c.value)) };
+  return { kind: 'daily', at: $('sAt').value };
+}
+$('sKind').onchange = () => {
+  const k = $('sKind').value;
+  $('sAt').style.display = k === 'daily' || k === 'weekly' ? '' : 'none';
+  $('sEvery').style.display = k === 'hours' ? '' : 'none';
+  $('sOnce').style.display = k === 'once' ? '' : 'none';
+  $('sDays').style.display = k === 'weekly' ? '' : 'none';
+  if (k === 'weekly' && !$('sDays').children.length) {
+    const names = t('rep_day_names').split(',');
+    $('sDays').innerHTML = names.map((n, i) => `<label style="margin-inline-end:6px; font-size:12px"><input type="checkbox" value="${i}"${i >= 1 && i <= 5 ? ' checked' : ''}> ${esc(n)}</label>`).join('');
+  }
+};
+$('sAdd').onclick = async () => {
+  try {
+    const r = await post('/api/schedules', { project: $('sProject').value, flow: $('sFlow').value, task: $('sTask').value, gates: $('sGates').value, speed: $('sSpeed').value, repeat: repeatFromForm() });
+    toast(`${t('trk_saved')} · ${t('board_next')}: ${new Date(r.schedule.nextAt).toLocaleString()}`, 'ok');
+    $('sTask').value = '';
+    await loadBoard();
+  } catch (e) { toast(e.message, 'err'); }
+};
+// Runs elsewhere show up in the tab badge; a gate waiting in another project
+// gets the same banner as a local one, with a button that switches to it.
+function renderBoardSignals(d) {
+  const b = d.board || {};
+  const badge = $('runsTabBadge');
+  if (b.active) { badge.style.display = 'inline-block'; badge.textContent = String(b.active); } else badge.style.display = 'none';
+  const other = (b.gates || [])[0];
+  if (other && !(d.gate && d.gate.stage)) {
+    $('gateBarText').innerHTML = `<b>${esc(projName(other.project))}</b> — ${esc(t('board_gate_elsewhere').replace('{stage}', other.stage || ''))}`;
+    $('gateBar').classList.add('on');
+    $('gateBarOpen').onclick = async () => {
+      await post('/api/projects', { action: 'activate', path: other.project });
+      await poll();
+      document.querySelector('nav .tab[data-page="overview"]').onclick();
+    };
+    if (!(b.gates || []).some((g) => g.project === lastOtherGate)) notify(t('notif_gate').replace('{stage}', other.stage || ''), projName(other.project));
+    lastOtherGate = other.project;
+  } else if (!other) lastOtherGate = null;
+}
+let lastOtherGate = null;
+
+// Long explanations fold to one line until clicked.
+function foldLongHints() {
+  document.querySelectorAll('.hint').forEach((h) => {
+    if (h.classList.contains('help') || h.querySelector('input,select,button,a') || h.closest('#estBox')) return;
+    if ((h.textContent || '').trim().length < 150) return;
+    h.classList.add('help');
+    h.onclick = (ev) => { if (ev.target.tagName !== 'A') h.classList.toggle('open'); };
+  });
 }
 
 /* Live tail of the running stage's artifact. */
@@ -1380,18 +2082,44 @@ async function renderLiveTail(d) {
 
 /* ============================== gate ============================== */
 let currentGateStage = null;
+// Desktop notifications for the two moments that matter when the tab is in
+// the background: a gate waiting for you, and a run finishing. Permission is
+// asked for on the Run click (a user gesture), never on page load.
+const canNotify = () => typeof Notification !== 'undefined' && Notification.permission === 'granted';
+function notify(title, body) {
+  if (!canNotify() || document.hasFocus()) return;
+  try { new Notification(title, { body, silent: false }); } catch { /* blocked by the browser */ }
+}
+const baseTitle = document.title;
+let lastGateKey = null;
 function renderGate(gate) {
   const box = $('gateBox');
+  const bar = $('gateBar');
   if (gate && gate.stage) {
     currentGateStage = gate.stage;
     const q = (LANG === 'ar' && gate.questionAr) ? gate.questionAr : gate.question;
     $('gateQuestion').textContent = `🔔 [${gate.stage}] ` + (q || t('gate_title'));
     box.style.display = 'block';
+    $('gateBarText').innerHTML = `<b>${esc(gate.stage)}</b> — ${esc(q || t('gate_title'))}`;
+    bar.classList.toggle('on', activeTab !== 'overview');
+    document.title = `🔔 ${baseTitle}`;
+    const key = `${gate.stage}:${gate.question || ''}`;
+    if (key !== lastGateKey) { lastGateKey = key; notify(t('notif_gate').replace('{stage}', gate.stage), q || ''); }
   } else {
     currentGateStage = null;
+    lastGateKey = null;
     box.style.display = 'none';
+    bar.classList.remove('on');
+    if (document.title !== baseTitle) document.title = baseTitle;
   }
 }
+$('gateBarOpen').onclick = () => {
+  document.querySelector('nav .tab[data-page="overview"]').onclick();
+  $('gateBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+$('btnRun').addEventListener('click', () => {
+  if (typeof Notification !== 'undefined' && Notification.permission === 'default') Notification.requestPermission().catch(() => {});
+});
 async function decide(decision) {
   if (!currentGateStage) return;
   $('btnApprove').disabled = $('btnReject').disabled = true;
@@ -1473,6 +2201,7 @@ function buildCmd() {
   if (gates) cmd += ` --gates=${gates}`;
   if (speed) cmd += ` --speed=${speed}`;
   $('runCmd').textContent = cmd;
+  scheduleEstimate();
 }
 // The task box follows the text instead of scrolling inside three lines.
 function autoGrow() {
@@ -1508,19 +2237,372 @@ async function fetchRun() {
     }
     const badge = $('runStatus');
     badge.style.display = 'inline-block';
+    // While this project is busy the Run button lines the next task up.
+    runActiveHere = !!d.active;
     if (d.active) {
       badge.textContent = t('fs_running');
       badge.className = 'badge running';
-      $('btnRun').disabled = true;
+      $('btnRun').disabled = false;
+      $('btnRun').textContent = t('run_queue_btn');
       $('btnStopRun').style.display = 'inline-block';
     } else {
       badge.textContent = d.exitCode === 0 ? t('run_exit_ok') : `${t('run_exit_bad')} (${d.exitCode})`;
       badge.className = 'badge ' + (d.exitCode === 0 ? 'done' : 'failed');
       $('btnRun').disabled = false;
+      $('btnRun').textContent = t('run_now');
       $('btnStopRun').style.display = 'none';
     }
+    // Live cost of this run, read from Devin's session log as it grows.
+    const u = d.usage;
+    $('runUsage').textContent = u && u.turns
+      ? `${u.turns} ${t('u_calls')} · ${fmtTok(u.input + u.cacheRead + u.cacheWrite)} in / ${fmtTok(u.output)} out · ${fmtAcu(u.acu)} ACU`
+        + (fmtUsd(u.acu) ? ` · ${fmtUsd(u.acu)}` : '') + (d.active ? ` · ${t('u_live')}` : '')
+      : '';
   } catch { /* server unreachable */ }
 }
+
+/* ============================== usage & cost ============================== */
+function fmtTok(n) {
+  const v = Number(n) || 0;
+  if (v >= 1e9) return (v / 1e9).toFixed(2) + 'B';
+  if (v >= 1e6) return (v / 1e6).toFixed(v >= 1e8 ? 0 : 1) + 'M';
+  if (v >= 1e3) return (v / 1e3).toFixed(v >= 1e5 ? 0 : 1) + 'K';
+  return String(Math.round(v));
+}
+const fmtAcu = (n) => { const v = Number(n) || 0; return v >= 100 ? v.toFixed(1) : v >= 1 ? v.toFixed(2) : v.toFixed(4); };
+// Dollars: the server measures this account's ACU -> $ rate by pricing every
+// logged call with Devin's official per-token price list. A contract rate the
+// user types in (Enterprise order forms differ) overrides it.
+var USD = null;
+const contractRate = () => { const v = Number(localStorage.getItem('ff.usdPerAcu')); return v > 0 ? v : null; };
+const usdRate = () => contractRate() || (USD && USD.usdPerAcu) || null;
+const fmtMoney = (usd) => {
+  const v = Number(usd) || 0;
+  return `$${v >= 100 ? v.toFixed(0) : v >= 1 ? v.toFixed(2) : v >= 0.01 ? v.toFixed(3) : v.toFixed(4)}`;
+};
+const fmtUsd = (acu) => { const r = usdRate(); return r && acu !== null && acu !== undefined ? fmtMoney(acu * r) : ''; };
+function usdNote() {
+  if (contractRate()) return t('usd_contract').replace('{rate}', contractRate());
+  if (!USD) return '';
+  if (USD.basis === 'measured') {
+    return t('usd_measured').replace('{rate}', USD.usdPerAcu).replace('{ok}', USD.verified.toLocaleString()).replace('{n}', USD.priced.toLocaleString())
+      .replace('{tier}', USD.tier || '').replace('{when}', USD.fetchedAt ? new Date(USD.fetchedAt).toLocaleDateString() : '—');
+  }
+  return t('usd_default').replace('{rate}', USD.usdPerAcu);
+}
+const fmtSecs = (s) => (s >= 3600 ? `${(s / 3600).toFixed(1)}h` : s >= 60 ? `${Math.round(s / 60)}m` : `${Math.round(s)}s`);
+const localDay = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function downloadText(name, text, type) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function utable(head, rows) {
+  return `<table class="utable"><thead><tr>${head.map(([h, num]) => `<th class="${num ? 'num' : ''}">${esc(h)}</th>`).join('')}</tr></thead>`
+    + `<tbody>${rows.join('')}</tbody></table>`;
+}
+
+// Pre-run estimate: re-asked only when the flow or the task text changes.
+// `var` on purpose: applyLang() and buildCmd() can run during start-up, before
+// this part of the script has executed.
+var estTimer = null;
+var estKey = '';
+var estSeq = 0;
+var lastEstimate = null;
+function scheduleEstimate(force) {
+  const key = `${$('runFlow').value}\u0000${$('runSpeed').value}\u0000${$('runTask').value.trim()}`;
+  if (!force && key === estKey) return;
+  estKey = key;
+  clearTimeout(estTimer);
+  estTimer = setTimeout(runEstimate, 450);
+}
+async function runEstimate() {
+  const flow = $('runFlow').value;
+  if (!flow) { $('estBox').style.display = 'none'; return; }
+  const seq = ++estSeq;
+  try {
+    const e = await post('/api/estimate', { flow, task: $('runTask').value, speed: $('runSpeed').value });
+    if (seq !== estSeq) return;
+    lastEstimate = e;
+    if (e.dollars) USD = e.dollars;
+    renderEstimate();
+  } catch { /* the chip is a nicety */ }
+}
+function renderEstimate() {
+  const e = lastEstimate;
+  const box = $('estBox');
+  if (!e) { box.style.display = 'none'; return; }
+  const sep = '<span class="sep">·</span>';
+  // Dollars first, ACUs beside them.
+  const acuUsd = (acu, usd) => {
+    if (acu === null || acu === undefined) return '—';
+    const money = contractRate() ? fmtUsd(acu) : typeof usd === 'number' ? fmtMoney(usd) : fmtUsd(acu);
+    return money ? `<span class="estusd">${money}</span> <span class="estacu">${fmtAcu(acu)} ACU</span>` : `${fmtAcu(acu)} ACU`;
+  };
+  const p = e.pipeline;
+  const bits = [];
+  // Headline: what this pipeline will cost, stage by stage.
+  if (p && p.happy) {
+    const tag = p.calibration
+      ? `<span class="badge done">${esc(t('est_calibrated').replace('{n}', p.calibration.runs))}</span>`
+      : `<span class="badge">${esc(t('est_model_tag'))}</span>`;
+    const agentN = p.stages.filter((s) => s.kind === 'agent').length;
+    const upto = contractRate() ? fmtUsd(p.withRetry.acu) : typeof p.withRetry.usd === 'number' ? fmtMoney(p.withRetry.usd) : `${fmtAcu(p.withRetry.acu)} ACU`;
+    bits.push(`<div class="esthead"><span class="estbig">≈ ${acuUsd(p.happy.acu, p.happy.usd)}</span>`
+      + `<span>${esc(t('est_pipeline').replace('{n}', agentN))} ${sep} <b>${fmtTok(p.happy.tokens)}</b> tok ${sep} <b>~${p.happy.calls}</b> ${esc(t('u_calls'))}</span>`
+      + (p.retryPaths.length && p.withRetry.acu !== null
+        ? `<span>${sep} ${esc(t('est_upto'))} <b>${upto}</b> ${esc(t('est_if_fail').replace('{path}', p.retryPaths.map((r) => `${r.from} → ${r.to} → ${r.from}`).join(', ')))}</span>` : '')
+      + (p.speed ? `<span class="badge">${esc(t('est_speed'))}: ${esc(p.speed)}</span>` : '')
+      + `${tag}</div>`);
+    if (usdNote()) bits.push(`<div class="estsub">💵 ${esc(usdNote())}</div>`);
+  }
+  // What was typed and what rides along with it.
+  bits.push(`<div class="estsub">≈ <b>${fmtTok(e.promptTokens)}</b> ${esc(t('est_typed'))} ${sep} +<b>${fmtTok(e.overheadTokens)}</b> ${esc(t('est_sent'))}`
+    + (e.baselineTokens ? ` ${sep} <b>${fmtTok(e.baselineTokens)}</b> ${esc(t('est_context'))}` : '') + '</div>');
+  // Past runs, when there are any, say what really happened.
+  if (!e.available) bits.push(`<div class="estsub">${esc(t('est_unavailable'))}${e.message ? ` — ${esc(e.message)}` : ''}</div>`);
+  else if (e.forecast && e.forecast.acu) {
+    const f = e.forecast;
+    const from = t(f.basis === 'this-flow' ? 'est_from_runs' : 'est_from_other').replace('{n}', f.runs);
+    const range = usdRate() ? `${fmtUsd(f.acu.p25)}–${fmtUsd(f.acu.p75)}` : `${fmtAcu(f.acu.p25)}–${fmtAcu(f.acu.p75)} ACU`;
+    bits.push(`<div class="estsub">${esc(t('est_forecast'))}: ${acuUsd(f.acu.p50)} ${sep} <b>${fmtTok(f.tokens.p50)}</b> tok ${sep} `
+      + `${esc(t('est_range'))} ${range} ${sep} ${esc(from)}</div>`);
+  }
+  if (p && p.stages.length) {
+    const basis = { exact: t('est_measured'), family: t('est_family'), account: t('est_account_avg'), 'price-list': t('est_price_list') };
+    const priceTip = (s) => (s.price ? ` title="${esc(t('est_price_tip').replace('{in}', s.price[0]).replace('{out}', s.price[1]).replace('{cw}', s.price[2]).replace('{cr}', s.price[3]))}"` : '');
+    const row = (s, label, cls = '') => `<tr class="${cls}"><td>${label}</td>`
+      + `<td>${s.model ? `<span class="modelchip">${esc(s.model)}</span>` : ''}</td><td>${esc(s.effort || '')}</td>`
+      + `<td class="num">${s.calls || '—'}</td><td class="num" title="fresh ${fmtTok(s.fresh)} · cache ${fmtTok(s.cacheRead)} · out ${fmtTok(s.output)}">${s.tokens ? fmtTok(s.tokens) : '—'}</td>`
+      + `<td class="num">${s.calls ? acuUsd(s.acu, s.usd) : '—'}</td><td class="estdim"${priceTip(s)}>${esc(s.basis ? basis[s.basis] || s.basis : '')}</td></tr>`;
+    const rows = p.stages.map((s) => {
+      const title = esc(LANG === 'ar' ? (s.titleAr || s.title) : s.title);
+      const note = s.kind === 'script' ? ` <span class="estdim">(${esc(t('est_script'))})</span>`
+        : s.kind === 'retry-only' ? ` <span class="estdim">(${esc(t('est_retry_only'))})</span>` : '';
+      return row(s, title + note, s.kind === 'agent' ? '' : 'estmuted');
+    });
+    rows.unshift(row(p.orchestrator, `${esc(t('est_orchestrator'))}`, ''));
+    rows.push(`<tr class="esttotal"><td>${esc(t('est_total'))}</td><td></td><td></td><td class="num">${p.happy.calls}</td>`
+      + `<td class="num">${fmtTok(p.happy.tokens)}</td><td class="num">${acuUsd(p.happy.acu, p.happy.usd)}</td><td></td></tr>`);
+    const openPref = localStorage.getItem('ff.estOpen') !== '0';
+    const a = p.assumptions || {};
+    bits.push(`<details id="estDetails"${openPref ? ' open' : ''}><summary>${esc(t('est_stages'))}</summary>`
+      + utable([[t('est_stage')], [t('u_model')], [t('est_effort')], [t('u_calls'), true], [t('u_tokens_col'), true], [t('est_cost'), true], [t('est_priced_by')]], rows)
+      + `<div class="estdim" style="margin-top:4px">${esc(t('est_assume')
+        .replace('{out}', fmtTok(a.outPerCall)).replace('{growth}', fmtTok(a.growthPerCall))
+        .replace('{src}', t(a.measured ? 'est_src_measured' : 'est_src_default')))}</div></details>`);
+  }
+  box.innerHTML = bits.join('');
+  box.style.display = 'flex';
+  const det = $('estDetails');
+  if (det) det.ontoggle = () => localStorage.setItem('ff.estOpen', det.open ? '1' : '0');
+}
+
+// The Usage page.
+let usageData = null;
+let usageMonth = '';
+let usageShowAll = false;
+async function loadUsage(force) {
+  if (!usageData) $('useNote').textContent = t('u_loading');
+  const scope = $('useScope').value || 'all';
+  const tool = $('useTool').value || '';
+  const rate = contractRate();
+  try {
+    usageData = await api(`/api/usage?scope=${scope}${tool ? `&tool=${tool}` : ''}${usageMonth ? `&month=${usageMonth}` : ''}`
+      + `${rate ? `&rate=${rate}` : ''}${force ? '&force=1' : ''}`);
+    usageMonth = usageData.month;
+    if (usageData.dollars) USD = usageData.dollars;
+    renderUsage();
+  } catch (e) { $('useNote').textContent = e.message; }
+}
+const TOOL_LABEL = (id) => {
+  const hit = usageData && (usageData.tracking || []).find((x) => x.tool === id);
+  return id === 'devin' ? 'Devin' : hit ? hit.label : id;
+};
+// Where each tool's numbers come from, and the switch for the ones that
+// only record once turned on.
+function renderTracking() {
+  const list = (usageData && usageData.tracking) || [];
+  const src = { local: t('trk_local'), setup: t('trk_setup'), billing: t('trk_billing'), unsupported: t('trk_unsupported') };
+  const rows = [`<tr><td><b>Devin</b></td><td class="estdim">${esc(t('trk_devin'))}</td><td>${usageData && usageData.available
+    ? `<span class="badge done">${esc(t('trk_on'))}</span>` : `<span class="badge">${esc(t('trk_off'))}</span>`}</td><td></td></tr>`];
+  for (const x of list) {
+    const found = x.found ? `<span class="badge done">${esc(t('trk_found').replace('{n}', x.sessions))}</span>` : '';
+    let state = found || `<span class="badge">${esc(t('trk_none'))}</span>`;
+    let actions = '';
+    if (x.kind === 'setup' || x.tool === 'copilot') {
+      state = `${x.enabled ? `<span class="badge done">${esc(t('trk_on'))}</span>` : `<span class="badge">${esc(t('trk_off'))}</span>`} ${found}`;
+      actions = `<button class="btn small${x.enabled ? '' : ' primary'}" data-trk="${esc(x.tool)}" data-on="${x.enabled ? '0' : '1'}">`
+        + `${esc(x.enabled ? t('trk_disable') : t('trk_enable'))}</button>`;
+    }
+    if (x.tool === 'copilot' && x.billing && x.billing.on) {
+      const b = x.billing;
+      state += b.status === 'ok' ? ` <span class="badge done">${esc(t('trk_billing_ok'))}${b.login ? ` — ${esc(b.login)}` : ''}</span>`
+        : b.status === 'unknown' ? ` <span class="badge">${esc(t('u_loading'))}</span>`
+          : ` <span class="badge failed" title="${esc(b.message || '')}">${esc(t('trk_billing_bad'))}</span>`;
+      if (b.status === 'forbidden' || b.status === 'not-logged-in') {
+        actions += ` <button class="btn small primary" data-trk="copilot-grant" data-on="1">${esc(t('trk_grant'))}</button>`;
+      }
+    }
+    if (x.kind === 'unsupported') state = `<span class="badge">${esc(t('trk_na'))}</span>`;
+    const note = [t(`trk_how_${x.tool}`), x.unpriced && x.unpriced.length ? t('trk_unpriced').replace('{m}', x.unpriced.slice(0, 4).join(', ')) : '',
+      x.note || '', x.billing && x.billing.message ? x.billing.message : ''].filter(Boolean).join(' · ');
+    rows.push(`<tr><td><b>${esc(x.label)}</b><br><span class="estdim">${esc(src[x.kind] || '')}</span></td>`
+      + `<td class="wrap estdim">${esc(note)}</td><td>${state}</td><td>${actions}</td></tr>`);
+  }
+  $('useTracking').innerHTML = utable([[t('trk_tool')], [t('trk_how')], [t('trk_state')], ['']], rows);
+  $('useTracking').querySelectorAll('button[data-trk]').forEach((b) => {
+    b.onclick = async () => {
+      b.disabled = true;
+      try {
+        const r = await post('/api/usage/tracking', { tool: b.dataset.trk, on: b.dataset.on === '1' });
+        toast(r.noTerminal ? `${t('trk_no_terminal')} ${r.script || ''}` : b.dataset.trk === 'copilot-grant' ? t('trk_grant_started') : t('trk_saved'), r.noTerminal ? 'err' : 'ok');
+        await loadUsage(true);
+      } catch (e) { toast(e.message, 'err'); }
+      b.disabled = false;
+    };
+  });
+}
+function monthLabel(mk) {
+  const [y, m] = mk.split('-').map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString(LANG === 'ar' ? 'ar-EG' : 'en-US', { month: 'long', year: 'numeric' });
+}
+function renderUsage() {
+  const u = usageData;
+  if (!u) return;
+  const months = [...new Set([u.month, ...(u.months || [])])].sort().reverse();
+  $('useMonth').innerHTML = months.map((m) => `<option value="${m}">${esc(monthLabel(m))}</option>`).join('');
+  $('useMonth').value = u.month;
+  $('useNote').textContent = u.available ? (u.source ? `📁 ${u.source}` : '') : (u.message || '');
+  // Tool filter: every tool that has data this month plus every known tool.
+  const toolIds = [...new Set([...(u.byTool || []).map((x) => x.tool), 'devin', ...(u.tracking || []).filter((x) => x.kind !== 'unsupported').map((x) => x.tool)])];
+  const selTool = $('useTool').value;
+  $('useTool').innerHTML = `<option value="">${esc(t('usage_all_tools'))}</option>`
+    + toolIds.map((id) => `<option value="${esc(id)}">${esc(TOOL_LABEL(id))}</option>`).join('');
+  $('useTool').value = toolIds.includes(selTool) ? selTool : '';
+  const T = u.totals;
+  const P = u.prev;
+  const kpi = (k, v, s) => `<div class="kpi"><div class="k">${esc(k)}</div><div class="v">${v}</div><div class="s">${s || ''}</div></div>`;
+  const delta = P.usd ? (T.usd - P.usd) / P.usd : null;
+  const deltaHtml = delta === null ? ''
+    : `<span class="delta ${delta > 0 ? 'up' : 'down'}">${delta > 0 ? '▲' : '▼'} ${Math.abs(delta * 100).toFixed(0)}%</span> ${esc(t('u_vs_prev'))}`;
+  const cacheShare = T.cacheRead / Math.max(1, T.input + T.cacheRead + T.cacheWrite);
+  const acuNote = (acu) => (acu ? `${fmtAcu(acu)} ACU (Devin)` : '');
+  $('useKpis').innerHTML = [
+    kpi(t('u_spent'), fmtMoney(T.usd), [acuNote(T.acu), deltaHtml].filter(Boolean).join(' · ')),
+    u.projectionUsd !== null && u.projectionUsd !== undefined ? kpi(t('u_projection'), fmtMoney(u.projectionUsd), acuNote(u.projection)) : '',
+    kpi(t('u_tokens'), fmtTok(T.tokens), `${fmtTok(T.input + T.cacheWrite)} / ${fmtTok(T.output)} ${esc(t('u_in_out'))} · ${fmtTok(T.cacheRead)} ${esc(t('u_cache'))}`),
+    kpi(t('u_cache_share'), `${(cacheShare * 100).toFixed(0)}%`, ''),
+    kpi(t('u_sessions'), String(T.sessions), `${T.runs} ${esc(t('u_runs'))}${T.requests ? ` · ${T.requests} ${esc(t('u_premium'))}` : ''}`),
+    T.runs ? kpi(t('u_avg_run'), fmtMoney(T.avgUsdPerRun), acuNote(T.avgPerRun)) : '',
+  ].join('') + (usdNote() ? `<div class="hint" style="grid-column:1/-1; margin:0">💵 ${esc(usdNote())}</div>` : '');
+  const budget = Number(localStorage.getItem('ff.usdBudget')) || 0;
+  if (budget > 0) {
+    const used = T.usd / budget;
+    const proj = u.projectionUsd != null ? u.projectionUsd / budget : used;
+    const cls = used >= 1 ? 'over' : proj >= 1 ? 'warn' : '';
+    $('useBudget').innerHTML = `<div class="ubudget ${cls}"><i style="width:${Math.min(100, used * 100).toFixed(1)}%"></i></div>`
+      + `<div class="hint" style="margin:0">${fmtMoney(T.usd)} / ${fmtMoney(budget)} — ${(used * 100).toFixed(0)}% ${esc(t('u_budget_of'))}`
+      + (u.projectionUsd != null ? ` · ${esc(t('u_projection'))}: ${(proj * 100).toFixed(0)}%` : '') + '</div>';
+  } else $('useBudget').innerHTML = '';
+  const max = Math.max(0, ...u.daily.map((d) => d.usd));
+  const today = localDay();
+  $('useChart').innerHTML = u.daily.map((d) => `<div class="b${d.usd ? '' : ' zero'}${d.day === today ? ' today' : ''}"`
+    + ` style="height:${max ? Math.max(2, (d.usd / max) * 130) : 2}px"`
+    + ` title="${esc(`${d.day} — ${fmtMoney(d.usd)}${d.acu ? ` · ${fmtAcu(d.acu)} ACU` : ''} · ${fmtTok(d.tokens)} tok · ${d.turns} ${t('u_calls')}`)}"></div>`).join('');
+  $('useTools').innerHTML = (u.byTool || []).length ? utable(
+    [[t('trk_tool')], [t('u_sessions'), true], [t('u_tokens_col'), true], ['$', true], [t('u_share')]],
+    u.byTool.map((x) => `<tr><td><b>${esc(TOOL_LABEL(x.tool))}</b></td><td class="num">${x.sessions}</td><td class="num">${fmtTok(x.tokens)}</td>`
+      + `<td class="num">${fmtMoney(x.usd)}${x.requests ? `<br><span class="estdim">${x.requests} ${esc(t('u_premium'))}</span>` : ''}</td>`
+      + `<td><span class="ushare" style="width:${Math.round(x.share * 70)}px"></span>${(x.share * 100).toFixed(1)}%</td></tr>`))
+    : `<div class="hint">${esc(t('u_none'))}</div>`;
+  renderTracking();
+  const mid = u.daily[Math.floor(u.daily.length / 2)];
+  $('useAxis').innerHTML = u.daily.length
+    ? `<span>${u.daily[0].day.slice(5)}</span><span>${mid.day.slice(5)}</span><span>${u.daily[u.daily.length - 1].day.slice(5)}</span>` : '';
+  const none = `<div class="hint">${esc(t('u_none'))}</div>`;
+  const base = (p) => String(p || '—').split(/[\\/]/).filter(Boolean).pop() || p || '—';
+  $('useModels').innerHTML = u.byModel.length ? utable(
+    [[t('u_model')], [t('u_calls'), true], ['in', true], ['out', true], [t('u_cache'), true], ['$', true], ['ACU', true], [t('u_share')], [t('u_rate'), true]],
+    u.byModel.map((m) => `<tr><td><span class="modelchip">${esc(m.model)}</span></td><td class="num">${m.turns}</td>`
+      + `<td class="num">${fmtTok(m.input + m.cacheWrite)}</td><td class="num">${fmtTok(m.output)}</td><td class="num">${fmtTok(m.cacheRead)}</td>`
+      + `<td class="num">${fmtMoney(m.usd)}</td><td class="num">${m.acu ? fmtAcu(m.acu) : '—'}</td><td><span class="ushare" style="width:${Math.round(m.share * 70)}px"></span>${(m.share * 100).toFixed(1)}%</td>`
+      + `<td class="num">${m.acuPerMTok ? m.acuPerMTok.toFixed(2) : '—'}</td></tr>`)) : none;
+  $('useProjects').innerHTML = u.byProject.length ? utable(
+    [[t('u_project')], [t('u_sessions'), true], [t('u_tokens_col'), true], ['$', true]],
+    u.byProject.map((p) => `<tr><td title="${esc(p.project)}">${esc(base(p.project))}</td><td class="num">${p.sessions}</td>`
+      + `<td class="num">${fmtTok(p.tokens)}</td><td class="num">${fmtMoney(p.usd)}</td></tr>`)) : none;
+  $('useFlows').innerHTML = u.byFlow.length ? utable(
+    [['Flow'], [t('u_runs'), true], ['avg $', true], ['$', true]],
+    u.byFlow.map((f) => `<tr><td>${esc(f.flow)}</td><td class="num">${f.runs}</td><td class="num">${fmtMoney(f.avgUsd)}</td><td class="num">${fmtMoney(f.usd)}</td></tr>`)) : none;
+  const sorted = u.tasks.slice().sort($('useSort').value === 'cost' ? (a, b) => b.usd - a.usd : () => 0);
+  const shown = usageShowAll ? sorted : sorted.slice(0, 100);
+  const kindBadge = (x) => (x.kind === 'flow' ? `<span class="badge done">${esc(x.flow)}</span>`
+    : `<span class="badge">${esc(x.kind === 'refine' ? '✨ prompt' : (x.tool && x.tool !== 'devin') ? TOOL_LABEL(x.tool) : 'chat')}</span>`);
+  const status = (x) => (!x.run || x.run.exitCode === null ? '' : x.run.exitCode === 0 ? '<span class="badge done">✓</span>'
+    : `<span class="badge failed">${x.run.exitCode}</span>`);
+  $('useTasks').innerHTML = shown.length ? utable(
+    [[t('u_date')], [t('u_kind')], [t('u_task')], [t('u_project')], [t('u_model')], [t('u_dur'), true], [t('u_tokens_col'), true], ['$', true], [t('u_status')]],
+    shown.map((x) => {
+      const d = new Date(x.createdAt);
+      return `<tr><td>${localDay(d)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}</td>`
+        + `<td>${kindBadge(x)}</td><td class="wrap" title="${esc(x.id)}">${esc((x.task || x.title || '').slice(0, 140))}</td>`
+        + `<td title="${esc(x.project)}">${esc(base(x.project))}</td><td><span class="modelchip">${esc(x.topModel || '')}</span></td>`
+        + `<td class="num">${fmtSecs(x.durationSec)}</td>`
+        + `<td class="num" title="in ${fmtTok(x.input)} · out ${fmtTok(x.output)} · cache ${fmtTok(x.cacheRead)}">${fmtTok(x.input + x.output + x.cacheRead + x.cacheWrite)}</td>`
+        + `<td class="num">${fmtMoney(x.usd)}${x.acu ? `<br><span class="estdim">${fmtAcu(x.acu)} ACU</span>` : ''}${x.requests ? `<br><span class="estdim">${x.requests} req</span>` : ''}</td>`
+        + `<td>${status(x)}</td></tr>`;
+    })) + (sorted.length > shown.length ? `<button class="btn small" id="useMore" style="margin-top:8px">${esc(t('u_more'))} (${sorted.length})</button>` : '')
+    : none;
+  if ($('useMore')) $('useMore').onclick = () => { usageShowAll = true; renderUsage(); };
+  $('useUsdAcu').value = localStorage.getItem('ff.usdPerAcu') || '';
+  $('useUsdAcu').placeholder = USD ? String(USD.usdPerAcu) : '2';
+  $('useUsdNote').textContent = usdNote() ? `💵 ${usdNote()}` : '';
+  $('useBudgetIn').value = localStorage.getItem('ff.usdBudget') || '';
+}
+function usageCsv() {
+  const u = usageData;
+  if (!u) return;
+  const rows = [['date', 'tool', 'kind', 'flow', 'task', 'project', 'model', 'duration_sec', 'input', 'output', 'cache_read', 'cache_write', 'usd', 'acu', 'premium_requests', 'session']];
+  for (const x of u.tasks) {
+    rows.push([x.createdAt, x.tool || 'devin', x.kind, x.flow || '', x.task || x.title || '', x.project, x.topModel || '', x.durationSec,
+      x.input, x.output, x.cacheRead, x.cacheWrite, (x.usd || 0).toFixed(4), (x.acu || 0).toFixed(6), x.requests || 0, x.id]);
+  }
+  const csv = rows.map((r) => r.map((v) => { const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }).join(',')).join('\n');
+  // The BOM makes Excel read Arabic task text as UTF-8.
+  downloadText(`flowforge-usage-${u.month}.csv`, '\ufeff' + csv, 'text/csv;charset=utf-8');
+}
+$('useRefresh').onclick = () => loadUsage(true);
+$('useScope').onchange = () => { localStorage.setItem('ff.usageScope', $('useScope').value); loadUsage(false); };
+$('useMonth').onchange = () => { usageMonth = $('useMonth').value; usageShowAll = false; loadUsage(false); };
+const shiftMonth = (mk, by) => { const [y, m] = mk.split('-').map(Number); const d = new Date(y, m - 1 + by, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
+$('useMonthPrev').onclick = () => { if (usageMonth) { usageMonth = shiftMonth(usageMonth, -1); usageShowAll = false; loadUsage(false); } };
+$('useMonthNext').onclick = () => { if (usageMonth) { usageMonth = shiftMonth(usageMonth, 1); usageShowAll = false; loadUsage(false); } };
+$('useSort').onchange = renderUsage;
+$('useCsv').onclick = usageCsv;
+$('useUsdAcu').onchange = () => {
+  const v = Number($('useUsdAcu').value);
+  if (v > 0) localStorage.setItem('ff.usdPerAcu', String(v)); else localStorage.removeItem('ff.usdPerAcu');
+  loadUsage(false); renderEstimate();
+};
+$('useBudgetIn').onchange = () => {
+  const v = Number($('useBudgetIn').value);
+  if (v > 0) localStorage.setItem('ff.usdBudget', String(v)); else localStorage.removeItem('ff.usdBudget');
+  renderUsage();
+};
+$('useTool').onchange = () => { usageShowAll = false; loadUsage(false); };
+$('useReport').onclick = async () => {
+  const to = $('useReportFmt').value;
+  try {
+    const r = await post('/api/usage/report', { month: usageMonth, scope: $('useScope').value, tool: $('useTool').value, lang: LANG, usdPerAcu: contractRate(), to });
+    if (to === 'md' || !r.saved) downloadText(`usage-report-${r.month}.md`, r.markdown, 'text/markdown;charset=utf-8');
+    toast(`${t('u_saved')}${r.out || r.saved ? ': ' + (r.out || r.saved) : ''}`, 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+};
+$('useScope').value = localStorage.getItem('ff.usageScope') || 'all';
 /* Prompt generation: the rough line the user typed goes to a model and comes
    back as the precise task statement, editable before running. */
 let refineBefore = null;
@@ -1554,6 +2636,20 @@ $('btnRefineUndo').onclick = () => {
   autoGrow();
   buildCmd();
 };
+let runActiveHere = false;
+// Resume: /flow-resume on the same executor path, with the gate mode chosen
+// in the run bar (or the recorded one when left on default).
+$('btnResume').onclick = async () => {
+  try {
+    $('btnResume').disabled = true;
+    const r = await post('/api/run', { flow: 'resume', task: '', gates: $('runGates').value || 'dashboard', speed: $('runSpeed').value || 'flow', permissionMode: 'dangerous', provider: PROVIDER });
+    if (r.mode === 'queue') toast(t('run_queued'), 'ok');
+    else { runCursor = 0; $('runConsole').textContent = ''; $('runConsoleSec').style.display = 'block'; toast(t('resume_started'), 'ok'); }
+  } catch (e) {
+    toast(e.message === 'nothing_to_resume' ? t('resume_nothing') : e.message === 'no_executor' ? t('no_executor') : e.message, 'err');
+  }
+  $('btnResume').disabled = false;
+};
 $('btnRun').onclick = async () => {
   const flow = $('runFlow').value || 'task';
   const task = $('runTask').value.trim();
@@ -1561,10 +2657,11 @@ $('btnRun').onclick = async () => {
   const speed = $('runSpeed').value || 'flow';
   try {
     $('btnRun').disabled = true;
-    const r = await post('/api/run', { flow, task, gates, speed, permissionMode: 'dangerous', provider: PROVIDER });
+    const r = await post('/api/run', { flow, task, gates, speed, permissionMode: 'dangerous', provider: PROVIDER, enqueue: runActiveHere });
     if (r.mode === 'queue') {
       $('btnRun').disabled = false;
-      toast(t('run_queued'), 'ok');
+      toast(r.position ? t('run_queued_pos').replace('{n}', r.position) : t('run_queued'), 'ok');
+      if (r.position) $('runTask').value = '';
     } else {
       runCursor = 0;
       $('runConsole').textContent = '';
@@ -1620,8 +2717,20 @@ let actCursor = null;
 function appendFeedRows(feed, events, max) {
   if (feed.querySelector('.empty')) feed.innerHTML = '';
   for (const e of events) {
+    // The same file saved three times in a row is one row with a count.
+    const last = feed.lastElementChild;
+    if (last && last.dataset.key === `${e.type}|${e.path}`) {
+      const n = (Number(last.dataset.n) || 1) + 1;
+      last.dataset.n = n;
+      last.querySelector('.t').textContent = e.t.replace('T', ' ').slice(11, 19);
+      let badge = last.querySelector('.n');
+      if (!badge) { badge = document.createElement('span'); badge.className = 'n'; last.appendChild(badge); }
+      badge.textContent = `×${n}`;
+      continue;
+    }
     const row = document.createElement('div');
     row.className = 'act-row';
+    row.dataset.key = `${e.type}|${e.path}`;
     row.innerHTML = `<span class="t">${esc(e.t.replace('T', ' ').slice(11, 19))}</span><span class="ty ${esc(e.type)}">${esc(e.type)}</span> ${esc(e.path)}`;
     feed.appendChild(row);
   }
@@ -1664,12 +2773,17 @@ async function fetchChanges() {
       el.innerHTML = `<div class="empty">${esc(t('no_changes'))}</div>`;
     } else {
       el.innerHTML = '';
+      // Porcelain codes as coloured badges: M modified, A added, D deleted,
+      // R renamed, ?? untracked (shown as U).
+      const GIT_WORDS = { M: 'modified', A: 'added', D: 'deleted', R: 'renamed', U: 'untracked', C: 'copied' };
       d.status.forEach((line) => {
         const file = line.slice(3).trim();
+        const raw = line.slice(0, 2).trim() || '?';
+        const code = raw === '??' ? 'U' : raw[0];
         const div = document.createElement('div');
         div.className = 'chg-file';
         div.style.cssText = 'direction:ltr; text-align:left; font-family:var(--mono); font-size:12px;';
-        div.textContent = line;
+        div.innerHTML = `<span class="gitcode ${esc(code)}" title="${esc(GIT_WORDS[code] || raw)}">${esc(code)}</span>${esc(file)}`;
         div.onclick = () => viewDiff(file);
         el.appendChild(div);
       });
@@ -1832,23 +2946,24 @@ async function fetchProviderDetect() {
     providerDetection = d;
     const det = d.detection;
     const head = PROVIDER_LABELS[PROVIDER] ? PROVIDER_LABELS[PROVIDER]() : PROVIDER;
-    const rows = [];
-    rows.push(`<b>${esc(head)}</b> — ${det.installed ? esc(t('provider_detected')) : esc(t('provider_not_detected'))}`);
-    if (det.editorPath) rows.push(`${esc(t('provider_editor'))}: <span style="direction:ltr">${esc(det.editorPath)}</span>`);
-    if (det.cliPath) rows.push(`${esc(t('provider_cli'))}: <span style="direction:ltr">${esc(det.cliPath)}</span>`);
-    if (det.modules.length) {
-      const byKind = {};
-      for (const m of det.modules) (byKind[m.kind] = byKind[m.kind] || []).push(m.label);
-      rows.push(`${esc(t('provider_modules'))} (${det.modules.length}):`);
-      for (const kind of Object.keys(byKind).sort()) {
-        rows.push(`• ${esc(kind)}: <span style="direction:ltr">${esc(byKind[kind].join(', '))}</span>`);
-      }
-    } else {
-      rows.push(esc(t('provider_no_modules')));
+    // One line: the tool and how many modules it has. Paths and the module
+    // list open on demand instead of filling the top of the page.
+    const byKind = {};
+    for (const m of det.modules) (byKind[m.kind] = byKind[m.kind] || []).push(m.label);
+    const chips = Object.keys(byKind).sort().map((k) => `<span class="badge">${esc(k)} ${byKind[k].length}</span>`).join(' ');
+    const details = [];
+    if (det.editorPath) details.push(`${esc(t('provider_editor'))}: <span style="direction:ltr">${esc(det.editorPath)}</span>`);
+    if (det.cliPath) details.push(`${esc(t('provider_cli'))}: <span style="direction:ltr">${esc(det.cliPath)}</span>`);
+    for (const kind of Object.keys(byKind).sort()) details.push(`• ${esc(kind)}: <span style="direction:ltr">${esc(byKind[kind].join(', '))}</span>`);
+    if (!det.modules.length) {
+      details.push(esc(t('provider_no_modules')));
       const looked = det.missing.slice(0, 6).map((m) => m.path || m.label);
-      if (looked.length) rows.push(`${esc(t('provider_looked_for'))}: <span style="direction:ltr">${esc(looked.join(' | '))}</span>`);
+      if (looked.length) details.push(`${esc(t('provider_looked_for'))}: <span style="direction:ltr">${esc(looked.join(' | '))}</span>`);
     }
-    box.innerHTML = rows.join('<br>');
+    box.innerHTML = `<b>${esc(head)}</b> — ${det.installed ? esc(t('provider_detected')) : esc(t('provider_not_detected'))}`
+      + ` · ${esc(t('provider_modules'))}: <b>${det.modules.length}</b> ${chips}`
+      + `<details style="margin-top:6px"><summary style="cursor:pointer; color:var(--dim)">${esc(t('prov_details'))}</summary>`
+      + `<div style="margin-top:6px; line-height:1.8">${details.join('<br>')}</div></details>`;
   } catch (e) {
     providerDetection = null;
     box.textContent = e.message;
@@ -2017,6 +3132,15 @@ Object.assign(FROLES, {
     pre: [],
     done: ['perf.md contains the benchmark command, a baseline table and an After table with deltas', 'Reverted attempts are listed under Rejected'],
   },
+  security: {
+    icon: 'ic-shield-check', color: '#dc2626', stage: 'audit', agent: 'security', gate: 'dashboard',
+    title: 'Security audit', titleAr: 'مراجعة أمنية', artifact: 'security.md',
+    prompt: 'Security scope: {TASK}\n\nProject root: {PROJECT}. Run the security tools already installed for this stack (secrets, dependency advisories, static analysis, IaC/container configuration), checking each with --version first and marking missing ones NOT AVAILABLE; never install tools. Manually review the riskiest entry points, triage every tool hit into a finding or a dismissal with a reason, and write security.md per your role contract. Do not modify any project file.',
+    gateQuestion: 'Review security.md - accept the findings?',
+    gateQuestionAr: 'راجع security.md — نعتمد الثغرات دي؟',
+    pre: [],
+    done: ['security.md records every tool with its command or NOT AVAILABLE', 'Every finding has a CWE, severity rationale, file:line and redacted evidence'],
+  },
   custom: {
     icon: 'ic-plus', color: '#58a6ff', stage: 'step', agent: 'analyst', gate: 'auto',
     title: 'Custom step', titleAr: 'خطوة مخصصة', artifact: 'step.md',
@@ -2033,14 +3157,14 @@ Object.assign(FROLES, {
     done: ['The script exited 0 (or reported SKIPPED)'],
   },
 });
-const FROLE_ORDER = ['thinker', 'analyst', 'coder', 'tester', 'debugger', 'shipper', 'researcher', 'optimizer'];
+const FROLE_ORDER = ['thinker', 'analyst', 'coder', 'tester', 'debugger', 'shipper', 'researcher', 'optimizer', 'security'];
 const PALETTE_GROUPS = [
   { cap: 'pal_group_agents', items: FROLE_ORDER },
   { cap: 'pal_group_understand', items: ['architecture', 'conventions', 'rules'] },
   { cap: 'pal_group_scripts', items: ['scan', 'checks', 'script', 'custom'] },
 ];
-const FGATE_CYCLE = ['auto', 'dashboard', 'terminal', 'default'];
-const FGATE_ICONS = { auto: 'ic-bolt', dashboard: 'ic-monitor', terminal: 'ic-terminal', default: 'ic-dot' };
+const FGATE_CYCLE = ['auto', 'ai', 'dashboard', 'terminal', 'default'];
+const FGATE_ICONS = { auto: 'ic-bolt', ai: 'ic-check-list', dashboard: 'ic-monitor', terminal: 'ic-terminal', default: 'ic-dot' };
 const NODE_W = 150, NODE_H = 170, GRID = 10;
 const COL_GAP = NODE_W + 70, ROW_GAP = NODE_H + 70;
 const SVGNS = 'http://www.w3.org/2000/svg';
@@ -2280,10 +3404,49 @@ function renderEdges() {
     el.dataset.start = (!nextIn.has(el.dataset.id) && G.nodes.length > 1) ? '1' : '0';
   });
 }
+// What each step will cost, from the same estimator as the run bar, computed on
+// the canvas as it is now (unsaved edits included) and refreshed after edits.
+let canvasCostTimer = null;
+let canvasCostSig = '';
+function annotateCanvasCost() {
+  clearTimeout(canvasCostTimer);
+  canvasCostTimer = setTimeout(async () => {
+    if (!G.nodes.length || activeTab !== 'flows') return;
+    let flowDef;
+    try { flowDef = graphToFlow(flowsEd.state.current || 'canvas'); } catch { return; }
+    const sig = JSON.stringify(flowDef.stages.map((s) => [s.id, s.agent, s.model, s.effort, s.onFail]));
+    const apply = (est) => {
+      const by = Object.fromEntries(((est.pipeline && est.pipeline.stages) || []).map((s) => [s.id, s]));
+      document.querySelectorAll('#flowNodes .fnode').forEach((el) => {
+        el.querySelector('.cost')?.remove();
+        const s = by[el.dataset.id];
+        if (!s || s.kind === 'script' || s.acu === null || s.acu === undefined) return;
+        const b = document.createElement('span');
+        b.className = 'cost';
+        const money = contractRate() ? fmtUsd(s.acu) : typeof s.usd === 'number' ? fmtMoney(s.usd) : fmtUsd(s.acu);
+        b.textContent = `≈ ${money || `${fmtAcu(s.acu)} ACU`}`;
+        b.title = `${s.model || ''} · ${s.calls} ${t('u_calls')} · ${fmtTok(s.tokens)} tok${s.kind === 'retry-only' ? ` · ${t('est_retry_only')}` : ''}`;
+        el.appendChild(b);
+      });
+      const total = est.pipeline && est.pipeline.happy;
+      const tot = $('canvasTotal');
+      if (tot) tot.textContent = total && total.acu !== null ? `≈ ${contractRate() ? fmtUsd(total.acu) : fmtMoney(total.usd)} / run` : '';
+    };
+    if (sig === canvasCostSig && lastCanvasEst) { apply(lastCanvasEst); return; }
+    try {
+      const est = await post('/api/estimate', { flow: flowsEd.state.current || 'task', task: '', speed: $('runSpeed').value, flowDef });
+      canvasCostSig = sig;
+      lastCanvasEst = est;
+      apply(est);
+    } catch { /* no estimate without the usage log */ }
+  }, 250);
+}
+let lastCanvasEst = null;
 function renderCanvas() {
   const box = $('flowNodes');
   box.textContent = '';
   $('canvasEmpty').style.display = G.nodes.length ? 'none' : 'flex';
+  annotateCanvasCost();
   for (const n of G.nodes) {
     const R = FROLES[n.role];
     const el = document.createElement('div');
@@ -2683,6 +3846,9 @@ const ROLE_PRESETS = {
   optimizer: { icon: 'ic-gauge', color: '#f97316', model: 'opus', artifact: 'perf.md',
     desc: 'Measures, finds the hotspot, optimizes and proves the gain.',
     tools: ['read', 'grep', 'glob', 'edit', 'exec'], sections: ['inputs', 'output', 'summary'], rules: ['measure', 'minimal', 'notests'] },
+  security: { icon: 'ic-shield-check', color: '#dc2626', model: 'opus', artifact: 'security.md',
+    desc: 'Defensive security audit: threat model, installed scanners, triaged findings with evidence.',
+    tools: ['read', 'grep', 'glob', 'exec', 'edit'], sections: ['inputs', 'output', 'summary'], rules: ['cite', 'readonly', 'noinvent'] },
   thinker: { icon: 'ic-brain', color: '#7a5af8', model: 'opus', artifact: 'plan.md',
     desc: 'Turns a task into a concrete plan with testable acceptance criteria.',
     tools: ['read', 'grep', 'glob', 'edit'], sections: ['inputs', 'output', 'summary'], rules: ['cite', 'readonly'] },
@@ -3069,34 +4235,94 @@ $('btnInbox').onclick = async () => {
 
 /* ============================== settings ============================== */
 let settingsDirty = false;
+// The prompt-generator dropdown is built live: Devin's own paths, then ONLY
+// the provider CLIs actually connected on this machine, then offline. A
+// custom OpenAI-compatible endpoint lives in its own block below, pinned by
+// its own checkbox - it never clutters the tool list.
+const REFINE_CLI_IDS = ['claude', 'codex', 'gemini', 'opencode', 'auggie', 'copilot'];
+const REFINE_CLI_LABELS = {
+  claude: 'Claude Code CLI', codex: 'Codex CLI', gemini: 'Gemini CLI',
+  opencode: 'OpenCode CLI', auggie: 'Augment (auggie) CLI', copilot: 'GitHub Copilot CLI',
+};
+let refineOptsAt = 0;
+async function refreshRefineOptions(saved) {
+  if (Date.now() - refineOptsAt < 30000) return;
+  refineOptsAt = Date.now();
+  const auths = await Promise.all(REFINE_CLI_IDS.map((id) =>
+    api('/api/provider-auth?id=' + id).then((r) => r.auth).catch(() => null)));
+  const opts = [
+    ['auto', t('refine_auto')],
+    ['acp', t('refine_acp')],
+    ['cli', t('refine_cli')],
+    ...REFINE_CLI_IDS.filter((id, i) => auths[i] && auths[i].loggedIn)
+      .map((id) => [id, REFINE_CLI_LABELS[id]]),
+    ['local', t('refine_local')],
+  ];
+  // A saved choice that is disconnected right now stays visible - labelled -
+  // so the user's own selection never silently vanishes.
+  if (saved && saved !== 'http' && !opts.some(([v]) => v === saved)) {
+    opts.splice(opts.length - 1, 0,
+      [saved, `${REFINE_CLI_LABELS[saved] || saved} — ${t('prov_disconnected')}`]);
+  }
+  $('setRefineProvider').innerHTML = opts
+    .map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`).join('');
+}
+let lastStateSettings = null;
 function renderProjectSettings(d) {
   if (settingsDirty) return;
   if (!d.settings) return;
+  lastStateSettings = d.settings;
+  const saved = d.settings.refineProvider || 'auto';
   $('setGateMode').value = d.settings.gateMode || 'default';
-  $('setRefineProvider').value = d.settings.refineProvider || 'auto';
-  if (document.activeElement !== $('setRefineBase')) $('setRefineBase').value = d.settings.refineApiBase || '';
-  if (document.activeElement !== $('setRefineModel')) $('setRefineModel').value = d.settings.refineModel || '';
+  if ($('setRefineHttpOnly')) $('setRefineHttpOnly').checked = saved === 'http';
+  $('setRefineProvider').disabled = saved === 'http';
+  refreshRefineOptions(saved).then(() => {
+    if (saved !== 'http' && !settingsDirty) $('setRefineProvider').value = saved;
+  });
+  // The custom-endpoint fields live on the Executors card; when the grid has
+  // not rendered yet there is nothing to fill here.
+  if ($('setRefineBase') && document.activeElement !== $('setRefineBase')) $('setRefineBase').value = d.settings.refineApiBase || '';
+  if ($('setRefineModel') && document.activeElement !== $('setRefineModel')) $('setRefineModel').value = d.settings.refineModel || '';
   // The key itself is never sent back; a set key shows as a placeholder only.
-  $('setRefineKey').placeholder = d.settings.refineApiKeySet ? '••••••••' : 'gsk_...';
-  $('refineHttpBox').style.display = $('setRefineProvider').value === 'http' ? '' : 'none';
+  if ($('setRefineKey')) $('setRefineKey').placeholder = d.settings.refineApiKeySet ? '••••••••' : 'gsk_...';
 }
-$('setRefineProvider').onchange = () => {
-  $('refineHttpBox').style.display = $('setRefineProvider').value === 'http' ? '' : 'none';
-};
-$('btnSaveRefine').onclick = async () => {
+async function saveRefine() {
   settingsDirty = true;
   const patch = {
-    refineProvider: $('setRefineProvider').value,
-    refineApiBase: $('setRefineBase').value.trim(),
-    refineModel: $('setRefineModel').value.trim(),
+    refineProvider: $('setRefineHttpOnly') && $('setRefineHttpOnly').checked ? 'http' : $('setRefineProvider').value,
+    refineApiBase: $('setRefineBase') ? $('setRefineBase').value.trim() : '',
+    refineModel: $('setRefineModel') ? $('setRefineModel').value.trim() : '',
   };
-  if ($('setRefineKey').value) patch.refineApiKey = $('setRefineKey').value;
+  if ($('setRefineKey') && $('setRefineKey').value) patch.refineApiKey = $('setRefineKey').value;
   try {
     await post('/api/settings', patch);
-    $('setRefineKey').value = '';
+    if ($('setRefineKey')) $('setRefineKey').value = '';
     toast(t('settings_saved'), 'ok');
   } catch (e) { toast(e.message, 'err'); }
   settingsDirty = false;
+}
+$('btnSaveRefine').onclick = saveRefine;
+
+/* The custom-endpoint card opens this dialog; its fields are always present
+   (the card itself stays a compact status card). */
+function openApiModal() {
+  const s = lastStateSettings || {};
+  $('setRefineBase').value = s.refineApiBase || '';
+  $('setRefineModel').value = s.refineModel || '';
+  $('setRefineKey').value = '';
+  $('setRefineKey').placeholder = s.refineApiKeySet ? '••••••••' : 'gsk_...';
+  $('setRefineHttpOnly').checked = s.refineProvider === 'http';
+  $('apiModal').classList.add('open');
+  $('setRefineBase').focus();
+}
+function closeApiModal() { $('apiModal').classList.remove('open'); }
+$('apiModalX').onclick = closeApiModal;
+$('apiModalCancel').onclick = closeApiModal;
+$('apiModal').onclick = (e) => { if (e.target === $('apiModal')) closeApiModal(); };
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeApiModal(); });
+$('btnSaveApi').onclick = async () => { await saveRefine(); closeApiModal(); loadProviders(false); };
+$('setRefineHttpOnly').onchange = () => {
+  $('setRefineProvider').disabled = $('setRefineHttpOnly').checked;
 };
 $('setGateMode').onchange = async () => {
   settingsDirty = true;
@@ -3120,7 +4346,10 @@ $('setPoll').onchange = () => {
    One card per provider: what was detected on this machine, whether its CLI
    reports a login, and the honest reason when there is nothing to log into.
    Only providers whose credentials live in a CLI get a login button. */
-const PROVIDER_ICON = { devin: '🤖', copilot: '🐙', cursor: '🖱️', trae: '🧩' };
+const PROVIDER_ICON = {
+  devin: '🤖', copilot: '🐙', cursor: '🖱️', trae: '🧩', windsurf: '🌊', claude: '🟠', codex: '✚', gemini: '💎',
+  zed: '⚡', kiro: '🟣', antigravity: '🚀', aider: '🧭', opencode: '📦', auggie: '🅰️', cline: '🧵', continue: '➡️',
+};
 let provBusy = false;
 
 function providerCard(p, auth) {
@@ -3136,11 +4365,13 @@ function providerCard(p, auth) {
   // Four honest states, never a guess: connected / not connected / unreadable /
   // signed in somewhere else while the tool itself is missing.
   if (auth) {
-    const connected = `<span class="badge done">${esc(t('prov_connected'))}${auth.account ? ' — ' + esc(auth.account) : ''}</span>`;
+    const connected = `<span class="badge done">${esc(t('prov_connected'))}${auth.account ? ' — ' + esc(auth.account) : ''}${auth.stale ? ` <i>${esc(t('prov_stale'))}</i>` : ''}</span>`;
     if (auth.kind === 'cli') {
       if (auth.loggedIn && !p.installed) chips.push(`<span class="badge">${esc(t('prov_account_only'))}${auth.account ? ' — ' + esc(auth.account) : ''}</span>`);
       else if (auth.loggedIn) chips.push(connected);
-      else chips.push(`<span class="badge failed">${esc(t('prov_disconnected'))}</span>`);
+      else if (auth.expired) chips.push(`<span class="badge failed">${esc(t('prov_expired'))}</span>`);
+      else if (auth.known || !p.installed) chips.push(`<span class="badge failed">${esc(t('prov_disconnected'))}</span>`);
+      else chips.push(`<span class="badge">${esc(t('prov_unknown'))}</span>`);
     } else if (auth.kind === 'app') {
       chips.push(`<span class="badge">${esc(t('prov_in_app'))}</span>`);
       if (p.installed && auth.known && auth.loggedIn) chips.push(connected);
@@ -3153,30 +4384,68 @@ function providerCard(p, auth) {
     p.editorPath ? `${esc(t('provider_editor'))}: ${esc(p.editorPath)}` : '',
     cliPath ? `${esc(t('provider_cli'))}: ${esc(cliPath)}` : '',
     `${esc(t('provider_modules'))}: ${p.moduleCount}`,
+    auth && auth.detail ? esc(auth.detail) : '',
   ].filter(Boolean).join('<br>');
-  const why = auth && auth.kind !== 'cli'
-    ? `<div class="why">${esc(LANG === 'ar' ? (auth.reasonAr || auth.reason) : auth.reason)}</div>`
-    : (auth && auth.detail ? `<div class="paths">${esc(auth.detail)}</div>` : '');
+  const why = auth && auth.kind !== 'cli' && auth.reason
+    ? `<div class="why">${esc(LANG === 'ar' ? (auth.reasonAr || auth.reason) : auth.reason)}</div>` : '';
   // The server already decided what is possible (canLogin needs the credential
   // CLI, canOpen needs the app to exist), so the card never offers a button that
   // can only answer 409.
   const buttons = [];
+  // Never ask someone who is already connected to sign in: the login button
+  // only shows while it is actually needed. A connected provider keeps its
+  // sign-in options tucked inside Details for the rare "switch account" case.
+  const detailButtons = [];
   if (auth && auth.canLogin) {
-    buttons.push(`<button class="btn small" data-act="login" data-id="${esc(p.id)}">`
-      + esc(auth.loggedIn ? t('prov_relogin') : t('prov_login')) + '</button>');
+    const loginBtn = `<button class="btn small${auth.loggedIn ? '' : ' primary'}" data-act="login" data-id="${esc(p.id)}">`
+      + esc(auth.loggedIn ? t('prov_relogin') : t('prov_login')) + '</button>';
+    (auth.loggedIn ? detailButtons : buttons).push(loginBtn);
+    if (auth.altLogin) {
+      const altBtn = `<button class="btn small" data-act="altlogin" data-id="${esc(p.id)}"`
+        + ` title="${esc(t('prov_login_token_hint'))}">${esc(t('prov_login_token'))}</button>`;
+      (auth.loggedIn ? detailButtons : buttons).push(altBtn);
+    }
   }
   if (auth && auth.canOpen) {
-    buttons.push(`<button class="btn small" data-act="login" data-id="${esc(p.id)}">${esc(t('prov_open_app'))}</button>`);
+    buttons.push(`<button class="btn small primary" data-act="login" data-id="${esc(p.id)}">${esc(t('prov_open_app'))}</button>`);
   }
   if (p.id !== PROVIDER) {
     buttons.push(`<button class="btn small" data-act="use" data-id="${esc(p.id)}">${esc(t('prov_use'))}</button>`);
   }
-  return `<div class="provcard${p.id === PROVIDER ? ' active' : ''}">`
-    + `<h3>${PROVIDER_ICON[p.id] || '•'} ${esc(name)}`
+  const dot = auth && auth.loggedIn ? 'on' : auth && auth.known ? 'off' : '';
+  return `<div class="provcard${p.id === PROVIDER ? ' active' : ''}${p.installed ? '' : ' off'}">`
+    + `<div class="provhead"><div class="provicon">${PROVIDER_ICON[p.id] || '•'}</div>`
+    + `<div class="provname">${esc(name)}`
     + (p.id === PROVIDER ? ` <span class="badge done">${esc(t('prov_active'))}</span>` : '')
-    + `</h3><div>${chips.join(' ')}</div><div class="paths">${paths}</div>${why}`
+    + `</div><div class="provdot ${dot}" title=""></div></div>`
+    + `<div class="provchips">${chips.join(' ')}</div>${why}`
+    + `<details><summary>${esc(t('prov_details'))}</summary><div class="paths">${paths}</div>`
+    + (detailButtons.length ? `<div class="row">${detailButtons.join('')}</div>` : '')
+    + `</details>`
     + (buttons.length ? `<div class="row">${buttons.join('')}</div>` : '')
     + '</div>';
+}
+
+// The custom OpenAI-compatible endpoint as a proper Executors card: it looks
+// like a provider because it IS one - a model source the prompt generator
+// can use, configured right where the other tools live.
+function customApiCard() {
+  const s = lastStateSettings || {};
+  const configured = !!String(s.refineApiBase || '').trim();
+  const pinned = s.refineProvider === 'http';
+  const base = String(s.refineApiBase || '').replace(/^https?:\/\//, '');
+  const paths = configured
+    ? `${esc(base)}${s.refineModel ? `<br>${esc(s.refineModel)}` : ''}${s.refineApiKeySet ? '<br>key: ••••••••' : ''}`
+    : esc(t('refine_http_hint_card'));
+  return `<div class="provcard${configured ? '' : ' off'}">`
+    + `<div class="provhead"><div class="provicon">⌁</div>`
+    + `<div class="provname">${esc(t('refine_http'))}</div>`
+    + `<div class="provdot ${configured ? 'on' : ''}"></div></div>`
+    + `<div class="provchips"><span class="badge${configured ? ' done' : ''}">${esc(configured ? t('prov_configured_at') : t('prov_not_configured'))}</span>`
+    + (pinned ? `<span class="badge done">${esc(t('prov_pinned'))}</span>` : '') + `</div>`
+    + `<details><summary>${esc(t('prov_details'))}</summary><div class="paths">${paths}</div></details>`
+    + `<div class="row"><button class="btn small primary" id="btnApiConfig">${esc(t('prov_configure'))}</button></div>`
+    + `</div>`;
 }
 
 async function loadProviders(force) {
@@ -3185,13 +4454,19 @@ async function loadProviders(force) {
   provBusy = true;
   try {
     const d = await api('/api/providers');
-    const list = d.providers || [];
+    // Simplest read first: the runnable executor, then everything actually on
+    // this machine, then the rest alphabetically - what you can use comes up.
+    const list = (d.providers || []).slice().sort((a, b) =>
+      (b.runnable - a.runnable) || (b.installed - a.installed)
+      || String(a.label).localeCompare(String(b.label)));
     const auths = await Promise.all(list.map((p) => api('/api/provider-auth?id='
       + encodeURIComponent(p.id) + (force ? '&force=1' : '')).then((r) => r.auth).catch(() => null)));
     box.className = 'provgrid';
-    box.innerHTML = list.map((p, i) => providerCard(p, auths[i])).join('');
+    box.innerHTML = list.map((p, i) => providerCard(p, auths[i])).join('') + customApiCard();
+    $('btnApiConfig').onclick = openApiModal;
     box.querySelectorAll('button[data-act]').forEach((b) => {
-      b.onclick = () => (b.dataset.act === 'login' ? providerLogin(b.dataset.id) : useProvider(b.dataset.id));
+      b.onclick = () => (b.dataset.act === 'use' ? useProvider(b.dataset.id)
+        : providerLogin(b.dataset.id, b.dataset.act === 'altlogin'));
     });
   } catch (e) {
     box.className = '';
@@ -3200,11 +4475,32 @@ async function loadProviders(force) {
   provBusy = false;
 }
 
-async function providerLogin(id) {
+let provWatchTimer = null;
+// After a login terminal opens, watch the real status until it flips to
+// connected - the card updates itself the moment the sign-in completes,
+// instead of the user having to re-check manually (or getting re-asked).
+function watchProviderLogin(id) {
+  clearTimeout(provWatchTimer);
+  let tries = 0;
+  const tick = async () => {
+    tries += 1;
+    const r = await api('/api/provider-auth?id=' + encodeURIComponent(id) + '&force=1').catch(() => null);
+    if (r && r.auth && r.auth.loggedIn) {
+      toast(t('prov_already'), 'ok');
+      loadProviders(false);
+      return;
+    }
+    if (tries < 30) provWatchTimer = setTimeout(tick, 8000);
+    else loadProviders(false);
+  };
+  provWatchTimer = setTimeout(tick, 5000);
+}
+
+async function providerLogin(id, alt) {
   try {
-    const r = await post('/api/provider/login', { id });
+    const r = await post('/api/provider/login', { id, alt: !!alt });
     toast(r.opened ? t('prov_app_opened') : r.already ? t('prov_already') : t('prov_login_started'), 'ok');
-    if (!r.already && !r.opened) setTimeout(() => loadProviders(true), 15000);
+    if (!r.already && !r.opened) watchProviderLogin(id);
   } catch (e) {
     toast(e.message === 'cli_not_found' || e.message === 'app_not_found' ? t('prov_no_cli')
       : e.message === 'login_not_supported' ? t('prov_in_app') : e.message, 'err');
@@ -3343,6 +4639,7 @@ setFlowView(localStorage.getItem('ff.flowview') === 'json' ? 'json' : 'canvas');
 applyLang();
 poll();
 startPolling();
+openTabFromHash();
 fetchCli();
 loadExportFormats();
 </script>

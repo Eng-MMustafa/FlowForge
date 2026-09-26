@@ -1,0 +1,110 @@
+{
+  "name": "secfix",
+  "title": "Security fix - confirm, test-first fix, re-scan, prove",
+  "titleAr": "إصلاح ثغرة — تأكيد ← اختبار قبل الإصلاح ← إعادة فحص ← إثبات",
+  "description": "Remediates a confirmed vulnerability (a finding ID from security.md or a described issue). The vulnerable path is traced and confirmed, a failing security regression test is written before the fix, the root cause is fixed with a secure pattern, and the original scanner command plus bypass variants prove it is closed.",
+  "defaultGate": "dashboard",
+  "stages": [
+    {
+      "id": "analyze",
+      "title": "Confirm the vulnerability",
+      "titleAr": "تأكيد الثغرة",
+      "agent": "security",
+      "model": "claude-opus-5-high",
+      "prompt": "Vulnerability to fix: {TASK}\n\nProject root: {PROJECT}. If .workbench/artifacts/security.md exists, start from the matching finding. Trace the vulnerable path from untrusted source to sink with file:line, state the root cause and CWE, and grep for sibling locations with the same pattern. Define the regression test that fails today and must pass after the fix (inputs and expected safe behavior), the bypass variants the fix must also stop (encodings, case, path or type tricks), the secure pattern to apply, and the scanner command that detects the issue now. Follow your role contract's rules of engagement and write .workbench/artifacts/vuln.md. Do not modify any project file.",
+      "pre": [
+        "scripts/collect-context.mjs"
+      ],
+      "post": [],
+      "gate": "default",
+      "gateQuestion": "Vulnerability confirmed - approve this fix approach?",
+      "gateQuestionAr": "الثغرة اتأكدت — توافق على طريقة الإصلاح دي؟",
+      "artifact": "vuln.md",
+      "done": [
+        "vuln.md traces source to sink with file:line and names the root cause and CWE",
+        "vuln.md lists sibling locations with the same pattern or states none were found",
+        "vuln.md defines the regression test, the bypass variants and the scanner command that detects the issue today"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "code",
+      "title": "Test-first fix",
+      "titleAr": "إصلاح يبدأ بالاختبار",
+      "agent": "coder",
+      "model": "claude-opus-5-high",
+      "prompt": "Fix the vulnerability described in .workbench/artifacts/vuln.md in the project at {PROJECT}. First write the security regression test and the bypass-variant tests and run them to show they FAIL on the current code (record the output). Then fix the root cause at every listed location with the secure pattern from vuln.md (parameterized queries, allow-lists, output encoding, centralized authorization, safe parsers, constant-time comparison) - never by disabling a check, swallowing an error or special-casing the test input. Re-run the tests to show they pass. Write code-notes.md per your role contract including the failing-then-passing output.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "code-notes.md",
+      "done": [
+        "A regression test and bypass-variant tests exist and code-notes.md shows them failing before the fix and passing after",
+        "Every location listed in vuln.md is fixed or its omission is justified",
+        "code-notes.md gives the command that runs the security tests"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "test",
+      "title": "Prove it is closed",
+      "titleAr": "إثبات إن الثغرة اتقفلت",
+      "agent": "tester",
+      "model": "claude-opus-5-high",
+      "prompt": "Verify the security fix in the project at {PROJECT}. Checks output (if any) is in .workbench/artifacts/checks.md. Confirm that the regression and bypass tests pass and would fail without the fix (inspect the diff), the scanner command from vuln.md no longer reports the issue, every sibling location is fixed, the diff introduces no new security finding, and the full suite is green. Write review.md per your role contract and lead your reply with VERDICT: PASS or VERDICT: FAIL.",
+      "pre": [
+        "scripts/run-checks.mjs"
+      ],
+      "post": [],
+      "gate": "auto",
+      "artifact": "review.md",
+      "onFail": "debug",
+      "maxLoops": 3,
+      "done": [
+        "review.md exists with an explicit Verdict line",
+        "review.md quotes the scanner command from vuln.md re-run after the fix",
+        "review.md confirms the regression and bypass tests pass and cover every sibling location"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "debug",
+      "title": "Close the remaining gap",
+      "titleAr": "قفل الثغرة المتبقية",
+      "agent": "debugger",
+      "model": "claude-opus-5-high",
+      "prompt": "The tester issued FAIL for the security fix in the project at {PROJECT} (details in .workbench/artifacts/review.md). Reproduce the failing case first, fix the root cause with the secure pattern, and never weaken or delete a security test. Write/append debug.md per your role contract.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "debug.md",
+      "runOnlyWhenJumpedTo": true,
+      "next": "test",
+      "done": [
+        "Every blocking finding from review.md is addressed or refuted with evidence",
+        "No security test was weakened or removed",
+        "debug.md shows the failing output before and the passing output after"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "ship",
+      "title": "Ship the fix",
+      "titleAr": "رفع الإصلاح",
+      "agent": "shipper",
+      "model": "swe-1-7",
+      "prompt": "The security fix PASSED review. Package it for the project at {PROJECT} per your role contract. Mode: {SHIP_MODE}. The commit message names the CWE and finding ID without exploit payloads or secrets. If a credential was exposed, add rotating it to Follow-ups. Write ship.md.",
+      "pre": [],
+      "post": [],
+      "gate": "default",
+      "gateQuestion": "Security fix verified - commit it?",
+      "gateQuestionAr": "إصلاح الثغرة اتأكد — أعمل commit؟",
+      "artifact": "ship.md",
+      "done": [
+        "ship.md exists with summary, file list, commit message, and actions taken",
+        "No .workbench/ or local-only files staged",
+        "The commit message names the CWE and contains no exploit payload or secret"
+      ]
+    }
+  ]
+}

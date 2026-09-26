@@ -1,8 +1,8 @@
 {
   "name": "analytics",
-  "title": "Business & data analysis - measure, interpret, recommend (no code)",
-  "titleAr": "تحليل بيزنس وبيانات — قياس ← تفسير ← توصيات (من غير كود)",
-  "description": "Answers a product/business question with evidence taken from the repository itself: data model, metrics, usage paths and history. Produces report.md with numbers and ranked recommendations. Nothing is implemented.",
+  "title": "Business & data analysis - define metrics, measure, verify, interpret, recommend (no code)",
+  "titleAr": "تحليل بيزنس وبيانات — تعريف المقاييس ← قياس ← تحقق ← تفسير ← توصيات (من غير كود)",
+  "description": "Answers a product/business question with evidence taken from the repository itself. Every metric is defined before it is measured, every number carries the exact read-only command behind it and is independently re-run, interpretation is kept apart from measurement, and recommendations are ranked with impact, effort, risk, a first step and the metric that proves success. Nothing is implemented.",
   "defaultGate": "dashboard",
   "stages": [
     {
@@ -23,60 +23,99 @@
     },
     {
       "id": "analyze",
-      "title": "Data & flow grounding",
-      "titleAr": "تأصيل البيانات والمسارات",
+      "title": "Metric definitions & data grounding",
+      "titleAr": "تعريف المقاييس وتأصيل البيانات",
       "agent": "analyst",
       "model": "claude-sonnet-5-high",
-      "prompt": "Question: {TASK}\n\nProject root: {PROJECT} (inventory in .workbench/artifacts/context.md). Map what this repository can actually tell us about that question: the data model (schemas, migrations, entities), where the numbers live (metrics, counters, logs, telemetry calls), the user-facing entry points involved, and any pricing/limit/config constants. Cite file:line for everything. Write analysis.md per your role contract, and add a `## Measurable here` section listing exactly which quantities can be computed from this repo and how.",
+      "prompt": "Question: {TASK}\n\nProject root: {PROJECT} (inventory in .workbench/artifacts/context.md). Map what this repository can actually tell us about that question: the data model (schemas, migrations, entities), where the numbers live (metrics, counters, logs, telemetry calls, fixtures, sample data), the user-facing entry points involved, and any pricing/limit/config constants. Cite file:line for everything. Write analysis.md per your role contract and add two sections: `## Metric definitions` - a table with columns ID (M1, M2, ...), Metric, Definition, Unit, Source (file:line), Read-only command that computes it, Sanity check (expected range or cross-check); and `## Not measurable here` - quantities the question needs that this repository cannot provide, with the data that would be required.",
       "pre": [],
       "post": [],
       "gate": "auto",
       "artifact": "analysis.md",
       "done": [
         "analysis.md maps the data model and where measurable numbers come from, with file:line citations",
-        "analysis.md contains a Measurable here section naming concrete quantities and how to obtain each"
+        "analysis.md contains a Metric definitions table where every metric has an ID, unit, source citation and the read-only command that computes it",
+        "analysis.md contains a Not measurable here section"
       ],
       "effort": "high"
     },
     {
-      "id": "research",
-      "title": "Measure & interpret",
-      "titleAr": "القياس والتفسير",
+      "id": "measure",
+      "title": "Measure",
+      "titleAr": "القياس",
       "agent": "researcher",
       "model": "gpt-5-6-sol-high",
-      "prompt": "Question: {TASK}\n\nProject root: {PROJECT}. Grounding is in .workbench/artifacts/analysis.md. Compute the quantities it marked measurable using read-only commands, then interpret them. Write report.md per your role contract: evidence with citations, a numbers table with the exact command behind each value, insights, and ranked recommendations with impact/effort/risk.",
+      "prompt": "Question: {TASK}\n\nProject root: {PROJECT}. Metric definitions are in .workbench/artifacts/analysis.md; if .workbench/artifacts/measure-check.md lists rows to re-measure, fix those first. Compute every defined metric with read-only commands only and write the Question, Method, Evidence, Numbers and Unknowns sections of report.md per your role contract - no interpretation yet. The Numbers table must have the columns ID, Metric, Value, Unit, Exact command or file:line, Second-run value, Sanity check. Run every command twice and report both values, state a tolerance for any value that can legitimately drift, and cross-check totals against a second derivation wherever the definition allows. A metric that cannot be computed stays in the table as NOT MEASURED with the reason, never as an estimate.",
       "pre": [],
       "post": [],
-      "gate": "default",
-      "gateQuestion": "The analysis report is ready - review the numbers and recommendations?",
-      "gateQuestionAr": "تقرير التحليل جاهز — تراجع الأرقام والتوصيات؟",
+      "gate": "auto",
       "artifact": "report.md",
       "done": [
-        "report.md contains a Numbers table where every value names the command or file it came from",
-        "Every insight points at evidence, and inference is never presented as measurement",
-        "Recommendations are ranked with impact, effort, risk and a first concrete step",
-        "Unknowns section states what this repository cannot answer"
+        "report.md contains a Numbers table with a row for every metric ID defined in analysis.md",
+        "Every value names the exact command or file:line it came from and shows a second-run value",
+        "Metrics that could not be computed are marked NOT MEASURED with a reason, never estimated"
       ],
       "effort": "high"
     },
     {
-      "id": "review",
-      "title": "Challenge the findings",
-      "titleAr": "مراجعة النتائج",
+      "id": "verify",
+      "title": "Verify the numbers",
+      "titleAr": "التحقق من الأرقام",
+      "agent": "tester",
+      "model": "claude-sonnet-5-high",
+      "prompt": "Independently verify the measurements in .workbench/artifacts/report.md for the project at {PROJECT}. Do not trust the reported values: re-run the exact command behind every row of the Numbers table (if there are more than 15 rows, re-run the 10 most decision-relevant plus 5 others and say which), compare with the reported value and tolerance, and confirm each cited file:line says what the report claims. Write .workbench/artifacts/measure-check.md with `## Verdict: PASS | FAIL`, a table (ID, reported value, your value, command, MATCH / MISMATCH / NOT REPRODUCIBLE) and the list of rows that must be re-measured. FAIL if any decision-relevant value mismatches beyond its tolerance or cannot be reproduced. Do not modify any project file. Lead your reply with VERDICT: PASS or VERDICT: FAIL.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "measure-check.md",
+      "onFail": "measure",
+      "maxLoops": 2,
+      "done": [
+        "measure-check.md exists with an explicit Verdict line",
+        "measure-check.md lists every re-run row with the reported value, the re-run value and the command used",
+        "Every mismatch names the row to re-measure"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "interpret",
+      "title": "Interpret & recommend",
+      "titleAr": "التفسير والتوصيات",
+      "agent": "researcher",
+      "model": "gpt-5-6-sol-high",
+      "prompt": "Question: {TASK}\n\nProject root: {PROJECT}. The measurements in .workbench/artifacts/report.md were independently verified (.workbench/artifacts/measure-check.md); if .workbench/artifacts/review.md exists from an earlier round, address every finding in it first. Complete report.md per your role contract: add `## Executive summary` at the top (the answer in 3-5 lines, each claim tagged with the metric IDs behind it), then Insights, Recommendations and Confidence. Every insight cites the metric IDs or evidence bullets it rests on, is labelled MEASURED or INFERRED, and names at least one alternative explanation and the observation that would falsify it. Recommendations are a ranked table with Rank, Action, Files it touches, Expected impact (which metric moves and in which direction), Effort (S/M/L), Risk, Confidence, First concrete step, and Success check (the Numbers-table command to re-run later). Never introduce a number that is not in the Numbers table; if you need a new one, measure it and add the row with its command.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "report.md",
+      "done": [
+        "report.md opens with an Executive summary whose claims cite metric IDs",
+        "Every insight cites metric IDs or evidence and is labelled MEASURED or INFERRED with an alternative explanation",
+        "Recommendations are ranked with files, expected impact on a named metric, effort, risk, confidence, a first concrete step and a success check command",
+        "Every number in the report appears in the Numbers table with its command"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "validate",
+      "title": "Validate the conclusions",
+      "titleAr": "التحقق من الاستنتاجات",
       "agent": "tester",
       "model": "claude-opus-5-high",
-      "prompt": "Audit .workbench/artifacts/report.md for the project at {PROJECT}. Re-run or re-derive the numbers you can, check every citation resolves to real code, and flag any claim that is inference dressed as data or any recommendation not supported by the evidence. Write review.md and lead your reply with VERDICT: PASS (the report holds) or VERDICT: FAIL (it does not).",
+      "prompt": "Audit .workbench/artifacts/report.md for the project at {PROJECT} as a hostile reviewer. Build a claim ledger: every statement in the Executive summary, Insights and Recommendations is classified MEASURED (backed by a Numbers row or cited evidence), INFERRED (labelled as such, with reasoning) or UNSUPPORTED. Re-run at least three headline numbers yourself, check every citation resolves to real code, and confirm each recommendation traces to at least one insight and one number, has a first concrete step and a runnable success check, and that Unknowns states what this repository cannot answer. Write review.md with the Verdict line, the claim ledger and the required fixes. FAIL if any claim is UNSUPPORTED, any inference is presented as measurement, or any recommendation lacks a first step or success check. Do not modify any project file. Lead your reply with VERDICT: PASS or VERDICT: FAIL.",
       "pre": [],
       "post": [],
       "gate": "default",
-      "gateQuestion": "Audit of the report is done - accept the findings?",
-      "gateQuestionAr": "مراجعة التقرير خلصت — نقبل النتائج؟",
+      "gateQuestion": "The report passed validation - accept the findings and recommendations?",
+      "gateQuestionAr": "التقرير عدّى التحقق — نعتمد النتايج والتوصيات؟",
       "artifact": "review.md",
-      "onFail": "research",
+      "onFail": "interpret",
       "maxLoops": 2,
       "done": [
         "review.md exists with an explicit Verdict line",
-        "Each spot-checked number is confirmed or corrected with evidence"
+        "review.md contains a claim ledger classifying every conclusion as MEASURED, INFERRED or UNSUPPORTED",
+        "At least three headline numbers were re-run and are confirmed or corrected with the command output",
+        "Each recommendation is checked for traceability to evidence, a first step and a success check"
       ],
       "effort": "high"
     }

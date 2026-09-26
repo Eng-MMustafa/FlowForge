@@ -31,6 +31,24 @@ curl -fsSL https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/get.mjs
 
 That is the whole setup. It downloads FlowForge, wires it into Devin if Devin is on the machine, and opens the dashboard. **No npm install, no dependencies, no config file.** Run the same command again any time to update.
 
+### Starting it again — no reinstall needed
+
+The copy the command above installed already lives on your machine. To open the dashboard later, run the launcher inside it:
+
+| Platform | Command |
+|---|---|
+| **Windows** | `node "%LOCALAPPDATA%\FlowForge\start.mjs"` |
+| **macOS** | `node "$HOME/Library/Application Support/FlowForge/start.mjs"` |
+| **Linux** | `node ~/.local/share/FlowForge/start.mjs` |
+
+Or get a real `flowforge` (alias `ff`) command that works from any folder — once, not per run:
+
+```powershell
+npm i -g flowforge-cli        # or, inside a git clone: npm link
+```
+
+Then `flowforge` (or `ff`) starts the dashboard on whatever folder you are in — see [The `flowforge` command](#the-flowforge-command).
+
 <div align="center">
 
 ![FlowForge dashboard](https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/docs/screenshots/01-overview.png)
@@ -60,6 +78,7 @@ That is the whole setup. It downloads FlowForge, wires it into Devin if Devin is
   - [10. Themes and language](#10-themes-and-language)
 - [Flow files — the schema](#flow-files--the-schema)
 - [Built-in flows](#built-in-flows)
+  - [Workflows by role](#workflows-by-role)
 - [Agent roles](#agent-roles)
 - [Skills (chat commands)](#skills-chat-commands)
 - [Quality gates](#quality-gates)
@@ -129,7 +148,7 @@ Nothing here is a wrapper around a hosted service: it is a folder of markdown ro
 | **OS** | Windows, macOS or Linux — see [platform support](#platform-support) |
 | **Node.js** | 18 or newer (20+ recommended; the screenshot tooling uses Node 22 features) |
 | **Executor** | [Devin CLI](https://devin.ai) — the only executor that can *run* a flow today |
-| **Optional** | GitHub CLI (`gh`) for Copilot account detection, Cursor / Trae for module detection |
+| **Optional** | GitHub CLI (`gh`) for Copilot account detection; any of the 15 supported AI tools — Cursor, Trae, Windsurf, Claude Code, Codex, Gemini, Zed, Kiro, Antigravity, Aider, OpenCode, Augment, Cline/Roo, Continue — for module detection |
 | **Dependencies** | **None.** The `package.json` exists only to expose the CLI — it declares no dependencies and there is no lockfile |
 
 ---
@@ -224,6 +243,9 @@ npm i -g flowforge-cli
 ```
 /flow task "add rate limiting to the public API"
 /flow bugfix "uploads over 5MB fail silently"
+/flow review "changes on this branch vs main"
+/flow security "the public upload API"
+/flow data "which plan churns most in data/churn.csv?"
 /understand                       ← learn the project and draft its rules
 /flow-status                      ← read-only report of the current run
 /flow-resume                      ← continue an interrupted pipeline
@@ -254,7 +276,7 @@ Every screenshot below is the real UI, captured from a running instance.
 
 The composer is deliberately one screen: **who** executes, **which** flow, **what** you want, and **how** it should behave.
 
-- **Executor** — Devin / Copilot / Cursor / Trae. Switching filters the flow list, the model catalogue and the module detection. Only Devin can execute.
+- **Executor** — Devin, Copilot, Cursor, Trae, Windsurf, Claude Code, Codex, Gemini, Zed, Kiro, Antigravity, Aider, OpenCode, Augment, Cline/Roo or Continue (16 tools). Switching filters the flow list, the model catalogue and the module detection. Only Devin can execute.
 - **Task box** — an auto-growing textarea. Write in any language; Arabic is fine.
 - **✨ Generate** turns a rough line into a full English task statement (adds the outcome and acceptance criteria).
 - **⚡ Optimize** sharpens a prompt you already wrote *without* inventing scope. Both keep an **Undo** of your original text.
@@ -290,7 +312,7 @@ A flow is a JSON file, but you never have to write one. Drag labelled icon nodes
 
 ![Palette](https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/docs/screenshots/06-flow-palette.png)
 
-- **Agent steps** — the six roles, plus analytics and performance specialists.
+- **Agent steps** — the six roles, plus analytics, performance and security specialists.
 - **Understand steps** — architecture, conventions and rules extraction.
 - **Script & custom** — `scan`, `checks` and `script` nodes have no agent at all: their pre-scripts *are* the work.
 
@@ -319,9 +341,54 @@ The same three-way editing for the chat commands (`/flow`, `/understand`, `/flow
 One card per tool, built entirely from what is really on the machine:
 
 - **installed** means *that tool*, not its host — Copilot is an extension, so its `github.copilot-*` folder must exist; VS Code plus `gh` alone is **not** Copilot.
-- **connected** is read live: `devin auth status` / `gh auth status` for CLI-owned accounts, and for in-app tools the editor's own store — Trae's plain-JSON session is read (including the plan label, e.g. `Pro`), while Cursor keeps its session in a SQLite file that this project will not add a dependency to parse, so it honestly reports *sign-in state not readable* rather than guessing "logged out".
+- **connected** is read live: `devin auth status` / `gh auth status` / `claude auth status` / `codex login status` for CLI-owned accounts. Two safety nets sit under that: a verified verdict is **sticky** — a transient probe failure never flips it to "not connected" — and for providers whose credential file is shared with a desktop app (Devin's `credentials.toml`), a verified login is **snapshotted and auto-restored** when another app overwrites it, so one overwritten file never means "log in again". Devin also offers a **token login** (`--force-manual-token-flow`) for a durable key that survives the browser session's rotation, and for tools without a status command the credential file on disk — Trae's plain-JSON session is read (including the plan label, e.g. `Pro`), and so are Gemini's `oauth_creds.json`, OpenCode's `auth.json` and Augment's `session.json`, while Cursor, Windsurf, Zed, Kiro and Antigravity sign in inside the app (an **Open** button takes you there), and Aider / Cline / Continue honestly state that they run on your own API keys rather than pretending to have a login.
 - **Sign in** opens a real terminal on the tool's own login command — your password or token never passes through the dashboard, and only key *presence* is ever read, never a token value.
 - **Use this one** switches the executor, which filters flows and models, and retargets the models pinned on the canvas to the closest model the new tool actually has.
+
+### 8½. Usage & cost — exact tokens and ACUs, per task and per month
+
+Devin's CLI keeps a local session log (`<devin config>/cli/sessions.db`) that records **every model call** with its exact input / output / cache tokens, the model that answered and the ACU cost it committed. The dashboard reads it directly (read-only, through the `node:sqlite` built into Node 22.13+ — still zero dependencies), de-duplicates the copies compaction leaves behind, and turns it into:
+
+- **Before a run** — a panel under the task box with the **pipeline estimate**: ACUs (and `$` if you set a price per ACU), tokens and model calls for the whole flow, then a table with one row per stage — its model and effort (after any `--speed` override), expected calls, tokens and cost — plus the orchestrator, the stages that only run when a check fails, and "up to X if a check fails once". Calls per stage follow the role and effort; tokens per call, context growth and each model family's ACU rate are measured on *your* account. Once a flow has real runs, the estimate is **calibrated** to their median. It also shows the task in tokens (script-aware: English, Arabic, code), the skill + role text every run sends, and Devin's per-turn system context.
+- **During a run** — a live counter next to the console: calls, tokens in / out, ACUs so far.
+- **The Usage tab** — month totals with the change vs last month and a month-end projection, a budget bar, a daily chart, breakdowns by model (share + measured rate), project and flow, and **every task** with its tokens, cost, model, duration and outcome. Scope it to FlowForge runs only or to all your Devin sessions, export CSV, or save a **monthly report** as Markdown, PDF, Word, Excel or HTML through the same converter as `/export`.
+
+**Dollars are computed, not typed in.** Devin publishes its official price per model (USD per 1M input / output / cache-write / cache-read tokens, per plan tier) on its [models page](https://docs.devin.ai/desktop/models). The dashboard downloads that list (cached for a day in `devin-prices.local.json`), prices every call in your log with it, and measures the ratio to the ACUs Devin committed. On a real account that ratio is one constant — **1 ACU = $2.00, verified on 2,288 of 2,292 calls** — so every figure is shown in dollars at Devin's list prices, together with how many calls confirmed the rate. The pre-run estimate prices each stage token-class by token-class with its model's official price. Enterprise customers whose order form sets a different price per ACU can enter it as a contract rate, and it overrides the list price everywhere, reports included. `FF_DEVIN_PRICES=<file>` points at a local copy for offline machines.
+
+### Gates that cannot get lost, and an AI-review gate
+
+- **Over ACP the gate is a conversation turn.** The orchestrator is started with `--headless=acp`; at a gate it writes the request, prints `GATE_WAIT <stage>` and ends its turn. The dashboard keeps the session open (the run stays "running"), shows the question, and sends your decision back as the next message (`GATE_DECISION <stage> approve|reject` + your note). Nothing has to stay alive inside the agent's shell, so no tool timeout can turn a gate into a silent stall. If the orchestrator forgets to write the request, the dashboard writes it from the flow file; if it stops mid-flow without a gate, it is nudged once, then the run is marked failed instead of hanging.
+- **CLI / daemon runs** (`--headless=cli`) keep using `gate-wait.mjs`, which now prints a heartbeat every 20 s and is re-run up to 8 times (≈2 h) instead of ever "falling back to the terminal" that nobody reads.
+- **`--gates=ai`**: the new `critic` agent (`agents/critic.md`) reviews each stage's artifact against its goal and done-criteria and answers `VERDICT: APPROVE` or `VERDICT: REVISE` with numbered issues; the stage agent fixes them and is reviewed again (max 2 rounds per gate), then the flow continues on its own. Ship stops at commit, never push. Selectable in the run bar, Settings, the queue/schedule forms and per step on the canvas.
+- Whole-run ACP timeout is 12 h (`FF_RUN_TIMEOUT_MS`) instead of the old 30 min.
+
+### Runs tab — several projects at once, a queue, and a timetable
+
+- **Parallel projects.** Each project has its own `state.json`, so runs in *different* projects execute at the same time (cap: `FF_MAX_PARALLEL`, default 3); within one project runs are sequential. The Runs tab shows every run in flight with its stage progress, elapsed time and live cost, a Stop button, and a gate banner that switches you to whichever project is waiting for a decision.
+- **Queue.** Press Run while the project is busy and the task lines up instead of being refused; or paste several tasks (one per line, any project, any flow) under "Add tasks". Items start on their own as soon as their project and an executor are free, can be reordered or removed, and survive a dashboard restart.
+- **Schedules.** A flow + task that repeats: daily at a time, on chosen weekdays, every N hours, or once. When due it joins the queue (never piling up behind a previous run of itself). Pause, run now, delete. Local time throughout.
+- **Parallel stages inside a flow.** Consecutive stages sharing a `"parallel": "<group>"` value run at the same time on their own agents (e.g. `test` and `review` on the same code), then continue in file order. See `skills/flow/SKILL.md`.
+- API: `GET /api/runs/board`, `POST/DELETE /api/queue`, `POST /api/queue/reorder`, `GET/POST/DELETE /api/schedules`, `POST /api/schedules/run-now`; `POST /api/run` accepts `project` and `enqueue`, `GET /api/run?id=`, `POST /api/run/stop {id}`.
+
+**Every other AI tool, in the same dollars.** The Usage tab also reads each tool's own usage records, adds them up by tool, and puts all of it in dollars:
+
+| Tool | Where the numbers come from | Setup |
+|---|---|---|
+| Claude Code | `~/.claude/projects/**/*.jsonl` (tokens per message) | none |
+| Codex CLI | `~/.codex/sessions` (`token_count` events) | none |
+| Gemini CLI | `~/.gemini/tmp` (tokens per model message) | none |
+| OpenCode | its message store (tokens + OpenCode's own cost) | none |
+| Cline / Roo / Kilo | editor extension storage (tokens + cost per request) | none |
+| Zed | `threads.db` (token usage per request) | none |
+| Antigravity | its conversation databases (protobuf usage per call) | none |
+| Cursor | Cursor's official `stop` hook, added to `~/.cursor/hooks.json` next to your own hooks | one click |
+| Aider | `AIDER_ANALYTICS_LOG` (tokens + Aider's own cost) | one click |
+| GitHub Copilot | GitHub's official premium-request **billing report** through your `gh` login (real billed dollars), plus the Copilot CLI's OpenTelemetry token export | one click |
+| Windsurf · Kiro · Trae | no per-request usage exists outside their own servers — the Tracking panel says so and where to look instead | — |
+
+Token-only records are priced from Devin's official list first (current frontier models at API list price), then LiteLLM's public price table; a model neither knows is reported as unpriced, never guessed. Every switch shows what it changes and switches off cleanly (on Windows, persistent user variables via `setx`; elsewhere, one marked block in your shell profile). Recorders write to `~/.flowforge/usage/`.
+
+Nothing on that page is estimated — only the pre-run chip is, and it says so (`≈`). On Node older than 22.13 the tab says the log is unavailable instead of guessing.
 
 ### 9. Studio — the wordless builder
 
@@ -375,20 +442,36 @@ A flow is one JSON file in `flows/`. Everything the orchestrator does is data:
 |---|---|
 | `name` | Flow id, must match the file name |
 | `title` / `titleAr` | Bilingual display name |
+| `description` | One paragraph on what the flow is for and what it guarantees |
 | `defaultGate` | `terminal` \| `dashboard` \| `auto` — used by stages whose gate is `default` |
 | `providers` | *Optional.* Restricts the flow to these executors. Absent = available to all |
 | `stages[].id` | Unique stage id, also the node id on the canvas |
+| `stages[].title` / `titleAr` | Bilingual stage name shown on the pipeline and the canvas |
 | `stages[].agent` | Role file in `agents/`, or `null` for a script-only stage |
 | `stages[].model` | *Optional.* Any model id the executor supports; beats the role default |
 | `stages[].effort` | *Optional.* `none`…`max` — becomes the subagent's thinking level |
 | `stages[].prompt` | Task text. `{TASK}` and `{PROJECT}` are substituted |
 | `stages[].pre` / `post` | Node scripts run before/after the subagent |
 | `stages[].gate` | `default` \| `auto` \| `dashboard` \| `terminal` |
+| `stages[].gateQuestion` / `gateQuestionAr` | Bilingual question the gate asks before the flow continues |
 | `stages[].artifact` | File written under `.workbench/artifacts/` |
 | `stages[].done` | Done-criteria the orchestrator checks before moving on |
 | `stages[].onFail` | Stage to jump to on failure |
 | `stages[].maxLoops` | Cap on that failure loop |
 | `stages[].runOnlyWhenJumpedTo` | Stage is skipped in the linear order and only entered via a jump |
+| `stages[].next` | Where a stage that only runs when jumped to returns to (usually the verifying stage) |
+| `stages[].parallel` | *Optional.* Group name; consecutive stages with the same group run side by side when they write different artifacts |
+
+Rules every shipped flow follows (enforced by `npm test`):
+
+- `name` matches the file name; `title`, `titleAr` and `description` are set; `defaultGate` is `auto`, `terminal` or `dashboard`.
+- Every stage has a unique `id`, `title`, `titleAr`, `artifact` and a non-empty `done[]` of strings.
+- Every agent stage pins a `model` and has a `prompt` containing `{PROJECT}`.
+- Every gate other than `auto` carries both `gateQuestion` and `gateQuestionAr`.
+- Every `onFail` points at an existing stage, has an integer `maxLoops` from 1 to 5, and its prompt asks for `VERDICT: PASS` / `VERDICT: FAIL`.
+- Every `runOnlyWhenJumpedTo` stage has a `next` and is the target of some `onFail`.
+- Every flow except `understand` has at least one failure loop.
+- The flows that change nothing (`analytics`, `design`, `review`, `data`, `security`) have no `coder`, `debugger` or `shipper` stage.
 
 Create one from a template with `node scripts/new-flow.mjs my-flow`, or just draw it on the canvas.
 
@@ -407,7 +490,26 @@ Create one from a template with `node scripts/new-flow.mjs my-flow`, or just dra
 | `cheap` | The full pipeline on low-cost models |
 | `fast` | Code → verify → ship, no gates |
 | `design` | Research, options and a decision record — no code |
-| `analytics` | Business/data analysis: measure, interpret, recommend — no code |
+| `analytics` | Business/data analysis: define metrics → measure → verify numbers → interpret → validate conclusions — no code |
+| `review` | Code review of a change: repo checks → hunk-by-hunk review → independent audit of the findings — no changes |
+| `refactor` | Pin behavior with characterization tests → refactor in small steps → prove the pinned tests are unchanged and green |
+| `deps` | Dependency inventory and audit → breaking-change impact → batched upgrade → prove the before/after audit delta |
+| `automate` | CI workflows, hooks and scripts: design with least privilege and pinned actions → build → validate and run locally |
+| `data` | Dataset profiling → pre-registered metrics and hypotheses → one re-runnable analysis script → independent re-execution — no changes |
+| `security` | Defensive audit: threat model → installed scanners + manual review → triage → independent verification — no changes |
+| `secfix` | Confirm a vulnerability → failing regression test first → root-cause fix → re-scan and bypass tests prove it closed |
+| `ai-feature` | Eval-first LLM feature: eval set + mock provider → implement with guardrails → re-run the evals against the target |
+
+### Workflows by role
+
+| Role | Flows | Tools orchestrated |
+|---|---|---|
+| Developers | `review`, `deps`, `ai-feature`, `task` | git, the repo's linters and test runners, npm/pnpm/pip/go/cargo package managers, LLM eval harnesses with a mock provider |
+| Programmers | `refactor`, `automate`, `tests`, `bugfix` | test runners, `git hash-object`, actionlint, shellcheck, yamllint, `act -n` |
+| Analysts | `analytics`, `data` | read-only shell and git commands, Python (pandas/polars/scipy), DuckDB, sqlite3, jq, csvkit |
+| Security testers | `security`, `secfix` | gitleaks, trufflehog, osv-scanner, npm audit, pip-audit, govulncheck, semgrep, bandit, trivy, checkov, hadolint |
+
+These flows only run tools that are already installed or already set up in the project: each tool is checked with `--version` first, no tool is ever installed, and a missing one is recorded as `NOT AVAILABLE` instead of being skipped silently.
 
 ---
 
@@ -423,8 +525,9 @@ Each role is a markdown contract in `agents/` with a strict scope and exactly on
 | **tester** | `review.md` | Must lead its reply with `VERDICT: PASS` or `VERDICT: FAIL` |
 | **debugger** | `debug.md` | Reproduce first, fix root causes only, then re-verify |
 | **shipper** | `ship.md` | Packages and delivers the change |
-| **researcher** | `report.md` | External/domain research for the analytics and design flows |
+| **researcher** | `report.md` | Measured business/data analysis: every number traced to its command (analytics, data) |
 | **optimizer** | `perf.md` | Baselines and optimises, must prove the delta |
+| **security** | `security.md` | Defensive only: repo-scoped, read-only, redacts secrets, records missing tools as NOT AVAILABLE |
 
 ---
 
@@ -538,6 +641,8 @@ The dashboard is a plain `node:http` server; every screen is built on this API, 
 | `POST /api/refine` | Generate or optimise a task statement |
 | `GET /api/providers` · `/api/provider` · `/api/provider-auth` · `POST /api/provider/login` | Executor detection, live login state and login |
 | `GET /api/models` · `POST /api/retarget-models` · `POST /api/retarget-flows` | Model catalogue and cross-executor retargeting |
+| `GET /api/usage` · `POST /api/estimate` · `POST /api/usage/report` | Real usage from Devin's session log and every other tool, the pre-run forecast, the monthly report |
+| `GET/POST /api/usage/tracking` | Where each tool's numbers come from; switch Cursor / Aider / Copilot recorders on or off |
 | `GET/POST /api/settings` · `/api/projects` | Settings and the project registry |
 
 ---

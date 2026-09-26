@@ -1,0 +1,68 @@
+{
+  "name": "review",
+  "title": "Code review - check, review every hunk, audit the findings (no changes)",
+  "titleAr": "مراجعة كود — فحص ← مراجعة كل تعديل ← تدقيق الملاحظات (من غير تعديل)",
+  "description": "Reviews a change (uncommitted work, a branch, a commit range or a PR checkout) like a strict senior reviewer: the repository's own checks and linters, a hunk-by-hunk review across correctness, security, performance, compatibility and tests, then an independent audit that removes false positives. Nothing is modified; review.md is ready to paste into a PR.",
+  "defaultGate": "dashboard",
+  "stages": [
+    {
+      "id": "scan",
+      "title": "Collect context",
+      "titleAr": "تجميع السياق",
+      "agent": null,
+      "prompt": "",
+      "pre": [
+        "scripts/collect-context.mjs"
+      ],
+      "post": [],
+      "gate": "auto",
+      "artifact": "context.md",
+      "done": [
+        "context.md exists"
+      ]
+    },
+    {
+      "id": "review",
+      "title": "Review the change",
+      "titleAr": "مراجعة التعديل",
+      "agent": "tester",
+      "model": "claude-opus-5-high",
+      "prompt": "Change to review: {TASK}\n\nProject root: {PROJECT} (inventory in .workbench/artifacts/context.md, checks output in .workbench/artifacts/checks.md). If .workbench/artifacts/review-audit.md exists from an earlier round, fix everything it lists first. Resolve the change set and record the exact command: uncommitted work -> `git diff` and `git diff --staged`; a branch -> `git diff <base>...HEAD`; a commit or range -> `git show <sha>` / `git diff A..B`. Also run the linters, type-checkers and tests the repository already configures - never install tools or dependencies. Review every hunk for correctness and edge cases, security (injection, authorization, secrets, unsafe deserialization, SSRF, path traversal), performance, API and backward compatibility, tests (do they assert the new behavior?) and conventions. Write review.md per your role contract and add `## Change set` (command + changed file list); tag each finding BLOCKER / MAJOR / MINOR / NIT with file:line, evidence and a concrete suggested fix; end with `## Merge recommendation` (merge / merge after fixes / do not merge, with the ordered fix list). Verdict PASS means mergeable as-is. Do not modify any project file. Lead your reply with VERDICT: PASS or VERDICT: FAIL.",
+      "pre": [
+        "scripts/run-checks.mjs"
+      ],
+      "post": [],
+      "gate": "auto",
+      "artifact": "review.md",
+      "done": [
+        "review.md names the exact git command that produced the change set and lists every changed file",
+        "review.md records each check or linter command with its result",
+        "Every finding has a severity, a file:line, evidence and a suggested fix",
+        "review.md ends with a Merge recommendation and an explicit Verdict line"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "challenge",
+      "title": "Audit the review",
+      "titleAr": "تدقيق المراجعة",
+      "agent": "tester",
+      "model": "gpt-5-6-sol-high",
+      "prompt": "Audit .workbench/artifacts/review.md for the project at {PROJECT}. Re-run the change-set command it names. For every finding, open the cited code and mark it CONFIRMED, FALSE POSITIVE or UNVERIFIABLE; check the severity is calibrated; list every changed file or risky hunk the review did not cover. Write .workbench/artifacts/review-audit.md with `## Verdict: PASS | FAIL`, the per-finding table and the missed areas. FAIL if any BLOCKER or MAJOR is a false positive, a changed file was skipped, or a real blocking issue was missed. Your verdict judges the review, not the code. Do not modify any project file. Lead your reply with VERDICT: PASS or VERDICT: FAIL.",
+      "pre": [],
+      "post": [],
+      "gate": "default",
+      "gateQuestion": "The review was independently audited - accept it?",
+      "gateQuestionAr": "المراجعة اتدققت بشكل مستقل — نعتمدها؟",
+      "artifact": "review-audit.md",
+      "onFail": "review",
+      "maxLoops": 2,
+      "done": [
+        "review-audit.md exists with an explicit Verdict line",
+        "Every finding in review.md is marked CONFIRMED, FALSE POSITIVE or UNVERIFIABLE with a citation",
+        "review-audit.md lists changed files or hunks the review missed, or states that none were missed"
+      ],
+      "effort": "high"
+    }
+  ]
+}

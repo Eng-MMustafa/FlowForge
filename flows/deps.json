@@ -1,0 +1,146 @@
+{
+  "name": "deps",
+  "title": "Dependency upgrade - inventory, impact, batched upgrade, prove the audit delta",
+  "titleAr": "تحديث المكتبات — جرد ← أثر ← تحديث على دفعات ← إثبات الفرق",
+  "description": "Keeps dependencies current and free of known vulnerabilities. Inventories outdated and vulnerable packages with the ecosystem's own tools, maps where breaking changes land, upgrades in small batches (security fixes first), and re-runs the same audit to prove the before/after delta.",
+  "defaultGate": "dashboard",
+  "stages": [
+    {
+      "id": "inventory",
+      "title": "Dependency inventory",
+      "titleAr": "جرد المكتبات",
+      "agent": "security",
+      "model": "claude-sonnet-5-high",
+      "prompt": "Upgrade goal: {TASK}\n\nProject root: {PROJECT}. Detect every package manager from manifests and lockfiles (npm/pnpm/yarn, pip/uv/poetry, go modules, cargo, maven/gradle, bundler, composer). For each, run the read-only outdated and audit commands that are available (for example `npm outdated --json`, `npm audit --json`, `pip list --outdated`, `pip-audit`, `go list -m -u all`, `govulncheck ./...`, `cargo audit`, `osv-scanner scan -r .`) and record each command, tool version and exit code; mark missing tools NOT AVAILABLE. Do not install or change anything. Write .workbench/artifacts/deps.md with a table: Package, Ecosystem, Direct/dev/transitive, Current, Wanted, Latest, Semver jump, Advisories (IDs + severity), Notes; and a `## Baseline` line with vulnerability counts by severity and the number of outdated direct dependencies.",
+      "pre": [
+        "scripts/collect-context.mjs"
+      ],
+      "post": [],
+      "gate": "auto",
+      "artifact": "deps.md",
+      "done": [
+        "deps.md records every command run with tool version and exit code, and marks unavailable tools NOT AVAILABLE",
+        "deps.md contains the package table with current, latest, semver jump and advisory IDs",
+        "deps.md contains a Baseline line with vulnerability counts by severity and the outdated direct dependency count",
+        "No manifest or lockfile was modified in this stage"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "analyze",
+      "title": "Breaking-change impact",
+      "titleAr": "أثر التغييرات الكاسرة",
+      "agent": "analyst",
+      "model": "claude-sonnet-5-high",
+      "prompt": "Upgrade goal: {TASK}\n\nProject root: {PROJECT}. For every major-version jump and every vulnerable package in .workbench/artifacts/deps.md, find where the project uses it (imports and call sites, file:line), read the package's changelog or migration notes if they exist locally (for example inside node_modules or vendored sources) and list the breaking changes that touch those call sites; mark a changelog you could not read as UNKNOWN instead of guessing. State which affected call sites are covered by tests. Write analysis.md per your role contract.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "analysis.md",
+      "done": [
+        "Every major or vulnerable package from deps.md has its usage sites listed with file:line citations",
+        "Each breaking change is mapped to affected call sites or marked UNKNOWN",
+        "analysis.md states test coverage for the affected call sites"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "think",
+      "title": "Upgrade plan",
+      "titleAr": "خطة التحديث",
+      "agent": "thinker",
+      "model": "claude-opus-5-high",
+      "prompt": "Upgrade goal: {TASK}\n\nInputs: .workbench/artifacts/deps.md and analysis.md (project {PROJECT}). Produce the plan per your role contract as ordered batches: security fixes first, then patch/minor updates, then each major upgrade in its own batch with the code changes it needs. For every batch give the exact package-manager command, the tests that prove it and the rollback. List deferred upgrades with the reason. Acceptance criteria must include target vulnerability counts and a consistent lockfile. Write it to .workbench/artifacts/plan.md.",
+      "pre": [],
+      "post": [],
+      "gate": "default",
+      "gateQuestion": "Review the upgrade batches in plan.md - proceed?",
+      "gateQuestionAr": "راجع دفعات التحديث في plan.md — نكمل؟",
+      "artifact": "plan.md",
+      "done": [
+        "plan.md exists and contains all required sections (Task, Requirements, Chosen approach, Steps, Acceptance criteria, Risks)",
+        "Every batch names its exact package-manager command, the tests that prove it and a rollback",
+        "Acceptance criteria state target vulnerability counts and a consistent lockfile"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "code",
+      "title": "Upgrade in batches",
+      "titleAr": "التحديث على دفعات",
+      "agent": "coder",
+      "model": "claude-opus-5-high",
+      "prompt": "Apply the upgrade batches from .workbench/artifacts/plan.md in the project at {PROJECT} with the project's own package manager so manifests and lockfiles stay consistent. After each batch run the build and tests and adapt the code for the breaking changes in analysis.md. Never use --force, --legacy-peer-deps or equivalent overrides unless the plan approves them. A batch you cannot make green is reverted and listed as deferred. Write code-notes.md per your role contract with a per-batch result table (batch, command, test result, kept/reverted).",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "code-notes.md",
+      "done": [
+        "Every plan batch is applied, or reverted and listed as deferred with the reason",
+        "code-notes.md contains a per-batch result table with the command and test result",
+        "Manifests and lockfiles were changed only through the package manager"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "test",
+      "title": "Prove the upgrade",
+      "titleAr": "إثبات التحديث",
+      "agent": "tester",
+      "model": "claude-sonnet-5-high",
+      "prompt": "Verify the dependency upgrade in the project at {PROJECT}. Checks output (if any) is in .workbench/artifacts/checks.md. Re-run the same outdated and audit commands recorded in deps.md and put a before/after table in review.md (vulnerabilities by severity, outdated direct dependencies). Confirm the lockfile is consistent (for example `npm ls`, `pip check`, `go mod verify` exit 0), the suite is green, and no major upgrade outside the plan slipped in. Write review.md per your role contract and lead your reply with VERDICT: PASS or VERDICT: FAIL.",
+      "pre": [
+        "scripts/run-checks.mjs"
+      ],
+      "post": [],
+      "gate": "auto",
+      "artifact": "review.md",
+      "onFail": "debug",
+      "maxLoops": 3,
+      "done": [
+        "review.md exists with an explicit Verdict line",
+        "review.md contains a before/after table from the same audit commands as deps.md",
+        "review.md confirms lockfile consistency with the command output"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "debug",
+      "title": "Fix upgrade breakage",
+      "titleAr": "إصلاح أعطال التحديث",
+      "agent": "debugger",
+      "model": "claude-opus-5-high",
+      "prompt": "The tester issued FAIL after the dependency upgrade in the project at {PROJECT} (details in .workbench/artifacts/review.md). Per failure, either adapt the code to the new API or roll the offending package back to its last working version - state which. Never silence a vulnerability by removing the audit or adding an ignore without saying so. Write/append debug.md per your role contract.",
+      "pre": [],
+      "post": [],
+      "gate": "auto",
+      "artifact": "debug.md",
+      "runOnlyWhenJumpedTo": true,
+      "next": "test",
+      "done": [
+        "Each failure is fixed or its package rolled back, stated explicitly",
+        "debug.md shows the failing output before and the passing output after"
+      ],
+      "effort": "high"
+    },
+    {
+      "id": "ship",
+      "title": "Ship the upgrade",
+      "titleAr": "رفع التحديث",
+      "agent": "shipper",
+      "model": "swe-1-7",
+      "prompt": "The dependency upgrade PASSED review. Package it for the project at {PROJECT} per your role contract. Mode: {SHIP_MODE}. The commit message must list the upgraded packages and the advisories closed. Write ship.md.",
+      "pre": [],
+      "post": [],
+      "gate": "default",
+      "gateQuestion": "Upgrade verified - commit it?",
+      "gateQuestionAr": "التحديث اتأكد — أعمل commit؟",
+      "artifact": "ship.md",
+      "done": [
+        "ship.md exists with summary, file list, commit message, and actions taken",
+        "No .workbench/ or local-only files staged",
+        "The commit message lists upgraded packages and closed advisory IDs"
+      ]
+    }
+  ]
+}
