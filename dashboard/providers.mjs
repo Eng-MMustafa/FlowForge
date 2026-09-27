@@ -20,9 +20,9 @@
 import { promises as fs } from 'node:fs';
 import fssync from 'node:fs';
 import path from 'node:path';
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { providerRoots, loginScriptLines, whichSync as whichOn } from '../scripts/lib/platform.mjs';
+import { providerRoots, loginScriptLines, whichSync as whichOn, stateDir } from '../scripts/lib/platform.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const WORKBENCH = path.resolve(__dirname, '..');
@@ -77,6 +77,69 @@ const CURSOR_MODELS = [
   { slug: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', aliases: ['gemini'], variants: [] },
   { slug: 'grok-4', label: 'Grok 4', aliases: ['grok'], variants: [] },
   { slug: 'deepseek-v3.1', label: 'DeepSeek V3.1', aliases: ['deepseek'], variants: [] },
+];
+const WINDSURF_MODELS = [
+  { slug: 'swe-1.5', label: 'SWE-1.5', aliases: ['swe'], variants: [] },
+  { slug: 'swe-1', label: 'SWE-1', aliases: [], variants: [
+    { id: 'swe-1-lite', label: 'SWE-1 Lite' },
+  ] },
+  { slug: 'claude-sonnet-4.5', label: 'Claude Sonnet 4.5', aliases: ['sonnet', 'claude'], variants: [] },
+  { slug: 'gpt-5', label: 'GPT-5', aliases: ['gpt5', 'gpt'], variants: [] },
+  { slug: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', aliases: ['gemini'], variants: [] },
+  { slug: 'grok-code-fast-1', label: 'Grok Code Fast 1', aliases: ['grok'], variants: [] },
+];
+const CLAUDE_MODELS = [
+  { slug: 'claude-opus-4.5', label: 'Claude Opus 4.5', aliases: ['opus'], variants: [
+    { id: 'claude-opus-4-5', label: 'Claude Opus 4.5' },
+  ] },
+  { slug: 'claude-sonnet-4.5', label: 'Claude Sonnet 4.5', aliases: ['sonnet', 'claude'], variants: [
+    { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5' },
+  ] },
+  { slug: 'claude-haiku-4.5', label: 'Claude Haiku 4.5', aliases: ['haiku'], variants: [
+    { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5' },
+  ] },
+];
+const CODEX_MODELS = [
+  { slug: 'gpt-5-codex', label: 'GPT-5 Codex', aliases: ['codex'], variants: [
+    { id: 'gpt-5-codex-mini', label: 'GPT-5 Codex mini' },
+  ] },
+  { slug: 'gpt-5', label: 'GPT-5', aliases: ['gpt5', 'gpt'], variants: [] },
+  { slug: 'codex-mini-latest', label: 'Codex mini', aliases: ['codex-mini'], variants: [] },
+  { slug: 'o3', label: 'o3', aliases: [], variants: [] },
+  { slug: 'o4-mini', label: 'o4-mini', aliases: ['o4'], variants: [] },
+];
+const GEMINI_MODELS = [
+  { slug: 'gemini-3-pro', label: 'Gemini 3 Pro', aliases: ['gemini'], variants: [] },
+  { slug: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', aliases: ['pro'], variants: [] },
+  { slug: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', aliases: ['flash'], variants: [
+    { id: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+  ] },
+];
+const ZED_MODELS = [
+  { slug: 'claude-sonnet-4.5', label: 'Claude Sonnet 4.5', aliases: ['sonnet', 'claude'], variants: [] },
+  { slug: 'gpt-5', label: 'GPT-5', aliases: ['gpt5', 'gpt'], variants: [] },
+  { slug: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', aliases: ['gemini'], variants: [] },
+];
+const KIRO_MODELS = [
+  { slug: 'auto', label: 'Auto (Kiro picks)', aliases: [], variants: [] },
+  { slug: 'claude-sonnet-4.5', label: 'Claude Sonnet 4.5', aliases: ['sonnet', 'claude'], variants: [
+    { id: 'claude-sonnet-4', label: 'Claude Sonnet 4' },
+  ] },
+  { slug: 'claude-haiku-4.5', label: 'Claude Haiku 4.5', aliases: ['haiku'], variants: [] },
+];
+// Key-driven tools (aider, Cline, Continue, OpenCode...) run on whatever model
+// the user's API key can reach - the catalogue is the same shortlist for all.
+const KEY_MODELS = [
+  { slug: 'claude-sonnet-4.5', label: 'Claude Sonnet 4.5', aliases: ['sonnet', 'claude'], variants: [
+    { id: 'claude-sonnet-4', label: 'Claude Sonnet 4' },
+  ] },
+  { slug: 'gpt-5', label: 'GPT-5', aliases: ['gpt5', 'gpt'], variants: [] },
+  { slug: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', aliases: ['gemini'], variants: [] },
+];
+const ANTIGRAVITY_MODELS = [
+  { slug: 'gemini-3-pro', label: 'Gemini 3 Pro', aliases: ['gemini'], variants: [] },
+  { slug: 'claude-sonnet-4.5', label: 'Claude Sonnet 4.5', aliases: ['sonnet', 'claude'], variants: [] },
+  { slug: 'gpt-oss-120b', label: 'GPT OSS 120B', aliases: ['gpt-oss', 'gpt'], variants: [] },
 ];
 const TRAE_MODELS = [
   { slug: 'auto', label: 'Auto (Trae picks)', aliases: [], variants: [] },
@@ -137,6 +200,8 @@ export const PROVIDERS = {
       { env: 'DEVIN_CLI' },
       { os: 'win32', base: 'local', rel: ['Programs', 'Devin', 'resources', 'app', 'extensions', 'windsurf', 'devin', 'bin', 'devin.exe'] },
       { os: 'darwin', base: 'files', rel: ['Devin.app', 'Contents', 'Resources', 'app', 'extensions', 'windsurf', 'devin', 'bin', 'devin'] },
+      { os: 'linux', base: 'files', rel: ['devin', 'resources', 'app', 'extensions', 'windsurf', 'devin', 'bin', 'devin'] },
+      { os: 'linux', base: 'local', rel: ['devin', 'resources', 'app', 'extensions', 'windsurf', 'devin', 'bin', 'devin'] },
       { command: 'devin' },
     ],
     // `devin auth status` prints "Logged in (via Devin)." and exits 0; when it is
@@ -145,9 +210,27 @@ export const PROVIDERS = {
       kind: 'cli',
       statusArgs: ['auth', 'status'],
       loginArgs: ['auth', 'login'],
+      // `auth status` validates the browser-session token against a rotating
+      // check and has been seen rejecting a credential that `devin acp` then
+      // accepts. When the status answer is a denial, a headless ACP
+      // authenticate probe with the stored key is the real tiebreaker.
+      acpCheck: true,
+      // The durable alternative: paste a long-lived API key from Devin's
+      // settings instead of the browser session token, which the server
+      // rotates and the CLI then reports as logged out every few days.
+      loginAltArgs: ['auth', 'login', '--force-manual-token-flow'],
+      loginAltTitle: 'Devin token login (does not expire)',
+      loginAltNote: 'Paste a long-lived API key from your Devin settings - it survives where the browser session token gets rotated.',
       notLoggedIn: /not logged in|no credentials|please log ?in/i,
+      // Where `auth login` writes the credential - its presence while `status`
+      // denies means the stored session EXPIRED, not that a login never ran.
+      credFile: { base: 'appdata', rel: ['devin', 'credentials.toml'] },
       title: 'Devin CLI Login',
-      note: 'Choose option 1 "Log in with browser" (press 1 then Enter).',
+      // Devin Desktop and the CLI share ONE credentials.toml - the running app
+      // re-writes it with its own session and the CLI then reads "not logged
+      // in". The dashboard self-heals the file afterwards, but closing the
+      // desktop first makes the login itself uninterrupted.
+      note: 'IMPORTANT: fully quit Devin Desktop FIRST if it is open (it shares the credentials file). Then choose option 1 "Log in with browser".',
     },
     userModules: [
       { kind: 'locator', base: 'appdata', rel: ['devin', 'flowforge.json'], type: 'file' },
@@ -176,6 +259,9 @@ export const PROVIDERS = {
       { base: 'home', rel: ['.cursor', 'extensions'], match: 'github.copilot' },
     ],
     cli: [{ command: 'copilot' }, { command: 'github-copilot-cli' }],
+    // `copilot -p "<prompt>"` answers on stdout - usable as a prompt generator
+    // once the account (gh) is connected.
+    print: ['-p'],
     // The account itself lives in the GitHub CLI, which is a DIFFERENT binary from
     // the provider's own CLI - hence auth.cli. `gh auth status` prints
     // "Logged in to github.com account <name> (keyring)".
@@ -225,6 +311,14 @@ export const PROVIDERS = {
         rel: ['Cursor', 'User', 'globalStorage', 'storage.json'],
         authKeys: ['cursorAuth/accessToken', 'cursorAuth/cachedEmail', 'cursorAuth/stripeMembershipType'],
         minLength: 8,
+        // cursor-agent (the CLI) writes a plain JSON auth file we CAN read:
+        // ~/.config/cursor/auth.json { accessToken }. It shares the account.
+        alts: [{
+          base: 'home',
+          rel: ['.config', 'cursor', 'auth.json'],
+          authKeys: ['accessToken', 'access_token'],
+          minLength: 8,
+        }],
       },
       reason: 'Cursor signs in inside the app (Settings -> Account). Opening it here takes you straight there; the session itself is stored by Cursor, not by this dashboard.',
       reasonAr: 'كيرسر بيسجّل دخولك جوّا البرنامج نفسه (Settings ← Account). الزرار هنا بيفتحه ليك علطول، والجلسة بتتخزن عند كيرسر مش عند الشاشة دي.',
@@ -284,10 +378,429 @@ export const PROVIDERS = {
       { kind: 'rule', rel: ['AGENTS.md'], type: 'file' },
     ],
   },
+  windsurf: {
+    id: 'windsurf',
+    label: 'Windsurf',
+    labelAr: 'ويندسيرف',
+    models: WINDSURF_MODELS,
+    runnable: false,
+    editor: [
+      { os: 'win32', base: 'local', rel: ['Programs', 'Windsurf', 'Windsurf.exe'] },
+      { os: 'win32', base: 'local', rel: ['Programs', 'windsurf', 'Windsurf.exe'] },
+      { os: 'darwin', base: 'files', rel: ['Windsurf.app'] },
+      { os: 'linux', base: 'files', rel: ['windsurf'] },
+      { os: 'linux', base: 'local', rel: ['windsurf'] },
+      { base: 'appdata', rel: ['Windsurf', 'User', 'settings.json'] },
+    ],
+    cli: [{ command: 'windsurf' }],
+    auth: {
+      kind: 'app',
+      // Windsurf keeps its session in the same SQLite global store VS Code
+      // uses, which we deliberately do not parse - so "unknown", not a guess.
+      reason: 'Windsurf signs in inside the app (Settings -> Account). Opening it here takes you straight there; the session itself is stored by Windsurf, not by this dashboard.',
+      reasonAr: 'ويندسيرف بيسجّل دخولك جوّا البرنامج نفسه (Settings ← Account). الزرار هنا بيفتحه ليك علطول، والجلسة بتتخزن عند ويندسيرف مش عند الشاشة دي.',
+    },
+    userModules: [
+      { kind: 'rule', base: 'home', rel: ['.codeium', 'windsurf', 'memories', 'global_rules.md'], type: 'file' },
+      { kind: 'mcp', base: 'home', rel: ['.codeium', 'windsurf', 'mcp_config.json'], type: 'file' },
+      { kind: 'settings', base: 'appdata', rel: ['Windsurf', 'User', 'settings.json'], type: 'file' },
+    ],
+    workspaceModules: [
+      { kind: 'rule', rel: ['.windsurf', 'rules'], type: 'dir', exts: ['.md'] },
+      { kind: 'rule', rel: ['.windsurfrules'], type: 'file' },
+      { kind: 'mcp', rel: ['.windsurf', 'mcp_config.json'], type: 'file' },
+      { kind: 'rule', rel: ['AGENTS.md'], type: 'file' },
+    ],
+  },
+  claude: {
+    id: 'claude',
+    label: 'Claude Code',
+    labelAr: 'كلود كود',
+    models: CLAUDE_MODELS,
+    runnable: false,
+    // A config home counts as the editor surface: `claude` on PATH is the CLI.
+    editor: [{ base: 'home', rel: ['.claude'] }],
+    cli: [
+      { command: 'claude' },
+      { base: 'home', rel: ['.claude', 'local', 'claude'] },
+      { base: 'home', rel: ['.claude', 'local', 'claude.exe'] },
+    ],
+    // `claude -p "<prompt>"` prints the answer once and exits.
+    print: ['-p'],
+    auth: {
+      kind: 'cli',
+      // `claude auth status` answers JSON and exits 1 when logged out.
+      statusArgs: ['auth', 'status'],
+      loginArgs: ['auth', 'login'],
+      notLoggedIn: /"logged_in"\s*:\s*false|not logged in|unauthenticated/i,
+      account: /"email"\s*:\s*"([^"]+)"/,
+      title: 'Claude Code Login',
+      note: 'Complete the Anthropic sign-in in the browser tab that opens.',
+    },
+    userModules: [
+      { kind: 'instruction', base: 'home', rel: ['.claude', 'CLAUDE.md'], type: 'file' },
+      { kind: 'settings', base: 'home', rel: ['.claude', 'settings.json'], type: 'file' },
+      { kind: 'agent', base: 'home', rel: ['.claude', 'agents'], type: 'dir', exts: ['.md'] },
+      { kind: 'prompt', base: 'home', rel: ['.claude', 'commands'], type: 'dir', exts: ['.md'] },
+      { kind: 'skill', base: 'home', rel: ['.claude', 'skills'], type: 'dir', exts: ['.md'] },
+    ],
+    workspaceModules: [
+      { kind: 'instruction', rel: ['CLAUDE.md'], type: 'file' },
+      { kind: 'settings', rel: ['.claude', 'settings.json'], type: 'file' },
+      { kind: 'settings', rel: ['.claude', 'settings.local.json'], type: 'file' },
+      { kind: 'agent', rel: ['.claude', 'agents'], type: 'dir', exts: ['.md'] },
+      { kind: 'prompt', rel: ['.claude', 'commands'], type: 'dir', exts: ['.md'] },
+      { kind: 'skill', rel: ['.claude', 'skills'], type: 'dir', exts: ['.md'] },
+      { kind: 'mcp', rel: ['.mcp.json'], type: 'file' },
+      { kind: 'rule', rel: ['AGENTS.md'], type: 'file' },
+    ],
+  },
+  codex: {
+    id: 'codex',
+    label: 'Codex CLI',
+    labelAr: 'كودكس',
+    models: CODEX_MODELS,
+    runnable: false,
+    editor: [{ base: 'home', rel: ['.codex'] }],
+    cli: [
+      { command: 'codex' },
+      { base: 'home', rel: ['.codex', 'bin', 'codex'] },
+      { base: 'home', rel: ['.codex', 'bin', 'codex.exe'] },
+    ],
+    // `codex exec "<prompt>"` runs headless; the flag keeps it working in a
+    // project that is not a git repository yet.
+    print: ['exec', '--skip-git-repo-check'],
+    auth: {
+      kind: 'cli',
+      // `codex login status` exits 0 when credentials exist, non-zero without.
+      statusArgs: ['login', 'status'],
+      loginArgs: ['login'],
+      notLoggedIn: /not authenticated|authenticated:\s*no|not logged in/i,
+      account: /account:\s*([^\s|]+)/i,
+      title: 'Codex Login',
+      note: 'A browser tab opens for the ChatGPT sign-in.',
+    },
+    userModules: [
+      { kind: 'settings', base: 'home', rel: ['.codex', 'config.toml'], type: 'file' },
+      { kind: 'instruction', base: 'home', rel: ['.codex', 'AGENTS.md'], type: 'file' },
+      { kind: 'instruction', base: 'home', rel: ['.codex', 'instructions.md'], type: 'file' },
+      { kind: 'prompt', base: 'home', rel: ['.codex', 'prompts'], type: 'dir', exts: ['.md'] },
+    ],
+    workspaceModules: [
+      { kind: 'instruction', rel: ['AGENTS.md'], type: 'file' },
+      { kind: 'settings', rel: ['.codex', 'config.toml'], type: 'file' },
+      { kind: 'prompt', rel: ['.codex', 'prompts'], type: 'dir', exts: ['.md'] },
+    ],
+  },
+  gemini: {
+    id: 'gemini',
+    label: 'Gemini CLI',
+    labelAr: 'جيميناي',
+    models: GEMINI_MODELS,
+    runnable: false,
+    editor: [{ base: 'home', rel: ['.gemini'] }],
+    cli: [
+      { command: 'gemini' },
+      { base: 'home', rel: ['.gemini', 'bin', 'gemini'] },
+      { base: 'home', rel: ['.gemini', 'bin', 'gemini.exe'] },
+      { os: 'win32', base: 'home', rel: ['.gemini', 'bin', 'gemini.cmd'] },
+    ],
+    // `gemini -p "<prompt>"` prints the answer once and exits.
+    print: ['-p'],
+    auth: {
+      kind: 'cli',
+      // `gemini` owns its login but has no `auth status` command: the OAuth
+      // creds file is the readable truth, and "log in" means launching the
+      // tool itself in a terminal, so the session file - not a CLI call -
+      // answers the status question.
+      session: {
+        base: 'home',
+        rel: ['.gemini', 'oauth_creds.json'],
+        authKeys: ['access_token', 'id_token'],
+        minLength: 16,
+      },
+      loginArgs: [],
+      verifyArgs: ['--version'],
+      title: 'Gemini CLI Login',
+      note: 'Choose "Login with Google" when the CLI starts.',
+    },
+    userModules: [
+      { kind: 'settings', base: 'home', rel: ['.gemini', 'settings.json'], type: 'file' },
+      { kind: 'instruction', base: 'home', rel: ['.gemini', 'GEMINI.md'], type: 'file' },
+      { kind: 'prompt', base: 'home', rel: ['.gemini', 'commands'], type: 'dir', exts: ['.toml'] },
+    ],
+    workspaceModules: [
+      { kind: 'instruction', rel: ['GEMINI.md'], type: 'file' },
+      { kind: 'settings', rel: ['.gemini', 'settings.json'], type: 'file' },
+      { kind: 'prompt', rel: ['.gemini', 'commands'], type: 'dir', exts: ['.toml'] },
+    ],
+  },
+  zed: {
+    id: 'zed',
+    label: 'Zed',
+    labelAr: 'زيد',
+    models: ZED_MODELS,
+    runnable: false,
+    editor: [
+      { os: 'win32', base: 'local', rel: ['Programs', 'Zed', 'Zed.exe'] },
+      { os: 'darwin', base: 'files', rel: ['Zed.app'] },
+      { os: 'linux', base: 'files', rel: ['zed'] },
+      { os: 'linux', base: 'local', rel: ['zed'] },
+      { base: 'appdata', rel: ['Zed', 'settings.json'] },
+      { base: 'home', rel: ['.config', 'zed', 'settings.json'] },
+    ],
+    cli: [{ command: 'zed' }],
+    auth: {
+      kind: 'app',
+      reason: 'Zed signs in inside the editor (the account menu). Opening it here takes you straight there; the session itself is stored by Zed, not by this dashboard.',
+      reasonAr: 'زيد بيسجّل دخولك جوّا المحرر نفسه (قايمة الحساب). الزرار هنا بيفتحه ليك علطول، والجلسة بتتخزن عند زيد مش عند الشاشة دي.',
+    },
+    userModules: [
+      { kind: 'settings', base: 'appdata', rel: ['Zed', 'settings.json'], type: 'file' },
+      { kind: 'settings', base: 'home', rel: ['.config', 'zed', 'settings.json'], type: 'file' },
+    ],
+    workspaceModules: [
+      { kind: 'settings', rel: ['.zed', 'settings.json'], type: 'file' },
+      { kind: 'rule', rel: ['.rules'], type: 'file' },
+      { kind: 'rule', rel: ['AGENTS.md'], type: 'file' },
+    ],
+  },
+  kiro: {
+    id: 'kiro',
+    label: 'Kiro',
+    labelAr: 'كيرو',
+    models: KIRO_MODELS,
+    runnable: false,
+    editor: [
+      { os: 'win32', base: 'local', rel: ['Programs', 'Kiro', 'Kiro.exe'] },
+      { os: 'win32', base: 'local', rel: ['Programs', 'kiro', 'Kiro.exe'] },
+      { os: 'darwin', base: 'files', rel: ['Kiro.app'] },
+      { os: 'linux', base: 'local', rel: ['kiro'] },
+      { base: 'appdata', rel: ['Kiro', 'User', 'settings.json'] },
+    ],
+    cli: [{ command: 'kiro' }],
+    auth: {
+      kind: 'app',
+      reason: 'Kiro signs in inside the IDE with your AWS Builder ID. Opening it here takes you to that sign-in; the session is stored by Kiro, not by this dashboard.',
+      reasonAr: 'كيرو بيسجّل دخولك جوّا البرنامج بحساب AWS Builder ID. الزرار هنا بيفتحه ليك علطول، والجلسة بتتخزن عند كيرو مش عند الشاشة دي.',
+    },
+    userModules: [
+      { kind: 'settings', base: 'appdata', rel: ['Kiro', 'User', 'settings.json'], type: 'file' },
+      { kind: 'rule', base: 'home', rel: ['.kiro', 'steering'], type: 'dir', exts: ['.md'] },
+    ],
+    workspaceModules: [
+      { kind: 'rule', rel: ['.kiro', 'steering'], type: 'dir', exts: ['.md'] },
+      { kind: 'rule', rel: ['.kiro', 'specs'], type: 'dir', exts: ['.md'] },
+      { kind: 'rule', rel: ['AGENTS.md'], type: 'file' },
+    ],
+  },
+  antigravity: {
+    id: 'antigravity',
+    label: 'Antigravity',
+    labelAr: 'أنتيجرافيتي',
+    models: ANTIGRAVITY_MODELS,
+    runnable: false,
+    editor: [
+      { os: 'win32', base: 'local', rel: ['Programs', 'Antigravity', 'Antigravity.exe'] },
+      { os: 'darwin', base: 'files', rel: ['Antigravity.app'] },
+      { os: 'linux', base: 'local', rel: ['antigravity'] },
+      { base: 'appdata', rel: ['Antigravity', 'User', 'settings.json'] },
+    ],
+    cli: [{ command: 'antigravity' }],
+    auth: {
+      kind: 'app',
+      reason: 'Antigravity signs in inside the app with your Google account. Opening it here takes you straight there; the session is stored by Antigravity, not by this dashboard.',
+      reasonAr: 'أنتيجرافيتي بيسجّل دخولك جوّا البرنامج بحساب جوجل. الزرار هنا بيفتحه ليك علطول، والجلسة بتتخزن عنده مش عند الشاشة دي.',
+    },
+    userModules: [
+      { kind: 'settings', base: 'appdata', rel: ['Antigravity', 'User', 'settings.json'], type: 'file' },
+    ],
+    workspaceModules: [
+      { kind: 'rule', rel: ['.agents', 'rules'], type: 'dir', exts: ['.md'] },
+      { kind: 'rule', rel: ['AGENTS.md'], type: 'file' },
+    ],
+  },
+  aider: {
+    id: 'aider',
+    label: 'Aider',
+    labelAr: 'إيدر',
+    models: KEY_MODELS,
+    runnable: false,
+    editor: [{ base: 'home', rel: ['.aider'] }],
+    cli: [
+      { command: 'aider' },
+      { base: 'home', rel: ['.aider', 'bin', 'aider'] },
+    ],
+    auth: {
+      kind: 'none',
+      reason: 'Aider has no account of its own - it runs on YOUR API keys (OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY...) from the environment or a .env file.',
+      reasonAr: 'إيدر ملوش حساب خاص - بيشتغل بمفاتيح الـAPI بتاعتك (OPENAI_API_KEY وANTHROPIC_API_KEY وGEMINI_API_KEY...) من البيئة أو ملف .env.',
+    },
+    userModules: [
+      { kind: 'settings', base: 'home', rel: ['.aider.conf.yml'], type: 'file' },
+      { kind: 'settings', base: 'home', rel: ['.aider.model.settings.yml'], type: 'file' },
+    ],
+    workspaceModules: [
+      { kind: 'settings', rel: ['.aider.conf.yml'], type: 'file' },
+      { kind: 'settings', rel: ['.aiderignore'], type: 'file' },
+      { kind: 'instruction', rel: ['CONVENTIONS.md'], type: 'file' },
+      { kind: 'instruction', rel: ['AGENTS.md'], type: 'file' },
+    ],
+  },
+  opencode: {
+    id: 'opencode',
+    label: 'OpenCode',
+    labelAr: 'أوبن كود',
+    models: KEY_MODELS,
+    runnable: false,
+    editor: [
+      { base: 'home', rel: ['.config', 'opencode'] },
+      { base: 'appdata', rel: ['opencode'] },
+    ],
+    cli: [
+      { command: 'opencode' },
+      { base: 'home', rel: ['.opencode', 'bin', 'opencode'] },
+      { base: 'home', rel: ['.local', 'bin', 'opencode'] },
+    ],
+    // `opencode run "<prompt>"` runs one headless turn.
+    print: ['run'],
+    auth: {
+      kind: 'cli',
+      // `opencode auth login` owns the OAuth dance; the written auth.json is
+      // the readable status (one key per connected account).
+      session: {
+        base: 'home',
+        rel: ['.local', 'share', 'opencode', 'auth.json'],
+        authKeys: ['openai', 'anthropic', 'google', 'github-copilot'],
+        minLength: 1,
+      },
+      loginArgs: ['auth', 'login'],
+      verifyArgs: ['--version'],
+      title: 'OpenCode Login',
+      note: 'Pick the provider to connect when the list appears.',
+    },
+    userModules: [
+      { kind: 'settings', base: 'home', rel: ['.config', 'opencode', 'opencode.json'], type: 'file' },
+      { kind: 'agent', base: 'home', rel: ['.config', 'opencode', 'agent'], type: 'dir', exts: ['.md'] },
+    ],
+    workspaceModules: [
+      { kind: 'settings', rel: ['opencode.json'], type: 'file' },
+      { kind: 'agent', rel: ['.opencode', 'agent'], type: 'dir', exts: ['.md'] },
+      { kind: 'instruction', rel: ['AGENTS.md'], type: 'file' },
+    ],
+  },
+  auggie: {
+    id: 'auggie',
+    label: 'Augment Code',
+    labelAr: 'أوجمنت',
+    models: KEY_MODELS,
+    runnable: false,
+    editor: [
+      { base: 'home', rel: ['.vscode', 'extensions'], match: 'augment.vscode-augment' },
+      { base: 'home', rel: ['.cursor', 'extensions'], match: 'augment.vscode-augment' },
+      { base: 'home', rel: ['.windsurf', 'extensions'], match: 'augment.vscode-augment' },
+      { base: 'home', rel: ['.augment'] },
+    ],
+    cli: [
+      { command: 'auggie' },
+      { base: 'home', rel: ['.augment', 'bin', 'auggie'] },
+    ],
+    // `auggie --print "<prompt>"` is the documented one-shot automation mode.
+    print: ['--print'],
+    auth: {
+      kind: 'cli',
+      // The `auggie` CLI keeps its session JSON under ~/.augment; logging in
+      // means running the tool itself.
+      session: {
+        base: 'home',
+        rel: ['.augment', 'session.json'],
+        authKeys: ['accessToken', 'access_token', 'oauthToken'],
+        minLength: 8,
+      },
+      loginArgs: ['login'],
+      verifyArgs: ['token', 'print'],
+      title: 'Augment Login',
+      note: 'Complete the Augment sign-in when the CLI opens it.',
+    },
+    userModules: [
+      { kind: 'settings', base: 'home', rel: ['.augment', 'settings.json'], type: 'file' },
+    ],
+    workspaceModules: [
+      { kind: 'rule', rel: ['.augment', 'rules'], type: 'dir', exts: ['.md'] },
+      { kind: 'rule', rel: ['AGENTS.md'], type: 'file' },
+    ],
+  },
+  cline: {
+    id: 'cline',
+    label: 'Cline / Roo',
+    labelAr: 'كلاين / رو',
+    models: KEY_MODELS,
+    runnable: false,
+    editor: [
+      { base: 'home', rel: ['.vscode', 'extensions'], match: 'saoudrizwan.claude-dev' },
+      { base: 'home', rel: ['.vscode', 'extensions'], match: 'rooveterinaryinc.roo-cline' },
+      { base: 'home', rel: ['.cursor', 'extensions'], match: 'saoudrizwan.claude-dev' },
+      { base: 'home', rel: ['.cursor', 'extensions'], match: 'rooveterinaryinc.roo-cline' },
+      { base: 'home', rel: ['.windsurf', 'extensions'], match: 'saoudrizwan.claude-dev' },
+    ],
+    cli: [],
+    auth: {
+      kind: 'none',
+      reason: 'Cline/Roo is an extension - the API key or account lives in the extension\'s own settings inside the editor.',
+      reasonAr: 'كلاين/رو إضافة جوّا المحرر - مفتاح الـAPI أو الحساب موجود في إعدادات الإضافة نفسها جوّا المحرر.',
+    },
+    userModules: [],
+    workspaceModules: [
+      { kind: 'rule', rel: ['.clinerules'], type: 'file' },
+      { kind: 'rule', rel: ['.clinerules'], type: 'dir', exts: ['.md'] },
+      { kind: 'rule', rel: ['.roorules'], type: 'file' },
+      { kind: 'rule', rel: ['.roo', 'rules'], type: 'dir', exts: ['.md'] },
+      { kind: 'rule', rel: ['AGENTS.md'], type: 'file' },
+    ],
+  },
+  continue: {
+    id: 'continue',
+    label: 'Continue',
+    labelAr: 'كونتينيو',
+    models: KEY_MODELS,
+    runnable: false,
+    editor: [
+      { base: 'home', rel: ['.vscode', 'extensions'], match: 'continue.continue' },
+      { base: 'home', rel: ['.cursor', 'extensions'], match: 'continue.continue' },
+      { base: 'home', rel: ['.windsurf', 'extensions'], match: 'continue.continue' },
+      { base: 'home', rel: ['.continue'] },
+    ],
+    cli: [],
+    auth: {
+      kind: 'none',
+      reason: 'Continue has no dashboard-managed login - the hub account or model API keys live in ~/.continue config, edited inside the extension.',
+      reasonAr: 'كونتينيو ملوش لوجن من الشاشة دي - حساب الـhub أو مفاتيح الموديلات موجودة في كونفيج ~/.continue وبتتعدّل من جوّا الإضافة.',
+    },
+    userModules: [
+      { kind: 'settings', base: 'home', rel: ['.continue', 'config.yaml'], type: 'file' },
+      { kind: 'settings', base: 'home', rel: ['.continue', 'config.json'], type: 'file' },
+      { kind: 'rule', base: 'home', rel: ['.continue', 'rules'], type: 'dir', exts: ['.md'] },
+    ],
+    workspaceModules: [
+      { kind: 'rule', rel: ['.continue', 'rules'], type: 'dir', exts: ['.md'] },
+      { kind: 'rule', rel: ['.continuerules'], type: 'file' },
+      { kind: 'rule', rel: ['AGENTS.md'], type: 'file' },
+    ],
+  },
 };
 
 export const PROVIDER_IDS = Object.keys(PROVIDERS);
 export const DEFAULT_PROVIDER = 'devin';
+
+// Providers whose CLI can answer a one-shot prompt on stdout (descriptor
+// `print` = the args that precede the prompt text). The dashboard's prompt
+// generator walks this list after Devin's own paths, so any connected tool
+// can do the job - not just the one executor.
+export const PRINT_PROVIDERS = PROVIDER_IDS.filter((id) => Array.isArray(PROVIDERS[id].print));
+export function providerPrintArgs(id) {
+  const spec = PROVIDERS[id] && PROVIDERS[id].print;
+  return Array.isArray(spec) ? spec : null;
+}
 
 // ---------- environment roots ----------
 
@@ -561,12 +1074,135 @@ const AUTH_TTL = 30000;
 const AUTH_TIMEOUT = 12000;
 const authCache = new Map(); // id -> { at, value }
 
+// "Keep me signed in", done honestly: a transient probe failure (timeout, a
+// crashed spawn, an offline network check inside the provider CLI) must NEVER
+// flip a verified login to "not connected". Once `auth status` says connected,
+// the verdict is persisted here and only an EXPLICIT "not logged in" marker
+// from the provider itself may clear it. The .local.json suffix keeps the file
+// gitignored; FF_PROVIDER_AUTH_STORE lets the test suite redirect it.
+const authStoreFile = () => process.env.FF_PROVIDER_AUTH_STORE
+  || path.join(stateDir(__dirname), 'provider-auth.local.json');
+let authStore = null; // lazily read { id -> { loggedIn, account, at } }
+
+function loadAuthStore() {
+  const file = authStoreFile();
+  if (authStore && authStore._file === file) return authStore;
+  try { authStore = JSON.parse(fssync.readFileSync(file, 'utf8')) || {}; }
+  catch { authStore = {}; }
+  authStore._file = file;
+  return authStore;
+}
+
+function persistAuth(id, entry) {
+  const store = loadAuthStore();
+  store[id] = { ...entry, at: Date.now() };
+  const file = authStoreFile();
+  const { _file, ...clean } = store;
+  try {
+    fssync.mkdirSync(path.dirname(file), { recursive: true });
+    fssync.writeFileSync(file, JSON.stringify(clean, null, 2), 'utf8');
+  } catch { /* a read-only install still gets the in-memory verdict */ }
+}
+
+// Some providers (Devin) share ONE credentials file with a desktop app that
+// keeps re-writing it with its own session - so a login that just succeeded
+// reads "not logged in" minutes later. The self-heal: while a login verifies,
+// we keep a snapshot of the credential file; when the provider later denies
+// BUT the file exists with different content (overwritten, not logged out),
+// we restore the verified copy once and re-check. An explicit logout removes
+// or empties the file, which never triggers a restore.
+const credSnapshotFile = (id) => path.join(path.dirname(authStoreFile()), `${id}-credentials.local.toml`);
+
+function snapshotCred(id, credPath) {
+  try {
+    const body = fssync.readFileSync(credPath);
+    if (!body.length) return;
+    fssync.mkdirSync(path.dirname(credSnapshotFile(id)), { recursive: true });
+    fssync.writeFileSync(credSnapshotFile(id), body);
+  } catch { /* snapshotting is best-effort */ }
+}
+
+// Headless truth probe: `devin acp` accepts an API key through the
+// `authenticate` request (`windsurf-api-key` + `_meta.api_key`) - the same
+// call the dashboard's ACP client makes. If that handshake succeeds, the
+// stored credential really is usable, whatever `auth status` claims.
+function acpAuthProbe(cliPath, apiKey, timeoutMs = 12000) {
+  const batch = /\.(cmd|bat)$/i.test(cliPath);
+  const viaNode = /\.(mjs|js|cjs)$/i.test(cliPath);
+  const file = batch ? process.env.ComSpec || 'cmd.exe' : viaNode ? process.execPath : cliPath;
+  const argv = batch ? ['/c', cliPath, 'acp'] : viaNode ? [cliPath, 'acp'] : ['acp'];
+  return new Promise((resolve) => {
+    let proc;
+    try {
+      proc = spawn(file, argv, {
+        stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true,
+        env: { ...process.env, NO_COLOR: '1', TERM: 'dumb' },
+      });
+    } catch { return resolve(false); }
+    let buf = '';
+    let done = false;
+    const finish = (ok) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      try { proc.kill(); } catch {}
+      resolve(ok);
+    };
+    const timer = setTimeout(() => finish(false), timeoutMs);
+    proc.on('error', () => finish(false));
+    proc.stdout.on('data', (d) => {
+      buf += d;
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i).trim();
+        buf = buf.slice(i + 1);
+        if (!line) continue;
+        let m;
+        try { m = JSON.parse(line); } catch { continue; }
+        if (m.id === 1) {
+          proc.stdin.write(JSON.stringify({
+            jsonrpc: '2.0', id: 2, method: 'authenticate',
+            params: { methodId: 'windsurf-api-key', _meta: { api_key: apiKey } },
+          }) + '\n');
+        } else if (m.id === 2) {
+          finish(!m.error);
+        }
+      }
+    });
+    try {
+      proc.stdin.write(JSON.stringify({
+        jsonrpc: '2.0', id: 1, method: 'initialize',
+        params: {
+          protocolVersion: 1,
+          clientInfo: { name: 'flowforge-auth-probe', title: 'FlowForge', version: '1.0.0' },
+          clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
+        },
+      }) + '\n');
+    } catch { finish(false); }
+  });
+}
+
+// Returns 'restored' | 'empty' | 'same' | null.
+function restoreCredIfOverwritten(id, credPath) {
+  const snap = credSnapshotFile(id);
+  if (!isFile(snap) || !isFile(credPath)) return null;
+  try {
+    const cur = fssync.readFileSync(credPath);
+    const good = fssync.readFileSync(snap);
+    if (!cur.length || !cur.toString().trim()) return 'empty'; // logged out - leave it alone
+    if (cur.equals(good)) return 'same';
+    fssync.writeFileSync(credPath, good);
+    return 'restored';
+  } catch { return null; }
+}
+
 // A .cmd/.bat launcher cannot be exec'd directly on Windows, so those go through
 // cmd.exe. Never rejects: a crash is just a non-zero code plus its message.
 function runCli(cliPath, args) {
   const batch = /\.(cmd|bat)$/i.test(cliPath);
-  const file = batch ? process.env.ComSpec || 'cmd.exe' : cliPath;
-  const argv = batch ? ['/c', cliPath, ...args] : args;
+  const viaNode = /\.(mjs|js|cjs)$/i.test(cliPath);
+  const file = batch ? process.env.ComSpec || 'cmd.exe' : viaNode ? process.execPath : cliPath;
+  const argv = batch ? ['/c', cliPath, ...args] : viaNode ? [cliPath, ...args] : args;
   return new Promise((resolve) => {
     execFile(file, argv, {
       timeout: AUTH_TIMEOUT, windowsHide: true, maxBuffer: 1 << 20,
@@ -585,10 +1221,21 @@ function runCli(cliPath, args) {
 // logged out.
 function readAppSession(session, roots) {
   if (!session) return { known: false, file: null };
+  // A provider may keep a readable login in more than one place (Cursor: the
+  // IDE's storage plus the cursor-agent CLI's auth.json). `alts` are tried in
+  // order; the first readable file answers.
+  for (const def of [session, ...(session.alts || [])]) {
+    const one = readSessionDef(def, roots);
+    if (one.known) return one;
+  }
+  return readSessionDef(session, roots);
+}
+
+function readSessionDef(session, roots) {
   const root = roots[session.base] || '';
   if (!root) return { known: false, file: null };
   const file = path.join(root, ...session.rel);
-  if (!isFile(file)) return { known: false, file };
+  if (!isFile(file)) return { known: false, file, missing: true };
   let data;
   try { data = JSON.parse(fssync.readFileSync(file, 'utf8')); } catch { return { known: false, file }; }
   const min = session.minLength || 1;
@@ -617,7 +1264,15 @@ function authCliPath(id, auth, fallback) {
     const p = resolveProbe(roots, probe, overridden);
     if (p && isFile(p)) return p;
   }
-  return fallback || null;
+  if (fallback) return fallback;
+  // No dedicated credential CLI declared: the provider's own CLI owns the
+  // login (claude, codex, gemini), so probe it directly - detection may not
+  // have run, or may have run before an override was set.
+  for (const probe of (PROVIDERS[id].cli || [])) {
+    const p = resolveProbe(roots, probe, overridden);
+    if (p && isFile(p)) return p;
+  }
+  return null;
 }
 
 export function providerAuthKind(id) {
@@ -637,30 +1292,121 @@ export async function checkProviderAuth(id, where, force = false) {
 
   const detection = typeof where === 'string' || !where ? { cliPath: where || null } : where;
   const roots = rootsFor(id);
+  const overridden = !!process.env['FF_PROVIDER_HOME_' + id.toUpperCase()];
   const cliPath = authCliPath(id, auth, detection.cliPath);
   const installed = detection.installed !== undefined
     ? !!detection.installed : !!(detection.editorPath || detection.cliPath);
 
   const base = {
     provider: id, kind: auth.kind, canLogin: false, canOpen: false,
-    loggedIn: false, known: false, account: null, cli: cliPath || null, detail: '',
+    loggedIn: false, known: false, stale: false, expired: false, healed: false,
+    altLogin: !!auth.loginAltArgs,
+    account: null, cli: cliPath || null, detail: '',
     reason: auth.reason || '', reasonAr: auth.reasonAr || '',
   };
   let value = base;
-  if (auth.kind === 'cli' && cliPath) {
-    const { code, out } = await runCli(cliPath, auth.statusArgs || ['auth', 'status']);
-    const text = out.trim();
-    const denied = auth.notLoggedIn ? auth.notLoggedIn.test(text) : false;
-    const account = auth.account ? (auth.account.exec(text) || [])[1] || null : null;
+  if (auth.kind === 'cli' && cliPath && auth.session) {
+    // A CLI-owned login with no `auth status` subcommand (Gemini): the OAuth
+    // creds file on disk is the readable truth. known:false means "cannot
+    // tell", never a confident "logged out".
+    const sess = readAppSession(auth.session, roots);
+    let loggedIn = sess.known ? sess.loggedIn : false;
+    let stale = false;
+    let account = sess.plan || null;
+    if (sess.known) {
+      persistAuth(id, { loggedIn: sess.loggedIn, account });
+    } else if (!sess.missing && loadAuthStore()[id]?.loggedIn) {
+      // The creds file exists but is unreadable right now (locked, mid-rewrite
+      // by the tool itself) - the last verified verdict stands instead of a
+      // false "not connected" nag. A MISSING file is a real sign-out candidate,
+      // not a transient state, so it never resurrects a verdict.
+      loggedIn = true;
+      stale = true;
+      account = account || loadAuthStore()[id].account || null;
+    }
+    value = {
+      ...base,
+      canLogin: true,
+      known: sess.known,
+      loggedIn,
+      stale,
+      account,
+      detail: sess.known ? `Session read from ${path.basename(sess.file)}`
+        : stale ? 'Verified earlier; the session file is not readable just now'
+          : 'Session state is not readable from disk',
+    };
+  } else if (auth.kind === 'cli' && cliPath) {
+    const statusArgs = auth.statusArgs || ['auth', 'status'];
+    const credPath = auth.credFile
+      ? resolveProbe(roots, { ...auth.credFile }, overridden) : null;
+    let { code, out } = await runCli(cliPath, statusArgs);
+    let text = out.trim();
+    let denied = auth.notLoggedIn ? auth.notLoggedIn.test(text) : false;
+    let healed = false;
+    // The shared-file clobber: the provider denies while a DIFFERENT credential
+    // file sits on disk than the one that verified - a sibling app overwrote it.
+    // Restore the verified snapshot once and let the provider decide again.
+    if (denied && credPath && restoreCredIfOverwritten(id, credPath) === 'restored') {
+      ({ code, out } = await runCli(cliPath, statusArgs));
+      text = out.trim();
+      denied = auth.notLoggedIn ? auth.notLoggedIn.test(text) : false;
+      healed = code === 0 && !denied;
+    }
+    let acpVerified = false;
+    // The status command lies sometimes: the stored key is accepted by `devin
+    // acp` while `auth status` rejects it. When declared, the ACP handshake is
+    // the real tiebreaker for a denial.
+    if (denied && !healed && auth.acpCheck && cliPath && credPath && isFile(credPath)) {
+      try {
+        const keyMatch = fssync.readFileSync(credPath, 'utf8')
+          .match(/windsurf_api_key\s*=\s*"([^"]+)"/);
+        if (keyMatch) acpVerified = await acpAuthProbe(cliPath, keyMatch[1]);
+      } catch { acpVerified = false; }
+      if (acpVerified) { denied = false; code = 0; }
+    }
+    let account = auth.account ? (auth.account.exec(text) || [])[1] || null : null;
+    const verified = code === 0 && !denied;
+    let loggedIn = verified;
+    let stale = false;
+    let expired = false;
+    if (verified) {
+      persistAuth(id, { loggedIn: true, account });
+      if (credPath && isFile(credPath)) snapshotCred(id, credPath);
+    } else if (denied) {
+      persistAuth(id, { loggedIn: false });
+      // The provider says "logged out" while a credential file exists: a real
+      // login ran before and the stored session has expired - which is a
+      // different ask for the user than "you never signed in". An empty file
+      // means a clean logout, not an expiry.
+      expired = !!credPath && isFile(credPath)
+        && !!fssync.readFileSync(credPath, 'utf8').trim();
+    } else if (loadAuthStore()[id]?.loggedIn) {
+      // The probe errored WITHOUT the provider saying "logged out" - a flaky
+      // spawn or an offline machine. Keep the verified verdict and say it is
+      // from last time, instead of nagging for a login that already happened.
+      const stored = loadAuthStore()[id];
+      loggedIn = true;
+      stale = true;
+      account = account || stored.account || null;
+    }
     value = {
       ...base,
       canLogin: true,
       known: true,
       // Exit 0 AND no explicit "not logged in" marker: CLIs report a missing
       // login on stdout as often as through the exit code, so demand both.
-      loggedIn: code === 0 && !denied,
+      loggedIn,
+      stale,
+      expired,
+      healed,
       account,
-      detail: text.split(/\r?\n/).filter(Boolean).slice(0, 3).join(' | ').slice(0, 300),
+      detail: acpVerified
+        ? 'Verified via the stored ACP key (the status command disagrees)'
+        : stale
+          ? 'Verified earlier; the live check could not complete just now'
+          : healed
+            ? 'Your stored login was overwritten by another app; the verified credentials were restored'
+            : text.split(/\r?\n/).filter(Boolean).slice(0, 3).join(' | ').slice(0, 300),
     };
   } else if (auth.kind === 'cli' && !cliPath) {
     value = { ...base, detail: 'CLI not found on this machine' };
@@ -670,15 +1416,30 @@ export async function checkProviderAuth(id, where, force = false) {
     // Either way the only real login is the editor's own window, so the button
     // opens it - but only when there IS an app to open.
     const sess = readAppSession(auth.session, roots);
+    let loggedIn = sess.known ? sess.loggedIn : false;
+    let stale = false;
+    let account = sess.plan || null;
+    if (sess.known) {
+      persistAuth(id, { loggedIn: sess.loggedIn, account });
+    } else if (installed && !sess.missing && loadAuthStore()[id]?.loggedIn) {
+      // Same sticky rule as the CLI branch: an unreadable session store is a
+      // transient state, not a sign-out. Only the app itself declaring "no
+      // session" (or a genuinely emptied file) clears the verdict.
+      loggedIn = true;
+      stale = true;
+      account = account || loadAuthStore()[id].account || null;
+    }
     value = {
       ...base,
       canOpen: installed,
       known: sess.known,
-      loggedIn: sess.known ? sess.loggedIn : false,
-      account: sess.plan || null,
+      loggedIn,
+      stale,
+      account,
       detail: !installed ? 'Not installed on this machine'
         : sess.known ? `Session read from ${path.basename(sess.file)}`
-          : 'Session state is not readable from disk',
+          : stale ? 'Verified earlier; the session store is not readable just now'
+            : 'Session state is not readable from disk',
     };
   }
   authCache.set(id, { at: Date.now(), value });
@@ -700,15 +1461,20 @@ export function providerLoginScript(id, cliPath, plat = process.platform) {
   cliPath = authCliPath(id, auth, cliPath);
   if (!cliPath) return null;
   const title = auth.title || `${provider.label} login`;
+  const verify = auth.verifyArgs || auth.statusArgs || auth.loginArgs || ['auth', 'status'];
+  const build = (scriptTitle, note, loginArgs) => loginScriptLines({
+    title: scriptTitle, note, cliPath,
+    steps: [loginArgs, verify], plat,
+  });
   return {
     title,
-    lines: loginScriptLines({
-      title,
-      note: auth.note,
-      cliPath,
-      steps: [auth.loginArgs || ['auth', 'login'], auth.statusArgs || ['auth', 'status']],
-      plat,
-    }),
+    lines: build(title, auth.note, auth.loginArgs || ['auth', 'login']),
+    // A second login path (e.g. Devin's --force-manual-token-flow): a durable
+    // credential for users tired of the browser session being rotated.
+    alt: auth.loginAltArgs ? {
+      title: auth.loginAltTitle || `${title} (token)`,
+      lines: build(auth.loginAltTitle || `${title} (token)`, auth.loginAltNote, auth.loginAltArgs),
+    } : null,
   };
 }
 

@@ -1,7 +1,7 @@
 // gate-wait.mjs - Dashboard gate: publish an approval request in .workbench/commands.json and wait for the answer.
 // The dashboard shows Approve/Reject buttons and writes the response into the same file.
 // Exit codes: 0 = approved, 2 = rejected, 3 = timeout.
-// Usage: node gate-wait.mjs "C:\path\to\project" <stage> [question] [questionAr] [timeoutSec]
+// Usage: node gate-wait.mjs "<path to project>" <stage> [question] [questionAr] [timeoutSec]
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -26,6 +26,8 @@ console.log(`GATE: waiting for decision on stage '${STAGE}' (timeout ${TIMEOUT_S
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const deadline = Date.now() + TIMEOUT_SEC * 1000;
+const started = Date.now();
+let lastBeat = started;
 
 function clearFile() {
   try { fs.writeFileSync(cmdFile, JSON.stringify({ gate: null, response: null }, null, 2), 'utf8'); } catch {}
@@ -33,6 +35,12 @@ function clearFile() {
 
 while (Date.now() < deadline) {
   await sleep(POLL_MS);
+  // A line every 20s keeps agent shells from treating the wait as a hung
+  // command (most background or kill a silent process).
+  if (Date.now() - lastBeat >= 20000) {
+    lastBeat = Date.now();
+    console.log(`WAITING: ${Math.round((Date.now() - started) / 1000)}s - no decision yet on '${STAGE}'`);
+  }
   let doc = null;
   try { doc = JSON.parse(fs.readFileSync(cmdFile, 'utf8')); } catch { continue; } // mid-write; retry
   const resp = doc && doc.response;

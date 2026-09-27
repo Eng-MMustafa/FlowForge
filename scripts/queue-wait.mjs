@@ -5,7 +5,7 @@
 //   exit 0 + line `TASK: {json}`  -> a run request arrived (queue consumed)
 //   exit 2 + line `STOP`          -> the dashboard asked the daemon to stop
 //   exit 3 + line `IDLE`          -> timeout elapsed with no work (loop again)
-// Usage: node queue-wait.mjs "C:\path\to\project" [timeoutSec]
+// Usage: node queue-wait.mjs "<path to project>" [timeoutSec]
 import fs from 'node:fs';
 import path from 'node:path';
 

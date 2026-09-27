@@ -67,10 +67,14 @@ async function download() {
   if (!res.ok) die(`download failed (HTTP ${res.status}) - is the branch "${BRANCH}" right?`);
   await pipeline(Readable.fromWeb(res.body), fs.createWriteStream(tmpZip));
   // Windows 10+ and macOS ship a tar that reads zip archives; GNU tar on Linux
-  // does not, so `unzip` is the fallback there.
+  // does not, so keep trying: bsdtar, then unzip, then python3's zipfile
+  // (python3 is on nearly every Ubuntu/Debian machine, even minimal ones).
   const extracted = (have('tar') && run('tar', ['-xf', tmpZip, '-C', tmpDir]).status === 0)
-    || (have('unzip') && run('unzip', ['-q', tmpZip, '-d', tmpDir]).status === 0);
-  if (!extracted) die('could not extract the archive - install Git (or unzip) and retry');
+    || (have('bsdtar') && run('bsdtar', ['-xf', tmpZip, '-C', tmpDir]).status === 0)
+    || (have('unzip') && run('unzip', ['-q', tmpZip, '-d', tmpDir]).status === 0)
+    || (have('python3') && run('python3', ['-c',
+      'import sys,zipfile;zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])', tmpZip, tmpDir]).status === 0);
+  if (!extracted) die('could not extract the archive - install Git, unzip or python3 and retry');
   const inner = path.join(tmpDir, fs.readdirSync(tmpDir)[0]);
   fs.mkdirSync(path.dirname(TARGET), { recursive: true });
   fs.cpSync(inner, TARGET, { recursive: true, force: true });

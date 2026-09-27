@@ -7,7 +7,7 @@
 [![npm](https://img.shields.io/npm/v/flowforge-cli?color=cb3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/flowforge-cli)
 [![Node](https://img.shields.io/badge/node-%E2%89%A518-3ecc6b?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-6fb8ff)](#zero-dependencies)
-[![Tests](https://img.shields.io/badge/tests-288%20passing-3ecc6b)](#tests)
+[![Tests](https://img.shields.io/badge/tests-453%20passing-3ecc6b)](#tests)
 [![License](https://img.shields.io/badge/license-MIT-f0a92e)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-6fb8ff)](#requirements)
 
@@ -47,7 +47,7 @@ Or get a real `flowforge` (alias `ff`) command that works from any folder — on
 npm i -g flowforge-cli        # or, inside a git clone: npm link
 ```
 
-Then `flowforge` (or `ff`) starts the dashboard on whatever folder you are in — see [The `flowforge` command](#the-flowforge-command).
+This installs the latest published release. Then `flowforge` (or `ff`) starts the dashboard on whatever folder you are in — see [The `flowforge` command](#the-flowforge-command).
 
 <div align="center">
 
@@ -74,8 +74,11 @@ Then `flowforge` (or `ff`) starts the dashboard on whatever folder you are in �
   - [6. Agents](#6-agents)
   - [7. Skills](#7-skills)
   - [8. Executors — who does the work](#8-executors--who-does-the-work)
-  - [9. Studio — the wordless builder](#9-studio--the-wordless-builder)
-  - [10. Themes and language](#10-themes-and-language)
+  - [9. Usage & cost](#9-usage--cost--exact-tokens-acus-and-dollars)
+  - [10. Gates — dashboard, AI review, resume](#10-gates--dashboard-ai-review-resume)
+  - [11. Runs — parallel projects, queue and schedules](#11-runs--parallel-projects-queue-and-schedules)
+  - [12. Studio — the wordless builder](#12-studio--the-wordless-builder)
+  - [13. Themes and language](#13-themes-and-language)
 - [Flow files — the schema](#flow-files--the-schema)
 - [Built-in flows](#built-in-flows)
   - [Workflows by role](#workflows-by-role)
@@ -345,7 +348,7 @@ One card per tool, built entirely from what is really on the machine:
 - **Sign in** opens a real terminal on the tool's own login command — your password or token never passes through the dashboard, and only key *presence* is ever read, never a token value.
 - **Use this one** switches the executor, which filters flows and models, and retargets the models pinned on the canvas to the closest model the new tool actually has.
 
-### 8½. Usage & cost — exact tokens and ACUs, per task and per month
+### 9. Usage & cost — exact tokens, ACUs and dollars
 
 Devin's CLI keeps a local session log (`<devin config>/cli/sessions.db`) that records **every model call** with its exact input / output / cache tokens, the model that answered and the ACU cost it committed. The dashboard reads it directly (read-only, through the `node:sqlite` built into Node 22.13+ — still zero dependencies), de-duplicates the copies compaction leaves behind, and turns it into:
 
@@ -355,14 +358,14 @@ Devin's CLI keeps a local session log (`<devin config>/cli/sessions.db`) that re
 
 **Dollars are computed, not typed in.** Devin publishes its official price per model (USD per 1M input / output / cache-write / cache-read tokens, per plan tier) on its [models page](https://docs.devin.ai/desktop/models). The dashboard downloads that list (cached for a day in `devin-prices.local.json`), prices every call in your log with it, and measures the ratio to the ACUs Devin committed. On a real account that ratio is one constant — **1 ACU = $2.00, verified on 2,288 of 2,292 calls** — so every figure is shown in dollars at Devin's list prices, together with how many calls confirmed the rate. The pre-run estimate prices each stage token-class by token-class with its model's official price. Enterprise customers whose order form sets a different price per ACU can enter it as a contract rate, and it overrides the list price everywhere, reports included. `FF_DEVIN_PRICES=<file>` points at a local copy for offline machines.
 
-### Gates that cannot get lost, and an AI-review gate
+### 10. Gates — dashboard, AI review, resume
 
 - **Over ACP the gate is a conversation turn.** The orchestrator is started with `--headless=acp`; at a gate it writes the request, prints `GATE_WAIT <stage>` and ends its turn. The dashboard keeps the session open (the run stays "running"), shows the question, and sends your decision back as the next message (`GATE_DECISION <stage> approve|reject` + your note). Nothing has to stay alive inside the agent's shell, so no tool timeout can turn a gate into a silent stall. If the orchestrator forgets to write the request, the dashboard writes it from the flow file; if it stops mid-flow without a gate, it is nudged once, then the run is marked failed instead of hanging.
 - **CLI / daemon runs** (`--headless=cli`) keep using `gate-wait.mjs`, which now prints a heartbeat every 20 s and is re-run up to 8 times (≈2 h) instead of ever "falling back to the terminal" that nobody reads.
 - **`--gates=ai`**: the new `critic` agent (`agents/critic.md`) reviews each stage's artifact against its goal and done-criteria and answers `VERDICT: APPROVE` or `VERDICT: REVISE` with numbered issues; the stage agent fixes them and is reviewed again (max 2 rounds per gate), then the flow continues on its own. Ship stops at commit, never push. Selectable in the run bar, Settings, the queue/schedule forms and per step on the canvas.
 - Whole-run ACP timeout is 12 h (`FF_RUN_TIMEOUT_MS`) instead of the old 30 min.
 
-### Runs tab — several projects at once, a queue, and a timetable
+### 11. Runs — parallel projects, queue and schedules
 
 - **Parallel projects.** Each project has its own `state.json`, so runs in *different* projects execute at the same time (cap: `FF_MAX_PARALLEL`, default 3); within one project runs are sequential. The Runs tab shows every run in flight with its stage progress, elapsed time and live cost, a Stop button, and a gate banner that switches you to whichever project is waiting for a decision.
 - **Queue.** Press Run while the project is busy and the task lines up instead of being refused; or paste several tasks (one per line, any project, any flow) under "Add tasks". Items start on their own as soon as their project and an executor are free, can be reordered or removed, and survive a dashboard restart.
@@ -390,13 +393,13 @@ Token-only records are priced from Devin's official list first (current frontier
 
 Nothing on that page is estimated — only the pre-run chip is, and it says so (`≈`). On Node older than 22.13 the tab says the log is unavailable instead of guessing.
 
-### 9. Studio — the wordless builder
+### 12. Studio — the wordless builder
 
 ![Studio](https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/docs/screenshots/12-studio.png)
 
 A second screen at `/studio` with **no text at all** — only icons, sliders, toggles and drag handles. Build a pipeline, set quality and gates, and hit play. It emits ordinary flow JSON, so anything built here opens in the normal editor.
 
-### 10. Themes and language
+### 13. Themes and language
 
 ![Light theme](https://raw.githubusercontent.com/Eng-MMustafa/FlowForge/main/docs/screenshots/11-overview-light.png)
 
@@ -653,7 +656,7 @@ The dashboard is a plain `node:http` server; every screen is built on this API, 
 node dashboard\test\run-tests.mjs
 ```
 
-**288 checks, no test framework.** The suite spawns its own server on a spare port with a temporary scratch project, and restores your registry afterwards. It covers UI script syntax, complete bilingual i18n key coverage, the Studio's text-free guarantee, the flow↔graph round trip and cycle rejection, every API endpoint, the watcher feed, the gate protocol, provider detection/auth/model mapping, path-traversal guards, and the document converter (real PDF bytes, and `.docx`/`.xlsx` opened with Windows' own ZIP reader).
+**453 checks, no test framework.** The suite spawns its own server on a spare port with a temporary scratch project, and restores your registry afterwards. It covers UI script syntax, complete bilingual i18n key coverage, the Studio's text-free guarantee, the flow↔graph round trip and cycle rejection, every API endpoint, the watcher feed, the gate protocol, provider detection/auth/model mapping, path-traversal guards, and the document converter (real PDF bytes, and `.docx`/`.xlsx` opened with Windows' own ZIP reader).
 
 ---
 
@@ -706,11 +709,17 @@ Runtime state lives in each **target project** under `.workbench/` — never in 
 
 **`devin` is not found.** Set `DEVIN_CLI` to the executable path, or make sure it is on `PATH`. The dashboard shows the resolved path on the Settings tab.
 
-**A run is stuck at a gate.** Check the gate mode: with `terminal` the orchestrator waits in the chat window, not in the dashboard. Switch to `dashboard` in Settings to answer from the browser.
+**A run is stuck at a gate.** Check the gate mode: with `terminal` the orchestrator waits in the chat window, not in the dashboard. Switch to `dashboard` in Settings (or pick `ai` to let the critic decide) and answer from the browser. Runs started from the dashboard over ACP park at the gate and resume from your click; a gate you answered that still shows as waiting belongs to a run that no longer exists — the pipeline panel marks it *interrupted* and offers **Resume from here**.
+
+**The run stopped and I don't want to start over.** Press **Resume from here** on the Overview (or `/flow-resume` in the chat): finished stages keep their artifacts, the interrupted stage is redone, a stage that was only waiting for approval is asked again.
+
+**Nothing starts although I pressed Run.** Look at the Runs tab: the task is probably queued behind a run in the same project, or the parallel cap (`FF_MAX_PARALLEL`, default 3) is full. A queued item waiting for an executor says so.
 
 **PDF export prints `?` for Arabic.** The builtin PDF writer is Latin-only. Install Edge or Chrome, or set `DEVIN_BROWSER` — the browser engine handles RTL correctly.
 
 **The dashboard shows an old project.** Switch it from the picker in the header; the active project is stored per browser.
+
+**The Usage tab shows no other tool.** Claude Code, Codex, Gemini CLI, OpenCode, Cline, Zed and Antigravity appear as soon as their local records exist; Cursor, Aider and the Copilot CLI only record after you switch them on in the Tracking panel. Windsurf, Kiro and Trae keep usage on their servers — nothing local exists to read.
 
 ---
 

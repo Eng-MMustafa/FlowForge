@@ -1,5 +1,5 @@
 // collect-context.mjs - Gather deterministic project facts (no AI) into .workbench/artifacts/context.md
-// Usage: node collect-context.mjs "C:\path\to\project"
+// Usage: node collect-context.mjs "<path to project>"
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -61,9 +61,9 @@ function walk(dir, depth, prefix) {
   for (const e of entries) {
     if (count >= MAX_TREE) return;
     if (EXCLUDE.has(e.name)) continue;
-    const rel = prefix ? `${prefix}\\${e.name}` : e.name;
+    const rel = prefix ? `${prefix}/${e.name}` : e.name;
     if (e.isDirectory()) {
-      put(`${rel}\\`); count++;
+      put(`${rel}/`); count++;
       walk(path.join(dir, e.name), depth + 1, rel);
     } else {
       put(rel); count++;

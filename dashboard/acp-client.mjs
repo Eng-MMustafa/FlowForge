@@ -25,9 +25,17 @@ export function readStoredKey() {
   } catch { return null; }
 }
 
-// One ACP conversation as a handle: { promise, kill, proc }.
+// One ACP conversation as a handle: { promise, kill, close, prompt, proc }.
 // onUpdate(updateJson) receives every session/update payload.
-export function startAcp({ cwd, prompt, model, cliPath = process.env.DEVIN_CLI || DEFAULT_CLI, onUpdate = () => {}, timeoutMs = 30 * 60 * 1000 }) {
+// `promise` settles when the FIRST turn ends. With keepAlive the session stays
+// open afterwards and `prompt(text)` sends further turns (a dashboard gate
+// decision, for instance) until `close()`; without it the process is killed
+// as soon as the first turn is over.
+// interactiveAuth=false is the default ON PURPOSE: the ACP `authenticate`
+// request can pop the CLI's interactive login screen (or a browser tab) while
+// the user is just pressing "Generate". The dashboard never wants that behind
+// their back - a failed auth must surface as an error, never as a login UI.
+export function startAcp({ cwd, prompt, model, cliPath = process.env.DEVIN_CLI || DEFAULT_CLI, onUpdate = () => {}, timeoutMs = 30 * 60 * 1000, interactiveAuth = false, keepAlive = false }) {
   const env = { ...process.env, NO_COLOR: '1', TERM: 'dumb' };
   if (!env.WINDSURF_API_KEY) {
     const key = readStoredKey();
@@ -43,24 +51,40 @@ export function startAcp({ cwd, prompt, model, cliPath = process.env.DEVIN_CLI |
   const proc = spawn(cmd, cmdArgs, { cwd, env, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
 
   let settled = false;
-  const promise = new Promise((resolve, reject) => {
-    runConversation(resolve, reject);
-  });
-  const kill = () => { try { proc.kill(); } catch {} };
-
-  async function runConversation(resolve, reject) {
-
+  let closed = false;
   let nextId = 1;
   const pending = new Map(); // id -> {resolve, reject}
-  let buffer = '';
   let sessionId = null;
-
-  const send = (obj) => { proc.stdin.write(JSON.stringify(obj) + '\n'); };
+  const send = (obj) => { try { proc.stdin.write(JSON.stringify(obj) + '\n'); } catch { /* process gone */ } };
   const request = (method, params) => new Promise((resolve, reject) => {
+    if (closed) { reject(new Error('acp session closed')); return; }
     const id = nextId++;
     pending.set(id, { resolve, reject });
     send({ jsonrpc: '2.0', id, method, params });
   });
+  // A dead process must never leave a caller waiting on a reply.
+  proc.on('exit', () => {
+    closed = true;
+    for (const p of pending.values()) p.reject(new Error('acp process exited'));
+    pending.clear();
+  });
+
+  let killer = null;
+  const kill = () => { closed = true; clearTimeout(killer); try { proc.kill(); } catch {} };
+  const promise = new Promise((resolve, reject) => {
+    runConversation(resolve, reject);
+  });
+  // A later turn on the same session; resolves with its stop reason.
+  const followUp = async (text) => {
+    if (!sessionId) throw new Error('no acp session yet');
+    const r = await request('session/prompt', { sessionId, prompt: [{ type: 'text', text }] });
+    onUpdate({ stopReason: r && r.stopReason });
+    return r && r.stopReason;
+  };
+
+  async function runConversation(resolve, reject) {
+
+  let buffer = '';
 
   proc.stdout.on('data', (chunk) => {
     buffer += chunk.toString('utf8');
@@ -102,10 +126,25 @@ export function startAcp({ cwd, prompt, model, cliPath = process.env.DEVIN_CLI |
     }
   });
 
+  // If the CLI decides to draw its interactive login screen instead of speaking
+  // JSON-RPC, that text lands on stdout/stderr - kill the child fast rather
+  // than leave a half-open login UI running behind the user's back.
+  const ACP_LOGIN_MARKER = /how would you like to log in|not logged in|sign in to continue/i;
+  const watchForLogin = (d) => {
+    // Only before a session exists: afterwards the phrase could appear inside
+    // a legit agent message, and no login screen can be drawn anyway.
+    if (sessionId || settled) return;
+    if (ACP_LOGIN_MARKER.test(String(d))) {
+      settled = true;
+      try { proc.kill(); } catch {}
+      reject(new Error('devin cli wants interactive login'));
+    }
+  };
+  proc.stdout.on('data', watchForLogin);
   let stderrBuf = '';
-  proc.stderr.on('data', (d) => { stderrBuf += d; });
+  proc.stderr.on('data', (d) => { stderrBuf += d; watchForLogin(d); });
 
-  const killer = setTimeout(() => {
+  killer = setTimeout(() => {
     try { proc.kill(); } catch {}
     if (!settled) { settled = true; reject(new Error('ACP timeout')); }
   }, timeoutMs);
@@ -117,24 +156,31 @@ export function startAcp({ cwd, prompt, model, cliPath = process.env.DEVIN_CLI |
       clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false },
     });
 
-    const authMethods = (init && init.authMethods) || [];
-    // `authenticate` can start an interactive browser login. With a key in the
-    // environment the session usually opens without it, so it is only used as
-    // a recovery step when session/new is refused.
+    // The ACP host is the SOLE source of credentials (the CLI deliberately
+    // ignores the on-disk store in acp mode). With a key we authenticate
+    // headlessly - `windsurf-api-key` accepts the key via `_meta.api_key` and
+    // never touches a browser or a login screen. The browser PKCE method
+    // (`devin-browser`) only ever runs when the caller explicitly opted into
+    // interactive auth.
     const haveKey = !!env.WINDSURF_API_KEY;
-    if (authMethods.length && !haveKey) {
-      await request('authenticate', { methodId: authMethods[0].id });
-      onUpdate({ authenticated: authMethods[0].id });
+    if (haveKey) {
+      await request('authenticate', { methodId: 'windsurf-api-key', _meta: { api_key: env.WINDSURF_API_KEY } });
+      onUpdate({ authenticated: 'windsurf-api-key' });
+    } else if (interactiveAuth) {
+      await request('authenticate', { methodId: 'devin-browser' });
+      onUpdate({ authenticated: 'devin-browser' });
+    } else {
+      throw new Error('devin acp requires login (no usable credential)');
     }
 
     let s;
     try {
       s = await request('session/new', { cwd, mcpServers: [] });
     } catch (e) {
-      if (!authMethods.length || !haveKey) throw e;
+      if (!interactiveAuth) throw e;
       onUpdate({ authRetry: e.message });
-      await request('authenticate', { methodId: authMethods[0].id });
-      onUpdate({ authenticated: authMethods[0].id });
+      await request('authenticate', { methodId: 'devin-browser' });
+      onUpdate({ authenticated: 'devin-browser' });
       s = await request('session/new', { cwd, mcpServers: [] });
     }
     sessionId = s.sessionId;
@@ -148,13 +194,15 @@ export function startAcp({ cwd, prompt, model, cliPath = process.env.DEVIN_CLI |
     if (!settled) { settled = true; resolve({ stopReason: result && result.stopReason, sessionId }); }
   } catch (e) {
     if (!settled) { settled = true; reject(e); }
+    kill();
   } finally {
-    clearTimeout(killer);
-    try { if (sessionId) proc.kill(); } catch {}
+    // keepAlive: the session outlives the first turn; the overall timeout
+    // still bounds the whole conversation.
+    if (!keepAlive) { clearTimeout(killer); kill(); }
   }
   }
 
-  return { promise, kill, proc };
+  return { promise, kill, close: kill, prompt: followUp, proc, sessionId: () => sessionId };
 }
 
 // Back-compat convenience wrapper.

@@ -53,6 +53,83 @@ export function agentCredentialsFile(opts = {}) {
   return dir ? path.join(dir, 'credentials.toml') : '';
 }
 
+// ---------- other AI tools' usage records ----------
+
+// The base folders other tools keep their data in. FF_TOOL_HOME re-roots all
+// of them (tests, portable setups) so nothing real is ever read or written.
+export function toolRoots(plat = plat0(), env = process.env, home = home0()) {
+  const h = env.FF_TOOL_HOME || home;
+  const redirected = !!env.FF_TOOL_HOME;
+  if (plat === 'win32') {
+    return {
+      home: h,
+      appdata: redirected ? path.join(h, 'AppData', 'Roaming') : (env.APPDATA || path.join(h, 'AppData', 'Roaming')),
+      localData: redirected ? path.join(h, 'AppData', 'Local') : (env.LOCALAPPDATA || path.join(h, 'AppData', 'Local')),
+      xdgData: path.join(h, '.local', 'share'),
+      xdgConfig: path.join(h, '.config'),
+    };
+  }
+  if (plat === 'darwin') {
+    const support = path.join(h, 'Library', 'Application Support');
+    return { home: h, appdata: support, localData: support, xdgData: path.join(h, '.local', 'share'), xdgConfig: path.join(h, '.config') };
+  }
+  const xdgData = (!redirected && env.XDG_DATA_HOME) || path.join(h, '.local', 'share');
+  const xdgConfig = (!redirected && env.XDG_CONFIG_HOME) || path.join(h, '.config');
+  return { home: h, appdata: xdgConfig, localData: xdgData, xdgData, xdgConfig };
+}
+
+// Where FlowForge's own usage recorders (hooks, exporters we switched on)
+// write. Deliberately outside the install folder so an update never wipes it.
+export function usageLogDir(plat = plat0(), env = process.env, home = home0()) {
+  return env.FF_USAGE_DIR || path.join(toolRoots(plat, env, home).home, '.flowforge', 'usage');
+}
+
+// Persistent per-user environment variables (a tool that only logs usage when
+// a variable is set). Windows keeps them in the user registry hive; POSIX
+// shells read them from a marked block in the user's profile files, so the
+// block can be rewritten or removed without touching anything else.
+export const PROFILE_BLOCK_START = '# >>> flowforge usage tracking >>>';
+export const PROFILE_BLOCK_END = '# <<< flowforge usage tracking <<<';
+
+export function userEnvCommands(set = {}, unset = [], plat = plat0()) {
+  if (plat !== 'win32') return [];
+  return [
+    ...Object.entries(set).map(([k, v]) => ({ cmd: 'setx', args: [k, String(v)] })),
+    ...unset.map((k) => ({ cmd: 'reg', args: ['delete', 'HKCU\\Environment', '/v', k, '/f'] })),
+  ];
+}
+
+export function profileFiles(plat = plat0(), env = process.env, home = home0()) {
+  const h = toolRoots(plat, env, home).home;
+  const candidates = plat === 'darwin' ? ['.zshrc', '.bash_profile', '.profile'] : ['.profile', '.bashrc', '.zshrc'];
+  const found = candidates.map((f) => path.join(h, f)).filter((f) => fs.existsSync(f));
+  return found.length ? found : [path.join(h, candidates[0])];
+}
+
+// Replace (or drop, with an empty map) FlowForge's block in one profile text.
+export function withProfileBlock(text, vars = {}) {
+  const src = String(text || '');
+  const re = new RegExp(`\\n?${PROFILE_BLOCK_START.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?${PROFILE_BLOCK_END.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\n?`, 'g');
+  const stripped = src.replace(re, '\n').replace(/\n{3,}/g, '\n\n');
+  const entries = Object.entries(vars);
+  if (!entries.length) return stripped.replace(/^\n+/, '');
+  const quote = (v) => `'${String(v).replace(/'/g, `'\\''`)}'`;
+  const block = [PROFILE_BLOCK_START, ...entries.map(([k, v]) => `export ${k}=${quote(v)}`), PROFILE_BLOCK_END].join('\n');
+  return `${stripped.replace(/\s*$/, '')}${stripped.trim() ? '\n\n' : ''}${block}\n`;
+}
+
+// The agent CLI's local session log (SQLite): every assistant turn with its
+// exact input/output/cache tokens, model and billed ACU cost. It sits in a
+// `cli` folder under the config dir; Linux builds may keep data under
+// XDG_DATA_HOME instead, so that is probed too.
+export function agentSessionsDbCandidates(plat = plat0(), env = process.env, home = home0()) {
+  const out = agentConfigCandidates(plat, env, home).map((d) => path.join(d, 'cli', 'sessions.db'));
+  if (plat === 'linux') {
+    out.push(path.join(env.XDG_DATA_HOME || path.join(home, '.local', 'share'), 'devin', 'cli', 'sessions.db'));
+  }
+  return out;
+}
+
 // Where the Devin CLI binary sits when it was installed with the editor. PATH
 // is always tried first by the callers; these are the "installed but not on
 // PATH" fallbacks.
