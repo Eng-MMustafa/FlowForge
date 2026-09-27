@@ -243,6 +243,93 @@ console.log('# static checks');
   }
 }
 
+// The `flowforge` / `ff` command: one table drives parsing and help, paths are
+// read from the user's folder (not the install folder), and a typo fails
+// before start.mjs can touch the Devin wiring. Never runs `test` from here -
+// that would start this suite inside itself.
+{
+  const C = await import('../../scripts/lib/cli.mjs');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ff-cli-'));
+  const proj = path.join(tmp, 'proj');
+  fs.mkdirSync(proj);
+  const at = (argv, cwd = tmp) => C.parseCli(argv, { cwd, root: WORKBENCH });
+
+  const forms = [['-p', '5000'], ['--port', '5000'], ['--port=5000']].map((f) => at(f));
+  ok('cli: -p N, --port N and --port=N all reach start.mjs as --port=5000',
+    forms.every((r) => r.kind === 'run' && r.script === 'start.mjs' && r.args.at(-1) === '--port=5000'),
+    JSON.stringify(forms).slice(0, 160));
+  const dot = at(['.', '--no-open'], proj);
+  ok('cli: "." is the folder the user is standing in',
+    dot.kind === 'run' && dot.args[0] === proj && dot.args[1] === '--no-open', JSON.stringify(dot).slice(0, 160));
+  const rel = at(['proj', '-p', '5000']);
+  ok('cli: a relative path resolves against the user folder, flags keep their place',
+    rel.kind === 'run' && rel.args.length === 2 && rel.args[0] === proj && rel.args[1] === '--port=5000',
+    JSON.stringify(rel).slice(0, 160));
+  const missing = at(['nope']);
+  ok('cli: a missing folder is an error naming its absolute path',
+    missing.kind === 'error' && missing.message.includes(`project folder not found: ${path.join(tmp, 'nope')}`),
+    JSON.stringify(missing).slice(0, 160));
+  ok('cli: a typo of a command suggests it', /did you mean "install"\?/.test(at(['instal']).message || ''));
+  ok('cli: -p without a number is an error, not a project path', at(['-p']).kind === 'error');
+  const inst = at(['install', '--force']);
+  ok('cli: install --force passes --force through',
+    inst.kind === 'run' && inst.script === 'install.mjs' && inst.args.join(' ') === '--force', JSON.stringify(inst));
+  ok('cli: status and check run start.mjs --check',
+    ['status', 'check'].map((w) => at([w])).every((r) => r.kind === 'run' && r.script === 'start.mjs' && r.args[0] === '--check'));
+  ok('cli: no path adds the current folder, but never the install folder itself',
+    at([]).args[0] === tmp && at([], WORKBENCH).args.length === 0);
+  ok('cli: help wins anywhere, version/where are built in',
+    at(['install', '--help']).kind === 'help' && at(['-h']).kind === 'help' && at(['help']).kind === 'help'
+    && ['version', '-v', '--version'].every((w) => at([w]).kind === 'version') && at(['where']).kind === 'where');
+
+  // The real bin, spawned the way a user runs it.
+  const bin = path.join(WORKBENCH, 'bin', 'flowforge.mjs');
+  const run = (args, opts = {}) => spawnSync(process.execPath, [bin, ...args], { encoding: 'utf8', timeout: 15000, ...opts });
+  const pkgVersion = JSON.parse(fs.readFileSync(path.join(WORKBENCH, 'package.json'), 'utf8')).version;
+  ok('cli: the bin runs scripts in-process (no child_process)',
+    !/child_process/.test(fs.readFileSync(bin, 'utf8')));
+
+  const helps = ['--help', '-h', 'help'].map((a) => run([a]));
+  const lines = (helps[0].stdout || '').split(/\r?\n/).filter((l) => l.trim());
+  ok('cli: help is one short screen naming every command',
+    helps.every((h) => h.status === 0 && h.stdout === helps[0].stdout) && lines.length <= 20
+    && C.COMMANDS.every((c) => lines.some((l) => l.trim().startsWith(c.name))),
+    `${lines.length} lines, exit ${helps.map((h) => h.status)}`);
+  const where = run(['where']);
+  ok('cli: where prints the install folder',
+    where.status === 0 && where.stdout.trim().toLowerCase() === WORKBENCH.toLowerCase(), where.stdout.trim());
+  const versions = ['version', '-v'].map((a) => run([a]));
+  ok('cli: version and -v print the package version',
+    versions.every((v) => v.status === 0 && v.stdout.trim() === pkgVersion), versions.map((v) => v.stdout.trim()).join(' | '));
+
+  // Run from a scratch folder so --check also goes through "add the current
+  // folder, chdir to the install root, import start.mjs".
+  const checks = [['status'], ['--check']].map((a) => run(a, { cwd: tmp }));
+  const reps = checks.map((r) => { try { return JSON.parse(r.stdout); } catch { return null; } });
+  ok('cli: status and --check print the same install-state JSON',
+    checks.every((r) => r.status === 0) && reps.every((rep) => rep
+      && path.resolve(rep.repo).toLowerCase() === WORKBENCH.toLowerCase() && typeof rep.ready === 'boolean')
+    && checks[0].stdout === checks[1].stdout,
+    (checks[0].stdout || checks[0].stderr || '').slice(0, 120));
+
+  const ghost = path.join(os.tmpdir(), 'ff-cli-ghost-devin-' + Date.now());
+  const t0 = Date.now();
+  const typo = run(['instal'], { cwd: tmp, timeout: 5000, env: { ...process.env, DEVIN_CONFIG_DIR: ghost } });
+  ok('cli: a mistyped command fails fast, with a suggestion, before start.mjs loads',
+    typo.status === 1 && Date.now() - t0 < 5000 && /did you mean "install"/.test(typo.stderr || '')
+    && !/workbench:/.test(typo.stdout || '') && !fs.existsSync(ghost),
+    `exit ${typo.status}: ${(typo.stderr || '').slice(0, 120)}`);
+
+  const name = 'ff-no-such-' + Date.now();
+  const lost = run([name], { cwd: tmp, timeout: 5000, env: { ...process.env, DEVIN_CONFIG_DIR: ghost } });
+  ok('cli: a missing relative path is reported under the user folder, not the install folder',
+    lost.status === 1 && (lost.stderr || '').includes(`${path.basename(tmp)}${path.sep}${name}`)
+    && !(lost.stderr || '').toLowerCase().includes(WORKBENCH.toLowerCase()),
+    (lost.stderr || '').slice(0, 160));
+
+  fs.rmSync(tmp, { recursive: true, force: true });
+}
+
 // Cross-platform layer: every OS difference is a pure function taking the
 // platform, so all three can be checked from whichever machine runs the suite.
 {

@@ -229,11 +229,14 @@ npm i -g flowforge-cli
 | Command | Does |
 |---|---|
 | `flowforge` | Starts the dashboard on the current folder |
-| `flowforge C:\path\to\project` | Starts it on that project |
+| `flowforge C:\path\to\project` | Starts it on that project (relative paths are read from your current folder) |
 | `flowforge install` / `uninstall` | Wires (or unwires) the skills and agents |
+| `flowforge status` (or `check`) | Prints the install state as JSON, same as `--check` |
 | `flowforge test` | Runs the test suite |
 | `flowforge where` | Prints the install folder |
-| `flowforge --port=5000 --no-open` | Flags are passed through to the dashboard |
+| `flowforge version` (or `-v`) | Prints the installed version |
+| `flowforge --port=5000 --no-open` | Flags are passed through to the dashboard (`-p 5000` works too) |
+| `flowforge help` | One-screen list of all of the above |
 
 `ff` is a shorter alias for the same command.
 
@@ -261,6 +264,7 @@ flowforge                                        # opens http://127.0.0.1:4820
 flowforge "C:\path\to\your\project"              # start on a specific project
 flowforge --port=5000 --no-open                  # custom port, no browser
 flowforge --check                                # health check and exit
+flowforge status                                 # the same, as a command
 ```
 
 (From a source checkout the same flags work with `node start.mjs`.)
