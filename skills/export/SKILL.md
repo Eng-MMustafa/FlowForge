@@ -11,17 +11,22 @@ triggers:
   - model
 ---
 
+Your responsibility: turn a document, artifact or directory into the requested format with the workbench
+converter, and report where it landed. Hard boundaries: never add a library, never write your own
+converter, never modify the input.
+
 Produce a real file the user can open, send or print. Use this whenever the user asks for a PDF,
 a Word file, an Excel sheet, a printable report or "a document" of something — never hand-write a
 converter and never suggest installing a library: the workbench already ships one.
 
-WORKBENCH: read the `workbench` field of `%APPDATA%\devin\flowforge.json` (written by `install.mjs`).
+WORKBENCH: read the `workbench` field of `flowforge.json` inside Devin's config directory (written by `install.mjs`): `$DEVIN_CONFIG_DIR` when set, else `%APPDATA%\devin` on Windows, `~/Library/Application Support/devin` on macOS, `~/.config/devin` (then `~/.devin`) on Linux.
 If that file is missing, tell the user to run `node install.mjs` in the workbench clone and stop.
 
 ## Resolve the input
 1. If the argument is an existing path, use it.
-2. If it names a flow artifact (`plan`, `analysis`, `code-notes`, `review`, `debug`, `ship`, `context`,
-   `checks`, `understanding`, `report`, `perf`), resolve it under `<project>\.workbench\artifacts\`.
+2. If it is a bare name `X` and `<project>/.workbench/artifacts/X.md` exists, use that file — any
+   artifact counts (for example `plan`, `analysis`, `review`, `report`, `security`, `threat-model`,
+   `data-profile`, `measure-check`, `agents-draft`). Glob `.workbench/artifacts/` if unsure.
 3. If the user described content instead of a file ("export the summary you just wrote"), write that
    content to a temporary `.md` file first, then convert it.
 Supported inputs: `.md`, `.markdown`, `.html`, `.htm`, `.txt`, or a directory (converts everything in it).
@@ -32,11 +37,11 @@ Use the format the user named. If they did not name one, infer it:
 - "Word" / "editable document" -> `docx`
 - "Excel" / "sheet" / "table" / "data" -> `xlsx` (or `csv` when they want a plain data file)
 - "webpage" -> `html`; "plain text" -> `txt`; "for another program" -> `json`
-Run `node "WORKBENCH\scripts\convert-doc.mjs" --formats` if you need the current list.
+Run `node "WORKBENCH/scripts/convert-doc.mjs" --formats` if you need the current list.
 
 ## Convert
 ```
-node "WORKBENCH\scripts\convert-doc.mjs" "<input>" --to <format> [--out "<path>"] [--title "<title>"]
+node "WORKBENCH/scripts/convert-doc.mjs" "<input>" --to <format> [--out "<path>"] [--title "<title>"]
 ```
 - Default output is the input path with the new extension; pass `--out` when the user wants it elsewhere.
 - Exit 0 prints `OK: wrote <path> (method=...)`. Exit 1 prints `ERROR: <reason>` — report that reason,

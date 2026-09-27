@@ -1,7 +1,7 @@
 ---
 name: flow
 description: Run a FlowForge pipeline (staged engineering flow with specialized role subagents, gates, and live dashboard state)
-argument-hint: "<flow-name> \"<task>\" [--gates=auto|terminal|dashboard] [--speed=fast|balanced|quality]"
+argument-hint: "<flow-name> \"<task>\" [--gates=auto|terminal|dashboard|ai] [--speed=fast|balanced|quality] [--headless=acp|cli]"
 triggers:
   - user
 ---
@@ -59,7 +59,7 @@ Otherwise, before running stage 1:
 1. Rewrite it into a clear, precise, English task statement: fix spelling, resolve ambiguity from context, keep the user's intent EXACTLY — never add or remove scope. Keep file paths/identifiers verbatim. Do this inline (no subagent, no extra tool calls).
 2. Store the refined text as `task` in state.json and the user's original as `taskRaw`.
 3. Log: `task refined: "<refined>" (raw kept in taskRaw)`.
-4. If the raw text is so ambiguous that two materially different tasks are plausible, ask the user (terminal) before starting — a wrong refinement wastes the whole pipeline.
+4. If the raw text is so ambiguous that two materially different tasks are plausible, ask the user (terminal) before starting — a wrong refinement wastes the whole pipeline. With `--headless` or as a daemon never ask: pick the most plausible reading, log `task ambiguous - assumed: <reading>`, and continue.
 {TASK} in stage prompts always means the REFINED text.
 
 ## State contract (the dashboard depends on this exact shape)
@@ -115,6 +115,7 @@ Process `stages` in order. Skip stages with `"runOnlyWhenJumpedTo": true` unless
    Append this safety line to EVERY stage task, verbatim: "Never kill processes (Stop-Process/taskkill/kill) and never stop or restart the FlowForge dashboard or any running server - this pipeline is hosted by that process, so killing it aborts the run. Ask the user instead."
    Append this deliverables line to EVERY stage task, verbatim: "If a file deliverable is needed (PDF, Word, Excel, CSV, HTML, TXT, Markdown, JSON), never write your own converter and never add a library: run `node \"WORKBENCH/scripts/convert-doc.mjs\" \"<document>\" --to <format> [--out <path>]` (run it with --formats to list formats). Write the document as Markdown first - tables in Markdown table syntax become real tables in pdf/docx/html and real rows in xlsx/csv."
    (Substitute the real WORKBENCH path when you build the task text.)
+   The stage prompt is authoritative for the artifact and extra sections; the profile supplies method and defaults.
 
    **Per-stage overrides** (optional fields, set from the dashboard's visual flow editor):
    - `model` — any value the Devin CLI accepts for `--model`: a family slug (`claude-opus-5`), an alias (`opus`, `sonnet`), or a concrete variant UID including its level (`claude-opus-5-max`, `gpt-5-6-sol-high`). Run `devin models list` to see what this account has. It overrides the model pinned in the role profile FOR THIS STAGE ONLY: spawn the subagent with that model if the runtime lets you choose one; otherwise fall back to `subagent_general` with the role profile's full system prompt embedded and the requested model. Always log the override (`code: model override claude-opus-5-max`). Never change `WORKBENCH/agents/<name>.md` to satisfy a stage.
@@ -159,6 +160,7 @@ Resolve the effective mode per stage in this priority order:
     `node "WORKBENCH/scripts/gate-wait.mjs" "PROJECT" "<id>" "<gateQuestion>" "<gateQuestionAr>" 900`
     with a long exec timeout (>= 920s). The script prints a `WAITING:` line every 20s; if your runtime backgrounds the command anyway, keep reading its output until it exits - **a backgrounded wait is not a timeout**. Exit 0 → approved (a NOTE line, if present, is user feedback to honor). Exit 2 → rejected: read the NOTE and act like a terminal reject. Exit 3 → nothing arrived in 900s: with `--headless=cli` or as a daemon run gate-wait.mjs again (up to 8 times ≈ 2 hours, logging `gate still waiting (n/8)`), and only in an interactive session fall back to asking in the terminal. Never log "timed out - falling back to terminal" when no human reads the terminal.
 - **ai** — the reviewer agent decides instead of a human, then the flow continues by itself. At the gate spawn a **foreground subagent with the `critic` profile** (fallback: `subagent_general` with `WORKBENCH/agents/critic.md` embedded). Its task: the stage's goal (`prompt` with placeholders filled), the `done[]` criteria, the artifact path, the task text, and the instruction to end with `VERDICT: APPROVE` or `VERDICT: REVISE` followed by numbered, concrete issues. Log `<id>: ai review round <n> -> APPROVE|REVISE (<k> issues)`.
+  - The critic's task also gets the step-4 safety line ("Never kill processes ...") verbatim — the critic can run commands too.
   - APPROVE → continue.
   - REVISE → re-run the stage's own agent once with the numbered issues appended under `Reviewer feedback to address:`, then review again. At most **2 review rounds per gate** (this never counts against `maxLoops`). If the second review still says REVISE: continue anyway, put `ai review: proceeding with <k> open issues` in the stage `note`/`noteAr`, and list the issues in the log - never stall the flow on a reviewer.
   - Ship gate in `ai` mode: {SHIP_MODE} is "Mode 2 - commit" (never push without an explicit user instruction in the task text or inbox).

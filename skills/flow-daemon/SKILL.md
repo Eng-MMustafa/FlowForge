@@ -6,9 +6,9 @@ triggers:
   - user
 ---
 
-You are now the **FlowForge daemon** for this project. The user starts you once and then works entirely from the dashboard: they press Run there, you receive the request here and execute the pipeline; they watch and approve everything on the dashboard.
+You are now the **FlowForge daemon** for this project. The user starts you once and then works entirely from the dashboard: they press Run there, you receive the request here and execute the pipeline; they watch and approve everything on the dashboard. You ARE the orchestrator for every run you pick up (never invoke another skill), and every run is **headless**: the user watches the dashboard, not this conversation, so never ask a question in the chat or wait for a typed answer — not even at Step 0 task refinement.
 
-WORKBENCH: read the `workbench` field of `%APPDATA%\devin\flowforge.json` (written by `install.mjs`). Missing file → FlowForge is not installed; ask the user to run `node install.mjs` and stop.
+WORKBENCH: read the `workbench` field of `flowforge.json` inside Devin's config directory (written by `install.mjs`): `$DEVIN_CONFIG_DIR` when set, else `%APPDATA%\devin` on Windows, `~/Library/Application Support/devin` on macOS, `~/.config/devin` (then `~/.devin`) on Linux. Missing file → FlowForge is not installed; ask the user to run `node install.mjs` and stop.
 PROJECT: the current working directory, unless the user passed another path as the argument.
 
 ## Announce
@@ -18,12 +18,12 @@ Tell the user (briefly, in Arabic): the daemon is live for PROJECT, they can now
 Repeat forever until stopped:
 
 1. Run (long exec timeout, at least 3400s):
-   `node "WORKBENCH\scripts\queue-wait.mjs" "PROJECT" 3300`
+   `node "WORKBENCH/scripts/queue-wait.mjs" "PROJECT" 3300`
 2. Interpret the exit:
    - **exit 3 (`IDLE`)** — no work arrived; immediately loop back to step 1. Do NOT emit any conversation text between idle loops (keep the session cheap).
    - **exit 2 (`STOP`)** — the dashboard asked you to stop. Confirm shutdown to the user in one line and END the skill.
-   - **exit 0 (`TASK: {json}`)** — parse the JSON: `{ id, flow, task, gates, requestedAt }`. Execute it as step 3.
-3. **Execute the run** exactly per the `flow` skill's orchestration procedure (same Step 0 task refinement, state contract, per-stage subagents with named profiles, done-criteria, verdict routing, gate handling, inbox drains). Apply `gates` as the runtime gate override. Dashboard gates work normally through gate-wait.mjs.
+   - **exit 0 (`TASK: {json}`)** — parse the JSON: `{ id, flow, task, gates, speed, requestedAt }`. Execute it as step 3.
+3. **Execute the run** exactly per the `flow` skill's orchestration procedure (same Step 0 task refinement, state contract, per-stage subagents with named profiles, done-criteria, verdict routing, gate handling, inbox drains). Apply `gates` as the runtime gate override. Apply `speed` as the runtime `--speed` override unless it is `flow` or missing (then every stage runs as its flow file declares). An ambiguous task gets the most plausible reading, logged as `task ambiguous - assumed: <reading>`. Dashboard gates work through gate-wait.mjs (you are a daemon: on exit 3 run it again, never ask in the terminal); `ai` gates run the critic review loop.
 4. When the flow finishes (done or failed), append its outcome to the state log, then loop back to step 1 and keep listening.
 
 ## Rules
