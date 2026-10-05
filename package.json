@@ -44,8 +44,7 @@
   ],
   "scripts": {
     "start": "node start.mjs",
-    "test": "node dashboard/test/run-tests.mjs",
-    "postinstall": "node -e \"console.log('\\n  FlowForge installed. Run: flowforge\\n')\""
+    "test": "node dashboard/test/run-tests.mjs"
   },
   "engines": {
     "node": ">=18"

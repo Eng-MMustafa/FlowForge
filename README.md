@@ -749,6 +749,16 @@ Runtime state lives in each **target project** under `.workbench/` — never in 
 
 **The skills do not appear in the chat.** Run `node install.mjs`, then start a *new* session — skills are read at session start.
 
+**`ff` / `flowforge` is not recognized after `npm i -g`.** npm put the command in its global folder, but that folder is not on `PATH`. Check with `npm prefix -g`. Version managers in *shim* mode (nvm-windows 2.x, Volta-style setups) do this: they expose `node`/`npm` but not global package commands. Point npm at a fixed folder that is on `PATH` once, then reinstall:
+
+```powershell
+npm config set prefix "$env:APPDATA\npm"
+[Environment]::SetEnvironmentVariable('Path', [Environment]::GetEnvironmentVariable('Path','User') + ";$env:APPDATA\npm", 'User')
+npm i -g flowforge-cli@latest     # in a NEW terminal, then: ff doctor
+```
+
+No PATH change wanted? `npx flowforge-cli doctor` (or `run`, `start`…) works anywhere.
+
 **`devin` is not found.** Set `DEVIN_CLI` to the executable path, or make sure it is on `PATH`. The dashboard shows the resolved path on the Settings tab.
 
 **A run is stuck at a gate.** Check the gate mode: with `terminal` the orchestrator waits in the chat window, not in the dashboard. Switch to `dashboard` in Settings (or pick `ai` to let the critic decide) and answer from the browser. Runs started from the dashboard over ACP park at the gate and resume from your click; a gate you answered that still shows as waiting belongs to a run that no longer exists — the pipeline panel marks it *interrupted* and offers **Resume from here**.
