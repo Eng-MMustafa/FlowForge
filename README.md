@@ -7,7 +7,7 @@
 [![npm](https://img.shields.io/npm/v/flowforge-cli?color=cb3837&logo=npm&logoColor=white)](https://www.npmjs.com/package/flowforge-cli)
 [![Node](https://img.shields.io/badge/node-%E2%89%A518-3ecc6b?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-6fb8ff)](#zero-dependencies)
-[![Tests](https://img.shields.io/badge/tests-453%20passing-3ecc6b)](#tests)
+[![Tests](https://img.shields.io/badge/tests-516%20passing-3ecc6b)](#tests)
 [![License](https://img.shields.io/badge/license-MIT-f0a92e)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-6fb8ff)](#requirements)
 
@@ -80,6 +80,7 @@ This installs the latest published release. Then `flowforge` (or `ff`) starts th
   - [12. Studio — the wordless builder](#12-studio--the-wordless-builder)
   - [13. Themes and language](#13-themes-and-language)
 - [Flow files — the schema](#flow-files--the-schema)
+- [Execution engine](#execution-engine)
 - [Built-in flows](#built-in-flows)
   - [Workflows by role](#workflows-by-role)
 - [Agent roles](#agent-roles)
@@ -230,7 +231,9 @@ npm i -g flowforge-cli
 |---|---|
 | `flowforge` | Starts the dashboard on the current folder |
 | `flowforge C:\path\to\project` | Starts it on that project (relative paths are read from your current folder) |
-| `flowforge install` / `uninstall` | Wires (or unwires) the skills and agents |
+| `flowforge run <flow> "<task>"` | Runs a flow on the current folder from the terminal — handed to the dashboard when it is up (live view, gates), otherwise driven through the Devin CLI right there. Takes `--size`, `--speed`, `--gates`, `--direct` |
+| `flowforge doctor` | Checks every part of the install (Node, Devin wiring, every skill/agent/flow file, the state engine, the CLI login, the dashboard) and names the fix for each problem. `--fix` repairs the wiring, `--json` for scripts |
+| `flowforge install` / `uninstall` | Wires (or unwires) the skills and agents — and verifies the result with the doctor |
 | `flowforge status` (or `check`) | Prints the install state as JSON, same as `--check` |
 | `flowforge test` | Runs the test suite |
 | `flowforge where` | Prints the install folder |
@@ -270,6 +273,14 @@ flowforge status                                 # the same, as a command
 (From a source checkout the same flags work with `node start.mjs`.)
 
 Pick a flow, type what you want in any language, press **Run now**.
+
+**From a terminal, without opening anything:**
+
+```powershell
+ff run task "fix the 5MB upload limit" --size=tiny     # one-line fix: skip planning
+ff run bugfix "login loops on Safari" --gates=ai       # an AI reviewer at every gate
+ff doctor --fix                                         # something off? find and repair it
+```
 
 ---
 
@@ -452,6 +463,7 @@ A flow is one JSON file in `flows/`. Everything the orchestrator does is data:
 | `description` | One paragraph on what the flow is for and what it guarantees |
 | `defaultGate` | `terminal` \| `dashboard` \| `auto` — used by stages whose gate is `default` |
 | `providers` | *Optional.* Restricts the flow to these executors. Absent = available to all |
+| `sizes` | *Optional.* What a smaller task may skip, e.g. `{"tiny": {"skip": ["think", "analyze"]}, "small": {"skip": ["think"]}}`. Stages with `onFail` and jump-only stages can never be skipped — see [Execution engine](#execution-engine) |
 | `stages[].id` | Unique stage id, also the node id on the canvas |
 | `stages[].title` / `titleAr` | Bilingual stage name shown on the pipeline and the canvas |
 | `stages[].agent` | Role file in `agents/`, or `null` for a script-only stage |
@@ -481,6 +493,29 @@ Rules every shipped flow follows (enforced by `npm test`):
 - The flows that change nothing (`analytics`, `design`, `review`, `data`, `security`) have no `coder`, `debugger` or `shipper` stage.
 
 Create one from a template with `node scripts/new-flow.mjs my-flow`, or just draw it on the canvas.
+
+---
+
+## Execution engine
+
+The orchestrator is a model, so every second it spends *managing* the run is paid in model turns. The engine moves that bookkeeping into plain code:
+
+| | Before | Now |
+|---|---|---|
+| **Run state** | The orchestrator rewrote the whole `state.json` by hand at every transition (15–25 times a run) | `scripts/state.mjs` — one short command per transition, several chained with ` + ` into one atomic write. The dashboard never sees a torn file, and a bad call writes nothing |
+| **Task size** | Every task went through every stage | `--size=auto` (default): the orchestrator sizes the task. **tiny** skips the plan and the analysis, **small** skips the plan, **full** runs everything. Test, debug loops and the ship gate always run |
+| **Checks** | build, lint, test one after another | Two lanes in parallel: `build → test` beside `lint`; a broken build skips its tests instead of running them against nothing. `"checksSequential": true` in `knowledge.json` restores the old order |
+| **Project context** | Rebuilt from scratch on every run | Fingerprinted (git HEAD + working-tree status); an unchanged project is served from cache. `--force` rebuilds |
+| **Install** | Linked the files and listed them | Links, then runs the doctor and fails only when the wiring itself is broken |
+
+```text
+node scripts/state.mjs <PROJECT> init task --task "Add rate limiting" --size=small --gate=dashboard
+node scripts/state.mjs <PROJECT> stage code done --note "3 files" --note-ar "3 ملفات" + stage test running --log "tester started"
+node scripts/state.mjs <PROJECT> loop test + stage test failed + stage debug running     # prints LOOP test 1/3
+node scripts/state.mjs <PROJECT> show                                                 # one line per stage
+```
+
+The size is picked on the dashboard (**Size** next to **Speed**), passed as `--size=` to `/flow`, `ff run` or the queue, and the cost estimate prices only the stages that will run.
 
 ---
 
@@ -601,8 +636,11 @@ node scripts\convert-doc.mjs --help
 |---|---|
 | `start.mjs` | Starts the dashboard, registers the project, opens the browser |
 | `install.mjs` / `uninstall.mjs` | Wire (or unwire) the workbench into the agent's global config |
-| `scripts/collect-context.mjs` | Gathers Git state and a bounded file tree into `context.md` |
-| `scripts/run-checks.mjs` | Runs the project's own build/lint/test and writes a `RESULT:` verdict |
+| `scripts/state.mjs` | The state engine: the only writer of `state.json` (init, stage, loop, flow, skip, log, inbox, show) |
+| `scripts/run-flow.mjs` | `ff run` — start a flow from the terminal |
+| `scripts/doctor.mjs` | `ff doctor` — verify and repair the install |
+| `scripts/collect-context.mjs` | Gathers Git state and a bounded file tree into `context.md` (cached by project fingerprint) |
+| `scripts/run-checks.mjs` | Runs the project's own build/lint/test in parallel lanes and writes a `RESULT:` verdict |
 | `scripts/gate-wait.mjs` | Blocks a run on a dashboard gate (exit 0 approve / 2 reject / 3 timeout) |
 | `scripts/queue-wait.mjs` | Daemon mode: waits for a run request from the dashboard |
 | `scripts/new-flow.mjs` | Scaffolds a new flow file |
@@ -660,7 +698,7 @@ The dashboard is a plain `node:http` server; every screen is built on this API, 
 node dashboard\test\run-tests.mjs
 ```
 
-**453 checks, no test framework.** The suite spawns its own server on a spare port with a temporary scratch project, and restores your registry afterwards. It covers UI script syntax, complete bilingual i18n key coverage, the Studio's text-free guarantee, the flow↔graph round trip and cycle rejection, every API endpoint, the watcher feed, the gate protocol, provider detection/auth/model mapping, path-traversal guards, and the document converter (real PDF bytes, and `.docx`/`.xlsx` opened with Windows' own ZIP reader).
+**516 checks, no test framework.** The suite spawns its own server on a spare port with a temporary scratch project, and restores your registry afterwards. It covers UI script syntax, complete bilingual i18n key coverage, the Studio's text-free guarantee, the flow↔graph round trip and cycle rejection, every API endpoint, the watcher feed, the gate protocol, provider detection/auth/model mapping, path-traversal guards, the document converter (real PDF bytes, and `.docx`/`.xlsx` opened with Windows' own ZIP reader), and the execution engine (every state transition, all-or-nothing chained writes, sizing guarantees, parallel check lanes, the context cache, `ff run` and `ff doctor`).
 
 ---
 

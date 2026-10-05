@@ -22,12 +22,12 @@ Repeat forever until stopped:
 2. Interpret the exit:
    - **exit 3 (`IDLE`)** — no work arrived; immediately loop back to step 1. Do NOT emit any conversation text between idle loops (keep the session cheap).
    - **exit 2 (`STOP`)** — the dashboard asked you to stop. Confirm shutdown to the user in one line and END the skill.
-   - **exit 0 (`TASK: {json}`)** — parse the JSON: `{ id, flow, task, gates, speed, requestedAt }`. Execute it as step 3.
-3. **Execute the run** exactly per the `flow` skill's orchestration procedure (same Step 0 task refinement, state contract, per-stage subagents with named profiles, done-criteria, verdict routing, gate handling, inbox drains). Apply `gates` as the runtime gate override. Apply `speed` as the runtime `--speed` override unless it is `flow` or missing (then every stage runs as its flow file declares). An ambiguous task gets the most plausible reading, logged as `task ambiguous - assumed: <reading>`. Dashboard gates work through gate-wait.mjs (you are a daemon: on exit 3 run it again, never ask in the terminal); `ai` gates run the critic review loop.
+   - **exit 0 (`TASK: {json}`)** — parse the JSON: `{ id, flow, task, gates, speed, size, requestedAt }`. Execute it as step 3.
+3. **Execute the run** exactly per the `flow` skill's orchestration procedure (same Step 0 task refinement, Step 0.5 sizing, state engine `scripts/state.mjs` for every state change, per-stage subagents with named profiles, done-criteria, verdict routing, gate handling, inbox drains). Apply `gates` as the runtime gate override. Apply `speed` as the runtime `--speed` override unless it is `flow` or missing (then every stage runs as its flow file declares). Apply `size` as `--size` when present (missing = `auto`). An ambiguous task gets the most plausible reading, logged as `task ambiguous - assumed: <reading>`. Dashboard gates work through gate-wait.mjs (you are a daemon: on exit 3 run it again, never ask in the terminal); `ai` gates run the critic review loop.
 4. When the flow finishes (done or failed), append its outcome to the state log, then loop back to step 1 and keep listening.
 
 ## Rules
 - One run at a time: never start a second flow while one is executing (the queue holds at most one pending request; the dashboard blocks double-submits).
-- If a flow fails mid-way, leave state.json accurate (`failed`), report one summary line, and RETURN TO LISTENING - the daemon must survive failures.
+- If a flow fails mid-way, leave state.json accurate (`state.mjs PROJECT flow failed --log "<why>"`), report one summary line, and RETURN TO LISTENING - the daemon must survive failures.
 - If queue-wait.mjs itself errors (nonzero other than 0/2/3), report the error once and retry the loop after confirming the script exists.
 - Between loops keep your output minimal - this session may run for hours.

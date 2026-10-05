@@ -1,110 +1,251 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FlowForge</title>
 <style>
-  /* ---------- theme variables ---------- */
+  /* =====================================================================
+     FlowForge design system - "glass" (Raycast / Arc inspired)
+     Layers: tokens -> base -> shell -> page template -> surfaces.
+     Component styles further down only consume these tokens.
+     ===================================================================== */
   :root{
-    --bg:#0a0e16; --panel:#121822; --panel2:#19202c; --border:#252e3c;
-    --text:#eef2f8; --dim:#8b95a5; --accent:#6fb8ff; --accent2:#2b7cff;
-    --green:#3ecc6b; --red:#ff5d5d; --amber:#f0a92e; --blue:#6fb8ff; --gray:#6b7a8f;
-    --code-bg:#070b11; --shadow:rgba(0,0,0,.45);
-    --hairline:rgba(255,255,255,.05);
-    --radius-sm:8px; --radius-md:12px; --radius-lg:16px; --radius-xl:22px;
-    --space-xs:4px; --space-sm:8px; --space-md:12px; --space-lg:16px; --space-xl:24px;
-    --shadow-sm:0 1px 2px rgba(0,0,0,.25);
-    --shadow-md:0 8px 24px var(--shadow);
-    --ring:0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
-    --font: "Inter","Segoe UI",Tahoma,Arial,sans-serif;
-    --mono: ui-monospace,"Cascadia Mono",Consolas,"Courier New",monospace;
+    --bg:#07080c;
+    --panel:rgba(22,24,33,.58); --panel2:rgba(255,255,255,.045); --panel-solid:#14161e;
+    --border:rgba(255,255,255,.08); --border-strong:rgba(255,255,255,.15);
+    --text:#f5f6f8; --dim:#979db0; --faint:#6b7085;
+    --accent:#8b97ff; --accent2:#5b6cff; --violet:#a66bff; --pink:#ff5fa2;
+    --green:#34d399; --red:#ff6b6b; --amber:#fbbf24; --blue:#7cb4ff; --gray:#6b7280;
+    --code-bg:rgba(0,0,0,.34); --shadow:rgba(0,0,0,.5);
+    --hairline:rgba(255,255,255,.06);
+    --grad:linear-gradient(135deg,#5b6cff 0%,#9b5cff 55%,#ff5fa2 100%);
+    --glass:saturate(170%) blur(22px);
+    --radius:14px; --radius-sm:10px; --radius-md:14px; --radius-lg:20px; --radius-xl:26px;
+    --space-xs:4px; --space-sm:8px; --space-md:14px; --space-lg:20px; --space-xl:28px;
+    --shadow-sm:0 1px 0 rgba(255,255,255,.05) inset, 0 10px 30px rgba(0,0,0,.28);
+    --shadow-md:0 1px 0 rgba(255,255,255,.06) inset, 0 24px 60px rgba(0,0,0,.45);
+    --ring:0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+    --font:"Inter","SF Pro Text","Segoe UI Variable Text","Segoe UI",system-ui,Tahoma,Arial,sans-serif;
+    --mono:ui-monospace,"JetBrains Mono","Cascadia Code",Consolas,"Courier New",monospace;
+    --topbar:0px; --sidebar:256px;
+    --ease:cubic-bezier(.2,.8,.2,1);
   }
   [data-theme="light"]{
-    --bg:#f4f6fa; --panel:#ffffff; --panel2:#f1f4f8; --border:#dde2ea;
-    --text:#161b22; --dim:#5a6675; --accent:#0b5dd4; --accent2:#0969da;
-    --green:#19733a; --red:#c8212e; --amber:#9a5f00; --blue:#0b5dd4; --gray:#6b7280;
-    --code-bg:#f7f9fc; --shadow:rgba(15,23,42,.10);
-    --hairline:rgba(15,23,42,.04);
-    --shadow-sm:0 1px 2px rgba(15,23,42,.06);
+    --bg:#eef0f6;
+    --panel:rgba(255,255,255,.7); --panel2:rgba(15,23,42,.04); --panel-solid:#ffffff;
+    --border:rgba(15,23,42,.09); --border-strong:rgba(15,23,42,.16);
+    --text:#0f1222; --dim:#5b6275; --faint:#8a90a2;
+    --accent:#4f5bff; --accent2:#4353ff; --violet:#8b46ff; --pink:#e5488f;
+    --green:#0f9f6e; --red:#d63c3c; --amber:#b7791f; --blue:#2563eb; --gray:#6b7280;
+    --code-bg:rgba(15,23,42,.035); --shadow:rgba(15,23,42,.12);
+    --hairline:rgba(15,23,42,.06);
+    --shadow-sm:0 1px 0 rgba(255,255,255,.8) inset, 0 8px 24px rgba(15,23,42,.06);
+    --shadow-md:0 1px 0 rgba(255,255,255,.9) inset, 0 24px 60px rgba(15,23,42,.14);
   }
+
+  /* ---------- base ---------- */
   *{box-sizing:border-box; margin:0; padding:0;}
-  html{-webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;}
-  body{
-    background:var(--bg); color:var(--text); font-family:var(--font); min-height:100vh;
-    background-image:radial-gradient(1100px 420px at 50% -180px, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%);
-    background-attachment:fixed; transition:background-color .18s ease; line-height:1.45;
-  }
-  :focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:var(--radius-sm);}
+  html{-webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; color-scheme:dark;}
+  [data-theme="light"]{color-scheme:light;}
+  body{background:var(--bg); color:var(--text); font-family:var(--font); font-size:13.5px; min-height:100vh; line-height:1.5; letter-spacing:-.005em;}
+  /* Ambient light: three soft colour fields and a whisper of grain behind the glass. */
+  body::before{content:''; position:fixed; inset:-15%; z-index:-2; pointer-events:none; filter:blur(30px);
+    background:
+      radial-gradient(38% 32% at 12% 6%, color-mix(in srgb, #5b6cff 30%, transparent), transparent 70%),
+      radial-gradient(32% 28% at 88% 10%, color-mix(in srgb, #ff5fa2 18%, transparent), transparent 70%),
+      radial-gradient(40% 36% at 72% 96%, color-mix(in srgb, #22d3ee 13%, transparent), transparent 72%),
+      radial-gradient(30% 30% at 30% 80%, color-mix(in srgb, #9b5cff 12%, transparent), transparent 70%);}
+  [data-theme="light"] body::before{opacity:.65;}
+  body::after{content:''; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.035; mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");}
+  ::selection{background:color-mix(in srgb, var(--accent) 35%, transparent);}
+  :focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:var(--radius-sm);}
   ::-webkit-scrollbar{width:10px; height:10px;}
   ::-webkit-scrollbar-track{background:transparent;}
-  ::-webkit-scrollbar-thumb{background:var(--border); border-radius:5px; border:2px solid var(--panel);}
-  ::-webkit-scrollbar-thumb:hover{background:var(--gray);}
+  ::-webkit-scrollbar-thumb{background:var(--border-strong); border-radius:10px; border:3px solid transparent; background-clip:padding-box;}
+  ::-webkit-scrollbar-thumb:hover{background-color:var(--faint);}
 
-  /* ---------- top bar ---------- */
-  header{
-    display:flex; align-items:center; gap:var(--space-sm); padding:10px var(--space-lg);
-    border-bottom:1px solid var(--border); background:color-mix(in srgb, var(--panel) 88%, transparent);
-    backdrop-filter:saturate(140%) blur(10px); position:sticky; top:0; z-index:20; flex-wrap:wrap;
-  }
-  header h1{font-size:16px; font-weight:700; letter-spacing:.2px; margin-inline-end:var(--space-sm); white-space:nowrap;}
-  header h1 span{color:var(--accent);}
-  /* project select + browse button read as one control */
-  .projpill{display:flex; align-items:center; gap:0; min-width:0;}
-  .projpill > #projectSelect{border-start-end-radius:0; border-end-end-radius:0; border-inline-end-color:transparent;}
-  .projpill > .iconbtn{border-start-start-radius:0; border-end-start-radius:0;}
-  .badge{padding:3px 12px; border-radius:999px; font-size:12px; font-weight:500; border:1px solid var(--border); background:var(--panel2); white-space:nowrap; box-shadow:inset 0 1px 0 var(--hairline);}
-  .badge.running{color:var(--blue); border-color:color-mix(in srgb, var(--blue) 55%, var(--border)); background:color-mix(in srgb, var(--blue) 10%, var(--panel2));}
-  .badge.waiting_gate{color:var(--amber); border-color:color-mix(in srgb, var(--amber) 55%, var(--border)); background:color-mix(in srgb, var(--amber) 10%, var(--panel2)); animation:pulse 1.2s infinite;}
-  .badge.done{color:var(--green); border-color:color-mix(in srgb, var(--green) 55%, var(--border)); background:color-mix(in srgb, var(--green) 10%, var(--panel2));}
-  .badge.failed{color:var(--red); border-color:color-mix(in srgb, var(--red) 55%, var(--border)); background:color-mix(in srgb, var(--red) 10%, var(--panel2));}
-  .badge.stopped{color:var(--gray); border-color:var(--border); background:var(--panel2);}
-  @keyframes pulse{50%{opacity:.42;}}
-  select,input[type=text],input[type=number],input[type=password],textarea{
+  /* ---------- form controls ---------- */
+  select,input[type=text],input[type=number],input[type=password],input[type=time],input[type=datetime-local],textarea{
     background:var(--panel2); color:var(--text); border:1px solid var(--border);
-    border-radius:var(--radius-sm); padding:7px 11px; font-size:13px; font-family:inherit; max-width:100%;
-    transition:border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+    border-radius:var(--radius-sm); padding:8px 12px; font-size:13px; font-family:inherit; max-width:100%;
+    transition:border-color .18s var(--ease), box-shadow .18s var(--ease), background-color .18s var(--ease);
   }
   select{cursor:pointer;}
-  select:hover,input:hover,textarea:hover{border-color:color-mix(in srgb, var(--accent) 35%, var(--border));}
-  select:focus,input:focus,textarea:focus{outline:none; border-color:var(--accent); box-shadow:var(--ring); background:var(--panel);}
-  #projectSelect{max-width:340px; direction:ltr;}
+  select option{background:var(--panel-solid); color:var(--text);}
+  select:hover,input:hover,textarea:hover{border-color:var(--border-strong);}
+  select:focus,input:focus,textarea:focus{outline:none; border-color:color-mix(in srgb, var(--accent) 70%, transparent); box-shadow:var(--ring);}
+  textarea::placeholder,input::placeholder{color:var(--faint);}
+  #projectSelect{direction:ltr;}
   .spacer{margin-inline-start:auto;}
-  .iconbtn{border:1px solid var(--border); background:var(--panel2); color:var(--text); border-radius:var(--radius-sm); padding:6px 11px; cursor:pointer; font-size:13px; font-weight:500; line-height:1.4; transition:border-color .15s ease, background-color .15s ease, color .15s ease;}
-  .iconbtn:hover{border-color:var(--accent); color:var(--accent); background:color-mix(in srgb, var(--accent) 10%, var(--panel2));}
-  a.iconbtn{display:inline-flex; align-items:center; text-decoration:none;}
+  .iconbtn{display:inline-flex; align-items:center; justify-content:center; gap:6px; min-width:34px; height:34px; padding:0 10px;
+    border:1px solid var(--border); background:var(--panel2); color:var(--text); border-radius:var(--radius-sm);
+    cursor:pointer; font-size:13px; font-weight:500; font-family:inherit; text-decoration:none;
+    transition:border-color .18s var(--ease), background-color .18s var(--ease), color .18s var(--ease), transform .18s var(--ease);}
+  .iconbtn:hover{border-color:var(--border-strong); background:color-mix(in srgb, var(--text) 8%, transparent);}
+  .iconbtn:active{transform:scale(.96);}
 
-  /* ---------- tabs ---------- */
-  nav{
-    display:flex; gap:2px; padding:var(--space-sm) var(--space-lg); flex-wrap:wrap;
-    background:color-mix(in srgb, var(--panel) 88%, transparent); backdrop-filter:saturate(140%) blur(10px);
-    border-bottom:1px solid var(--border);
-  }
-  nav .tab{
-    padding:7px 15px; border:1px solid transparent; border-radius:999px; cursor:pointer;
-    font-size:13px; font-weight:500; color:var(--dim); display:inline-flex; align-items:center;
-    transition:color .15s ease, background-color .15s ease, border-color .15s ease;
-  }
-  nav .tab:hover{color:var(--text); background:var(--panel2);}
-  nav .tab.active{color:var(--accent); border-color:color-mix(in srgb, var(--accent) 45%, var(--border)); background:color-mix(in srgb, var(--accent) 12%, transparent);}
-  nav .tab .livedot{margin-inline-start:6px;}
+  /* ---------- badges ---------- */
+  .badge{display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:550;
+    border:1px solid var(--border); background:var(--panel2); color:var(--dim); white-space:nowrap;}
+  .badge.running{color:var(--blue); border-color:color-mix(in srgb, var(--blue) 40%, transparent); background:color-mix(in srgb, var(--blue) 12%, transparent);}
+  .badge.waiting_gate{color:var(--amber); border-color:color-mix(in srgb, var(--amber) 40%, transparent); background:color-mix(in srgb, var(--amber) 12%, transparent); animation:pulse 1.4s infinite;}
+  .badge.done{color:var(--green); border-color:color-mix(in srgb, var(--green) 40%, transparent); background:color-mix(in srgb, var(--green) 12%, transparent);}
+  .badge.failed{color:var(--red); border-color:color-mix(in srgb, var(--red) 40%, transparent); background:color-mix(in srgb, var(--red) 12%, transparent);}
+  .badge.stopped{color:var(--gray);}
+  @keyframes pulse{50%{opacity:.45;}}
+  #flowBadge:empty{display:none;}
 
-  main{padding:var(--space-lg) clamp(12px, 2vw, 40px) 56px; max-width:1760px; margin:0 auto;}
+  /* ---------- shell: floating glass sidebar ---------- */
+  .shell{display:grid; grid-template-columns:var(--sidebar) minmax(0,1fr); min-height:100vh;}
+  .sidebar{
+    position:sticky; top:12px; align-self:start; height:calc(100vh - 24px); margin:12px; margin-inline-end:0;
+    display:flex; flex-direction:column; gap:14px; padding:14px 10px 10px;
+    background:var(--panel); backdrop-filter:var(--glass); -webkit-backdrop-filter:var(--glass);
+    border:1px solid var(--border); border-radius:var(--radius-xl); box-shadow:var(--shadow-md); z-index:20;
+  }
+  .brand{display:flex; align-items:center; gap:10px; padding:2px 8px; font-size:16px; font-weight:750; letter-spacing:-.3px;}
+  .brand .logo{width:30px; height:30px; border-radius:10px; background:var(--grad); display:inline-grid; place-items:center; flex:none;
+    box-shadow:0 6px 18px color-mix(in srgb, #7c5cff 45%, transparent), inset 0 1px 0 rgba(255,255,255,.35);}
+  .brand .logo svg{width:16px; height:16px; stroke:#fff;}
+  .brand span{background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .projbox{display:flex; flex-direction:column; gap:8px; padding:10px; border-radius:var(--radius-md);
+    background:var(--panel2); border:1px solid var(--border);}
+  .projpill{display:flex; align-items:center; gap:6px; min-width:0;}
+  .projpill > #projectSelect{flex:1; min-width:0; height:34px; padding:0 10px; background:transparent;}
+  .projstate{display:flex; gap:6px; flex-wrap:wrap; align-items:center;}
+  .sidenav{display:flex; flex-direction:column; gap:14px; overflow:auto; flex:1; margin:0 -2px; padding:0 2px;}
+  .navgroup{display:flex; flex-direction:column; gap:1px;}
+  .navcap{font-size:10.5px; letter-spacing:.9px; text-transform:uppercase; color:var(--faint); font-weight:650; padding:0 10px 5px;}
+  .sidenav .tab, .sidenav .navlink{
+    position:relative; width:100%; display:flex; align-items:center; gap:11px; padding:7px 10px;
+    border:1px solid transparent; border-radius:var(--radius-sm); cursor:pointer; text-decoration:none;
+    font-size:13.5px; font-weight:500; color:var(--dim); background:transparent; font-family:inherit; text-align:start;
+    transition:color .18s var(--ease), background-color .18s var(--ease), border-color .18s var(--ease);
+  }
+  .sidenav .ic{width:18px; height:18px; flex:none;}
+  .sidenav .tab:hover, .sidenav .navlink:hover{color:var(--text); background:color-mix(in srgb, var(--text) 6%, transparent);}
+  .sidenav .tab.active{color:var(--text); background:color-mix(in srgb, var(--text) 9%, transparent); border-color:var(--border);
+    box-shadow:inset 0 1px 0 var(--hairline);}
+  .sidenav .tab.active .ic{color:var(--accent);}
+  .sidenav .tab > .badge, .sidenav .tab > .livedot{margin-inline-start:auto !important;}
+  .sidefoot{display:flex; align-items:center; gap:6px; padding-top:10px; border-top:1px solid var(--hairline);}
+  .sidefoot .iconbtn{height:30px; min-width:30px; padding:0 8px; font-size:12.5px;}
+  .sidefoot #conn{font-size:11px; padding:2px 8px;}
+  .kbd{display:inline-flex; align-items:center; gap:3px; font-family:var(--mono); font-size:10.5px; color:var(--dim);
+    padding:1px 6px; border-radius:6px; border:1px solid var(--border); background:var(--panel2);}
+  .quickjump{display:flex; align-items:center; gap:8px; width:100%; padding:7px 10px; border-radius:var(--radius-sm);
+    border:1px solid var(--border); background:var(--panel2); color:var(--faint); font:inherit; font-size:12.5px; cursor:pointer; text-align:start;}
+  .quickjump:hover{color:var(--text); border-color:var(--border-strong);}
+  .quickjump .kbd{margin-inline-start:auto;}
+  @media (max-width:960px){
+    .shell{grid-template-columns:minmax(0,1fr);}
+    .sidebar{position:sticky; top:8px; height:auto; margin:8px; min-width:0; flex-direction:row; flex-wrap:wrap; align-items:center; gap:8px; padding:8px 10px;}
+    .projbox .fieldlbl{display:none;}
+    .projbox{order:4; flex-basis:100%; flex-direction:row; align-items:center; padding:6px 8px;}
+    .projpill{flex:1;}
+    .sidenav{order:3; flex-basis:100%; flex-direction:row; overflow-x:auto; gap:2px;}
+    .navgroup{flex-direction:row; gap:2px;} .navcap,.quickjump{display:none;}
+    .sidenav .tab,.sidenav .navlink{width:auto; white-space:nowrap; padding:6px 10px;}
+    .sidefoot{order:2; margin-inline-start:auto; border:none; padding:0;}
+  }
+
+  /* ---------- page template ---------- */
+  main{padding:30px clamp(16px, 3vw, 48px) 72px; max-width:1560px; width:100%; margin:0 auto; min-width:0;}
   .page{display:none;}
-  .page.active{display:block; animation:fadein .18s ease;}
-  @keyframes fadein{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
-  section{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-lg); padding:var(--space-md) var(--space-lg) var(--space-lg); margin-bottom:var(--space-md); box-shadow:var(--shadow-sm);}
-  /* direct child only: markdown headings rendered inside a section keep their own style */
+  .page.active{display:block; animation:pagein .32s var(--ease);}
+  @keyframes pagein{from{opacity:0; transform:translateY(8px); filter:blur(2px);} to{opacity:1; transform:none; filter:none;}}
+  .pagehead{display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap; margin:0 0 22px;}
+  .pagehead .ttl{flex:1; min-width:240px;}
+  .pagehead h1{font-size:26px; font-weight:700; letter-spacing:-.6px; line-height:1.15;}
+  .pagehead p{color:var(--dim); font-size:13.5px; margin-top:6px; line-height:1.5; max-width:70ch;}
+  .pagehead .actions{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+
+  /* ---------- surfaces ---------- */
+  section{background:var(--panel); backdrop-filter:var(--glass); -webkit-backdrop-filter:var(--glass);
+    border:1px solid var(--border); border-radius:var(--radius-lg); padding:18px 20px 20px; margin-bottom:14px; box-shadow:var(--shadow-sm);}
   section > h2{
-    font-size:11.5px; color:var(--dim); font-weight:600; text-transform:uppercase; letter-spacing:.6px;
-    display:flex; align-items:center; gap:var(--space-sm); flex-wrap:wrap;
-    padding-bottom:var(--space-sm); margin-bottom:var(--space-md); border-bottom:1px solid var(--hairline);
+    font-size:13px; color:var(--text); font-weight:600; letter-spacing:-.1px;
+    display:flex; align-items:center; gap:var(--space-sm); flex-wrap:wrap; margin-bottom:14px;
   }
-  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:var(--space-md); align-items:start;}
-  /* overview: pipeline is the main column, the side rail stays narrow */
-  .grid-main{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);}
-  @media (max-width:1000px){ .grid2,.grid-main{grid-template-columns:1fr;} }
+  .h2tools{display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap; font-weight:500;}
+  .grid2{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; align-items:start;}
+  .grid-main{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);}
+  @media (max-width:1080px){ .grid2,.grid-main{grid-template-columns:1fr;} }
+  .stack{display:flex; flex-direction:column; min-width:0;}
   .row{display:flex; gap:var(--space-sm); align-items:center; flex-wrap:wrap;}
+  .fieldlbl{font-size:11px; color:var(--faint); font-weight:600; letter-spacing:.3px;}
+
+  /* ---------- disclosure for explanations ---------- */
+  details.helpbox{margin-top:14px;}
+  details.helpbox > summary{cursor:pointer; list-style:none; font-size:12px; color:var(--faint); display:inline-flex; align-items:center; gap:7px; font-weight:500;}
+  details.helpbox > summary::-webkit-details-marker{display:none;}
+  details.helpbox > summary::before{content:'i'; width:16px; height:16px; border-radius:50%; display:inline-grid; place-items:center;
+    font-size:10px; font-weight:700; font-style:italic; border:1px solid var(--border-strong); color:var(--dim);}
+  details.helpbox > summary:hover{color:var(--text);}
+  details.helpbox[open] > summary{margin-bottom:6px;}
+  details.helpbox .hint.help{max-height:none; cursor:default; -webkit-mask-image:none; mask-image:none;}
+  details.helpbox .hint.help::after{display:none;}
+
+  /* ---------- overview: command-bar composer ---------- */
+  .hero-head{margin:4px 0 20px;}
+  .hero-head h1{font-size:32px; font-weight:700; letter-spacing:-1px; line-height:1.1;}
+  .hero-head h1 em{font-style:normal; background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .hero-head p{color:var(--dim); margin-top:8px; font-size:14px;}
+  body[data-run="running"] .hero-head, body[data-run="waiting_gate"] .hero-head{display:none;}
+  section.hero{padding:0; overflow:hidden; border-radius:var(--radius-xl);
+    background:linear-gradient(var(--panel),var(--panel)) padding-box,
+      linear-gradient(135deg, color-mix(in srgb,#5b6cff 60%,transparent), color-mix(in srgb,#9b5cff 30%,transparent) 45%, color-mix(in srgb,#ff5fa2 40%,transparent)) border-box;
+    border:1px solid transparent;
+    box-shadow:0 30px 80px -20px color-mix(in srgb, #5b6cff 35%, transparent), var(--shadow-md);}
+  section.hero > h2{display:none;}
+  .cmd-input{display:block; width:100%; min-height:96px; max-height:340px; resize:none; border:none !important; background:transparent !important;
+    box-shadow:none !important; padding:20px 22px 10px !important; font-size:16px !important; line-height:1.6 !important; border-radius:0 !important;}
+  .cmd-inputwrap{position:relative;}
+  .cmd-inputwrap .cmd-input{padding-bottom:44px !important;}
+  .cmd-assist{position:absolute; inset-inline-end:12px; bottom:10px; display:flex; gap:4px;}
+  .cmd-tools{display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 14px; border-top:1px solid var(--hairline);
+    background:color-mix(in srgb, var(--text) 2.5%, transparent);}
+  .cmd-tools select{height:32px; padding:0 28px 0 12px; border-radius:999px; font-size:12.5px; font-weight:500; background-color:var(--panel2);
+    flex:0 1 auto; width:auto; max-width:190px; text-overflow:ellipsis;}
+  .cmd-tools #runFlow{max-width:220px; font-weight:600;}
+  .cmd-tools .badge{font-size:11px;}
+  .optbtn{gap:6px; color:var(--dim);}
+  .optbtn .optsum{color:var(--accent); font-weight:600;}
+  /* Run options: folded by default, one tidy row of labelled fields when open. */
+  .cmd-opts{display:none; gap:12px; flex-wrap:wrap; padding:12px 14px; border-top:1px solid var(--hairline);
+    background:color-mix(in srgb, var(--text) 1.5%, transparent);}
+  .cmd-opts.open{display:flex; animation:pagein .2s var(--ease);}
+  .cmd-opts .opt{display:flex; flex-direction:column; gap:4px; font-size:11px; color:var(--faint); font-weight:600; letter-spacing:.3px; min-width:150px; flex:1 1 150px;}
+  .cmd-opts select{height:32px; padding:0 10px; font-size:12.5px; width:100%;}
+  /* Cost estimate: one readable line; the breakdown is a slim list on demand. */
+  section.hero .estbox{display:flex; flex-direction:column; gap:8px; background:transparent; border:none; border-radius:0; padding:12px 18px 0; margin:0;}
+  .est-line{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;}
+  .est-cost{font-size:18px; font-weight:700; letter-spacing:-.3px; color:var(--text); cursor:help;
+    text-decoration:underline dotted color-mix(in srgb, var(--text) 25%, transparent); text-underline-offset:4px;}
+  .est-meta{font-size:12.5px; color:var(--dim);}
+  .est-risk{font-size:11.5px; color:var(--amber); padding:2px 9px; border-radius:999px; cursor:help;
+    background:color-mix(in srgb, var(--amber) 10%, transparent); border:1px solid color-mix(in srgb, var(--amber) 28%, transparent);}
+  section.hero .estbox details > summary{cursor:pointer; list-style:none; font-size:12px; color:var(--faint); display:inline-flex; align-items:center; gap:6px; font-weight:500;}
+  section.hero .estbox details > summary::-webkit-details-marker{display:none;}
+  section.hero .estbox details > summary::before{content:'›'; transition:transform .2s var(--ease);}
+  section.hero .estbox details[open] > summary::before{transform:rotate(90deg);}
+  section.hero .estbox details > summary:hover{color:var(--text);}
+  .est-list{display:flex; flex-direction:column; gap:2px; margin-top:8px; padding:6px; border-radius:var(--radius-md); background:var(--code-bg); border:1px solid var(--hairline);}
+  .est-row{display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(60px,1fr) 64px; gap:12px; align-items:center;
+    padding:6px 10px; border-radius:8px; font-size:12.5px; cursor:default;}
+  .est-row:hover{background:color-mix(in srgb, var(--text) 5%, transparent);}
+  .est-row.muted{opacity:.55;}
+  .est-name{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .est-name i{font-style:normal; font-size:11px; color:var(--faint);}
+  .est-model{font-family:var(--mono); font-size:11px; color:var(--faint); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .est-bar{height:6px; border-radius:999px; background:color-mix(in srgb, var(--text) 7%, transparent); overflow:hidden;}
+  .est-bar i{display:block; height:100%; border-radius:999px; background:var(--grad);}
+  .est-price{text-align:end; font-family:var(--mono); font-size:12px; color:var(--text);}
+  @media (max-width:700px){ .est-row{grid-template-columns:minmax(0,1fr) 64px;} .est-model,.est-bar{display:none;} }
+  .cmd-foot{padding:10px 14px 14px; display:flex; flex-direction:column; gap:0;}
+  .cmd-foot .cmdline{margin:8px 0 4px;}
   .grow{flex:1; min-width:220px;}
   /* run composer: what to run on the first line, how to run it on the second */
   .runbar{display:flex; flex-direction:column; gap:var(--space-sm); margin-bottom:var(--space-md);}
@@ -213,7 +354,7 @@
   .hint.help:not(.open){-webkit-mask-image:linear-gradient(90deg,#000 80%,transparent); mask-image:linear-gradient(90deg,#000 80%,transparent);}
   [dir=rtl] .hint.help:not(.open){-webkit-mask-image:linear-gradient(270deg,#000 80%,transparent); mask-image:linear-gradient(270deg,#000 80%,transparent);}
   /* A gate waiting for a decision is visible from every tab. */
-  #gateBar{display:none; position:sticky; top:0; z-index:40; margin:0 0 var(--space-md); padding:10px 14px; border-radius:var(--radius-md);
+  #gateBar{display:none; position:sticky; top:calc(var(--topbar) + 10px); z-index:40; margin:0 0 var(--space-md); padding:10px 14px; border-radius:var(--radius-md);
     background:color-mix(in srgb, var(--amber) 16%, var(--panel)); border:1px solid color-mix(in srgb, var(--amber) 45%, transparent);
     color:var(--text); align-items:center; gap:10px; box-shadow:var(--shadow-md); font-size:13.5px;}
   #gateBar.on{display:flex;}
@@ -258,8 +399,8 @@
   .btn{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--border); background:var(--panel2); color:var(--text); padding:7px 16px; border-radius:var(--radius-sm); cursor:pointer; font-size:13px; font-family:inherit; font-weight:500; white-space:nowrap; transition:border-color .15s ease, background-color .15s ease, color .15s ease, transform .12s ease, box-shadow .15s ease;}
   .btn:hover{border-color:var(--accent); color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, var(--panel2)); transform:translateY(-1px);}
   .btn:active{transform:translateY(0);}
-  .btn.primary{background:var(--accent2); border-color:var(--accent2); color:#fff; box-shadow:0 2px 10px color-mix(in srgb, var(--accent2) 35%, transparent);}
-  .btn.primary:hover{color:#fff; background:color-mix(in srgb, #fff 12%, var(--accent2)); border-color:color-mix(in srgb, #fff 12%, var(--accent2)); box-shadow:0 4px 16px color-mix(in srgb, var(--accent2) 45%, transparent);}
+  .btn.primary{background:var(--grad); border-color:transparent; color:#fff; box-shadow:0 2px 10px color-mix(in srgb, var(--accent2) 38%, transparent);}
+  .btn.primary:hover{color:#fff; filter:brightness(1.12); border-color:transparent; box-shadow:0 4px 18px color-mix(in srgb, var(--accent2) 48%, transparent);}
   .btn.approve{background:transparent; border-color:var(--green); color:var(--green);}
   .btn.approve:hover{color:var(--green); border-color:var(--green); background:color-mix(in srgb, var(--green) 12%, transparent);}
   .btn.reject{background:transparent; border-color:var(--red); color:var(--red);}
@@ -465,7 +606,7 @@
   #pickerBack.open{display:flex; align-items:center; justify-content:center;}
   #picker{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius-lg);
     width:min(760px,94vw); max-height:82vh; display:flex; flex-direction:column; box-shadow:0 16px 48px var(--shadow);}
-  #picker header{position:static; background:var(--panel); backdrop-filter:none; border-bottom:1px solid var(--border); border-radius:var(--radius-lg) var(--radius-lg) 0 0;}
+  #picker header{position:static; height:auto; padding:10px var(--space-lg); overflow:visible; background:var(--panel); backdrop-filter:none; border-bottom:1px solid var(--border); border-radius:var(--radius-lg) var(--radius-lg) 0 0;}
   #picker header h1{font-size:14px;}
   #pickerPath{font-family:var(--mono); font-size:12px; direction:ltr; color:var(--dim);
     padding:var(--space-sm) var(--space-lg); border-bottom:1px solid var(--border); overflow-wrap:anywhere;}
@@ -484,7 +625,251 @@
   .toast.ok{border-inline-start-color:var(--green);}
   .toast.err{border-inline-start-color:var(--red);}
   @keyframes slidein{from{transform:translateY(10px); opacity:0;} to{transform:none; opacity:1;}}
-  .empty{display:block; color:var(--dim); font-size:12.5px; line-height:1.6; padding:var(--space-md) 2px;}
+  .empty{display:block; color:var(--faint); font-size:12.5px; line-height:1.7; padding:22px var(--space-lg); text-align:center;
+    border:1px dashed var(--border); border-radius:var(--radius-md); background:transparent;}
+
+  /* =====================================================================
+     Component layer - every page draws from these, so they look like one
+     product: one button, one card, one list, one table, one input.
+     ===================================================================== */
+
+  /* buttons */
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:7px; height:34px; padding:0 14px;
+    border:1px solid var(--border); background:var(--panel2); color:var(--text); border-radius:var(--radius-sm);
+    font-size:13px; font-weight:550; font-family:inherit; white-space:nowrap; cursor:pointer;
+    transition:background-color .18s var(--ease), border-color .18s var(--ease), color .18s var(--ease), transform .18s var(--ease), box-shadow .18s var(--ease), filter .18s var(--ease);}
+  .btn:hover{border-color:var(--border-strong); background:color-mix(in srgb, var(--text) 8%, transparent); color:var(--text); transform:none;}
+  .btn:active{transform:scale(.97);}
+  .btn.small{height:28px; padding:0 11px; font-size:12px; border-radius:8px;}
+  .btn.primary{background:var(--grad); border-color:transparent; color:#fff;
+    box-shadow:0 8px 24px -6px color-mix(in srgb, #7c5cff 60%, transparent), inset 0 1px 0 rgba(255,255,255,.25);}
+  .btn.primary:hover{filter:brightness(1.1) saturate(1.05); color:#fff; border-color:transparent; background:var(--grad);
+    box-shadow:0 12px 30px -6px color-mix(in srgb, #7c5cff 70%, transparent), inset 0 1px 0 rgba(255,255,255,.3);}
+  .runbar .btn.primary, .cmd-tools .btn.primary{height:34px; padding:0 18px;}
+  .btn.approve{background:color-mix(in srgb, var(--green) 14%, transparent); border-color:color-mix(in srgb, var(--green) 45%, transparent); color:var(--green);}
+  .btn.approve:hover{background:color-mix(in srgb, var(--green) 22%, transparent); color:var(--green); border-color:var(--green);}
+  .btn.reject{background:color-mix(in srgb, var(--red) 10%, transparent); border-color:color-mix(in srgb, var(--red) 40%, transparent); color:var(--red);}
+  .btn.reject:hover{background:color-mix(in srgb, var(--red) 18%, transparent); color:var(--red); border-color:var(--red);}
+  .btn.chip-active{border-color:color-mix(in srgb, var(--accent) 55%, transparent); color:var(--text); background:color-mix(in srgb, var(--accent) 16%, transparent);}
+  .btn.ghost{background:transparent; border-color:transparent; color:var(--dim);}
+  .btn.ghost:hover{color:var(--text); background:color-mix(in srgb, var(--text) 7%, transparent);}
+  .btn:disabled{opacity:.4; cursor:default; transform:none; filter:none;}
+
+  /* quiet explanations */
+  .hint{font-size:12px; color:var(--faint); margin-top:10px; line-height:1.6; padding:0; border:none;}
+  .hint.help{max-height:1.6em; padding-inline-end:20px;}
+  .hint.help::after{content:'+'; font-style:normal; color:var(--dim); top:-1px;}
+  .hint.help.open::after{content:'–';}
+
+  /* pipeline: a vertical timeline */
+  #stages{display:flex; flex-direction:column; gap:0; position:relative;}
+  .stage{position:relative; display:flex; align-items:flex-start; gap:14px; padding:12px 14px; padding-inline-start:44px;
+    margin-bottom:6px; border-radius:var(--radius-md); background:transparent; border:1px solid transparent;
+    transition:background-color .2s var(--ease), border-color .2s var(--ease);}
+  .stage:hover{background:var(--panel2); border-color:var(--border); border-inline-start-color:var(--border);}
+  .stage::after{content:''; position:absolute; inset-inline-start:21px; top:32px; bottom:-14px; width:2px; border-radius:2px;
+    background:var(--border);}
+  .stage:last-child::after{display:none;}
+  .stage .dot{position:absolute; inset-inline-start:15px; top:16px; width:14px; height:14px; margin:0; border-radius:50%;
+    background:var(--panel-solid); border:2px solid var(--faint); box-shadow:none;}
+  .stage.done::after{background:color-mix(in srgb, var(--green) 55%, transparent);}
+  .stage.done .dot{background:var(--green); border-color:var(--green); box-shadow:0 0 0 4px color-mix(in srgb, var(--green) 18%, transparent);}
+  .stage.running{background:color-mix(in srgb, var(--blue) 8%, transparent); border-color:color-mix(in srgb, var(--blue) 35%, transparent);}
+  .stage.running .dot{background:var(--blue); border-color:var(--blue); animation:ring 1.6s infinite;}
+  .stage.waiting_gate{background:color-mix(in srgb, var(--amber) 8%, transparent); border-color:color-mix(in srgb, var(--amber) 35%, transparent);}
+  .stage.waiting_gate .dot{background:var(--amber); border-color:var(--amber); animation:ring 1.6s infinite;}
+  .stage.failed{background:color-mix(in srgb, var(--red) 8%, transparent); border-color:color-mix(in srgb, var(--red) 35%, transparent);}
+  .stage.failed .dot{background:var(--red); border-color:var(--red);}
+  .stage.interrupted .dot{background:var(--amber); border-color:var(--amber);}
+  .stage.skipped{opacity:.45;}
+  .stage.done, .stage.interrupted{border-inline-start-color:transparent;}
+  .stage.done:hover, .stage.interrupted:hover{border-inline-start-color:var(--border);}
+  .stage.running .dot{color:var(--blue);} .stage.waiting_gate .dot{color:var(--amber);}
+  @keyframes ring{0%{box-shadow:0 0 0 0 currentColor;} 100%{box-shadow:0 0 0 10px transparent;}}
+  .stage .t{font-size:13.5px; font-weight:600;}
+  .stage .t b{color:var(--faint); font-weight:500; font-family:var(--mono); font-size:11px; margin-inline-start:6px;}
+  .stage .note{font-size:12.5px; color:var(--dim); margin-top:3px;}
+  .stage .meta{font-size:11px; color:var(--faint); line-height:1.75;}
+  .modelchip{display:inline-block; padding:1px 8px; border-radius:999px; font-size:10.5px; font-family:var(--mono); font-weight:500;
+    border:1px solid var(--border); background:var(--panel2); color:var(--dim); margin-top:2px;}
+  .resumebar{display:flex; align-items:center; gap:10px; padding:10px 14px; margin-bottom:12px; border-radius:var(--radius-md); font-size:12.5px;
+    background:color-mix(in srgb, var(--amber) 10%, transparent); border:1px solid color-mix(in srgb, var(--amber) 35%, transparent);}
+  .task-line{font-size:14px; font-weight:500; margin-bottom:10px;}
+
+  /* gate */
+  #gateBox{border:1px solid color-mix(in srgb, var(--amber) 45%, transparent);
+    background:linear-gradient(135deg, color-mix(in srgb, var(--amber) 14%, transparent), transparent 60%), var(--panel);
+    box-shadow:0 20px 60px -20px color-mix(in srgb, var(--amber) 40%, transparent), var(--shadow-md);}
+  #gateBox > h2{color:var(--amber);}
+  #gateBar{border-radius:var(--radius-md); backdrop-filter:var(--glass); -webkit-backdrop-filter:var(--glass);
+    background:color-mix(in srgb, var(--amber) 14%, var(--panel)); border:1px solid color-mix(in srgb, var(--amber) 40%, transparent); box-shadow:var(--shadow-md);}
+
+  /* code, docs, feeds */
+  pre,.md,textarea.code{background:var(--code-bg); border:1px solid var(--hairline); border-radius:var(--radius-md);}
+  .md{padding:20px 24px; line-height:1.7; font-size:13.5px;}
+  .md h1{font-size:20px; letter-spacing:-.3px;} .md h2{font-size:16px; color:var(--text);} .md h3{font-size:14px;}
+  .md h2::before{display:none;}
+  .md code{background:var(--panel2); border-color:var(--border);}
+  .md th{background:var(--panel2); color:var(--text);}
+  .md th,.md td{border-color:var(--border);}
+  #log, .feedbox, .cmdline{background:var(--code-bg); border:1px solid var(--hairline); border-radius:var(--radius-md);}
+  .cmdline{opacity:1; padding:6px 6px 6px 14px;}
+  .cmdline code{color:var(--faint); font-size:12px;}
+  .logrow, .act-row{border-bottom-color:var(--hairline);}
+  #actFeed{max-height:calc(100vh - 260px); min-height:320px;}
+  .filelist{border-bottom-color:var(--hairline);}
+
+  /* master-detail */
+  .split{display:grid; grid-template-columns:260px minmax(0,1fr); gap:14px; align-items:start;}
+  .listpane{position:sticky; top:12px; max-height:calc(100vh - 24px); overflow:auto; padding:14px 10px;}
+  .listpane > h2{padding:0 6px;}
+  .listpane .filelist{flex-direction:column; flex-wrap:nowrap; gap:1px; margin:0; padding:0; border:none;}
+  .listpane .filelist .btn{width:100%; height:auto; min-height:32px; justify-content:flex-start; border-color:transparent; background:transparent; color:var(--dim);
+    font-size:12.5px; font-weight:500; padding:6px 10px; border-radius:8px; white-space:normal; text-align:start; overflow-wrap:anywhere;}
+  .listpane .filelist .btn:hover{background:color-mix(in srgb, var(--text) 6%, transparent); color:var(--text);}
+  .listpane .filelist .btn.chip-active{background:color-mix(in srgb, var(--text) 9%, transparent); color:var(--text); border-color:var(--border);}
+  .listpane .empty{padding:16px; font-size:12px;}
+  #artifactView:empty{display:flex; align-items:center; justify-content:center; min-height:300px; color:var(--faint); font-size:13px;}
+  #artifactView:empty::before{content:attr(data-ph);}
+  @media (max-width:900px){ .split{grid-template-columns:1fr;} .listpane{position:static; max-height:none;}
+    .listpane .filelist{flex-direction:row; flex-wrap:wrap;} .listpane .filelist .btn{width:auto;} }
+
+  /* cards used across Runs / Settings / Usage */
+  .runcard, .provcard, .kpi, .proj-item, .runrow, .qrow, .estbox{background:var(--panel2); border:1px solid var(--border); border-radius:var(--radius-md);}
+  .runcard, .provcard{padding:16px; transition:border-color .2s var(--ease), transform .2s var(--ease), background-color .2s var(--ease);}
+  .runcard:hover, .provcard:hover{border-color:var(--border-strong); transform:translateY(-1px);}
+  .provcard.active{border-color:color-mix(in srgb, var(--accent) 60%, transparent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+    background:color-mix(in srgb, var(--accent) 7%, var(--panel2));}
+  .provicon{border-radius:12px; background:var(--panel2); border:1px solid var(--border);}
+  .proj-item:hover{border-color:var(--border-strong);}
+  .proj-item.active{border-color:color-mix(in srgb, var(--green) 50%, transparent); background:color-mix(in srgb, var(--green) 7%, var(--panel2));}
+  .runrow:hover, .qrow:hover{border-color:var(--border-strong);}
+  .runcard .prog, .ubudget{background:var(--code-bg); border:none; height:6px;}
+  .runcard .prog i, .ubudget > i{background:var(--grad);}
+  .kpi{padding:14px 16px;}
+  .kpi .k{font-size:11.5px; color:var(--faint); font-weight:500;}
+  .kpi .v{font-size:24px; font-weight:700; letter-spacing:-.5px; font-family:var(--font); margin-top:4px;}
+  .uchart{border-bottom-color:var(--border); gap:4px;}
+  .uchart .b{background:color-mix(in srgb, var(--accent) 45%, transparent); border-radius:5px 5px 2px 2px;}
+  .uchart .b:hover, .uchart .b.today{background:var(--grad);}
+  .utable th{color:var(--faint); font-weight:500; text-transform:uppercase; font-size:10.5px; letter-spacing:.5px;}
+  .utable th,.utable td{border-bottom-color:var(--hairline); padding:9px 10px;}
+  .utable tr:hover td{background:color-mix(in srgb, var(--text) 3%, transparent);}
+  .ushare{background:var(--grad);}
+  .estbox{border-style:solid; padding:12px 14px;}
+  .estbig{color:var(--text); font-size:18px;}
+
+  /* flow editor */
+  #flowPalette, #inspectorPane{background:var(--panel2); border:1px solid var(--border); border-radius:var(--radius-md);}
+  #canvasWrap{border-radius:var(--radius-md); border-color:var(--border); background-color:var(--code-bg);
+    background-image:radial-gradient(color-mix(in srgb, var(--text) 10%, transparent) 1px, transparent 1px);}
+  .fnode{background:var(--panel-solid); border-color:var(--border); border-radius:18px; box-shadow:0 8px 24px var(--shadow);}
+  .fnode .cost{background:var(--panel-solid);}
+  .palbtn{background:var(--panel2); border-color:var(--border); border-radius:var(--radius-md);}
+  .palbtn.chip-active{border-color:color-mix(in srgb, var(--accent) 55%, transparent); background:color-mix(in srgb, var(--accent) 14%, transparent); color:var(--text);}
+  .port{background:var(--panel-solid);}
+
+  /* overlays */
+  .modalwrap, #pickerBack{background:rgba(5,6,10,.55); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);}
+  .modal, #picker{background:color-mix(in srgb, var(--panel-solid) 88%, transparent); backdrop-filter:var(--glass); -webkit-backdrop-filter:var(--glass);
+    border:1px solid var(--border-strong); border-radius:var(--radius-xl); box-shadow:0 40px 100px rgba(0,0,0,.55);}
+  #picker header{display:flex; align-items:center; gap:8px; padding:12px 16px; border-bottom:1px solid var(--hairline);
+    background:transparent; border-radius:var(--radius-xl) var(--radius-xl) 0 0;}
+  #picker header h1{font-size:14px; font-weight:600;}
+  #pickerPath{border-bottom-color:var(--hairline);}
+  #pickerFoot{border-top-color:var(--hairline);}
+  .pickrow:hover{background:color-mix(in srgb, var(--text) 6%, transparent);}
+  .toast{background:color-mix(in srgb, var(--panel-solid) 90%, transparent); backdrop-filter:var(--glass); -webkit-backdrop-filter:var(--glass);
+    border:1px solid var(--border-strong); border-inline-start:3px solid var(--accent); border-radius:var(--radius-md);}
+  .toast.ok{border-inline-start-color:var(--green);} .toast.err{border-inline-start-color:var(--red);}
+
+  .provgrid{align-items:start;}
+  details.provmore{margin-top:14px;}
+  details.provmore > summary{cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px; padding:10px 14px;
+    border:1px dashed var(--border); border-radius:var(--radius-md); color:var(--dim); font-size:12.5px; font-weight:500;}
+  details.provmore > summary::-webkit-details-marker{display:none;}
+  details.provmore > summary::before{content:'›'; transition:transform .2s var(--ease); color:var(--faint);}
+  details.provmore[open] > summary::before{transform:rotate(90deg);}
+  details.provmore > summary:hover{color:var(--text); border-color:var(--border-strong);}
+  details.provmore[open] > summary{margin-bottom:14px;}
+  details.provmore .provcard{opacity:.8;}
+  details.provmore .provcard:hover{opacity:1;}
+  /* loading skeleton */
+  .skel{min-height:132px; position:relative; overflow:hidden; pointer-events:none;}
+  .skel::after{content:''; position:absolute; inset:0; transform:translateX(-100%);
+    background:linear-gradient(90deg, transparent, color-mix(in srgb, var(--text) 6%, transparent), transparent); animation:shimmer 1.3s infinite;}
+  @keyframes shimmer{to{transform:translateX(100%);}}
+
+  /* ---------- information architecture helpers ---------- */
+  /* Group captions split a page into named zones (Now / Before / Setup...). */
+  .groupcap{display:flex; align-items:center; gap:10px; margin:26px 2px 12px; font-size:11px; font-weight:650;
+    letter-spacing:.9px; text-transform:uppercase; color:var(--faint); scroll-margin-top:16px;}
+  .groupcap::after{content:''; flex:1; height:1px; background:linear-gradient(90deg, var(--border), transparent);}
+  [dir=rtl] .groupcap::after{background:linear-gradient(270deg, var(--border), transparent);}
+  .pagehead + .groupcap, .hero-head + .groupcap{margin-top:0;}
+
+  /* Overview adapts to the run: idle -> composer + context; live -> run + steering rail. */
+  .ov-run{display:grid; grid-template-columns:minmax(0,1.6fr) minmax(0,1fr); gap:14px; align-items:start;}
+  body[data-run="none"] .ov-run, body[data-run="none"] .ov-run-cap, body:not([data-run]) .ov-run, body:not([data-run]) .ov-run-cap{display:none;}
+  body:not([data-run="running"]):not([data-run="waiting_gate"]) .ov-side{display:none;}
+  body:not([data-run="running"]):not([data-run="waiting_gate"]) .ov-run{grid-template-columns:minmax(0,1fr);}
+  @media (max-width:1080px){ .ov-run{grid-template-columns:minmax(0,1fr);} }
+  /* While a run is live it leads the page; the composer moves below it, compact. */
+  .ov-new-cap{display:none;}
+  body[data-run="running"] #page-overview.active, body[data-run="waiting_gate"] #page-overview.active{display:flex; flex-direction:column;}
+  body[data-run="running"] #page-overview > *, body[data-run="waiting_gate"] #page-overview > *{order:10;}
+  body[data-run="running"] #page-overview > #gateBox, body[data-run="waiting_gate"] #page-overview > #gateBox{order:0;}
+  body[data-run="running"] #page-overview > .ov-run-cap, body[data-run="waiting_gate"] #page-overview > .ov-run-cap{order:1; margin-top:0;}
+  body[data-run="running"] #page-overview > .ov-run, body[data-run="waiting_gate"] #page-overview > .ov-run{order:2;}
+  body[data-run="running"] #page-overview > .ov-new-cap, body[data-run="waiting_gate"] #page-overview > .ov-new-cap{order:3; display:flex;}
+  body[data-run="running"] #page-overview > section.hero, body[data-run="waiting_gate"] #page-overview > section.hero{order:4;}
+  body[data-run="running"] #runConsoleSec, body[data-run="waiting_gate"] #runConsoleSec{order:5;}
+  body[data-run="running"] .cmd-input, body[data-run="waiting_gate"] .cmd-input{min-height:64px;}
+  .ov-context{display:grid; grid-template-columns:repeat(auto-fit, minmax(380px, 1fr)); gap:14px; align-items:start;}
+  .ov-context #actFeedHome{max-height:280px;}
+  details.logbox{margin-top:14px; border-top:1px solid var(--hairline); padding-top:12px;}
+  details.logbox > summary{cursor:pointer; list-style:none; font-size:12.5px; font-weight:600; color:var(--dim); display:flex; align-items:center; gap:8px;}
+  details.logbox > summary::-webkit-details-marker{display:none;}
+  details.logbox > summary::before{content:'›'; display:inline-block; transition:transform .2s var(--ease); color:var(--faint);}
+  details.logbox[open] > summary::before{transform:rotate(90deg);}
+  details.logbox > summary:hover{color:var(--text);}
+  details.logbox #log{margin-top:10px;}
+
+  /* Editor pages: one bar on top (view switch ... primary action), list actions live under the list. */
+  .edbar{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:16px;}
+  .edbar-actions{display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end;}
+  .seg{display:inline-flex; gap:2px; padding:3px; border-radius:11px; background:var(--panel2); border:1px solid var(--border);}
+  .seg .btn{border-color:transparent; background:transparent; color:var(--dim); height:26px;}
+  .seg .btn:hover{background:color-mix(in srgb, var(--text) 6%, transparent);}
+  .seg .btn.chip-active{background:color-mix(in srgb, var(--text) 11%, transparent); color:var(--text); border-color:var(--border);
+    box-shadow:0 1px 2px rgba(0,0,0,.2);}
+  .listactions{display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:12px; padding:12px 6px 0; border-top:1px solid var(--hairline);}
+  .listactions input{flex:1 1 120px; min-width:0; height:28px; padding:0 10px; font-size:12px;}
+  .listpane > .hint{padding:0 6px;}
+  /* Flows: the view switch and the canvas actions share the top row. */
+  #page-flows section.editor{display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; column-gap:8px;}
+  #page-flows section.editor > *, #page-flows #canvasView > *, #page-flows #jsonView > *{grid-column:1 / -1;}
+  #page-flows #canvasView, #page-flows #jsonView{display:contents;}
+  #page-flows section.editor > .edbar{grid-column:1; margin-bottom:16px;}
+  #page-flows #canvasView > .edbar-actions, #page-flows #jsonView > .edbar-actions{grid-column:2; grid-row:1; margin-bottom:16px;}
+  #canvasTotal:empty{display:none;}
+  #page-flows #jsonView .edbar-actions input{width:220px;}
+  .jumpbar .btn{color:var(--dim);}
+
+  /* quick switcher (Ctrl/Cmd+K) */
+  .cmdk{width:min(560px,100%); padding:0; gap:0; overflow:hidden; align-self:flex-start; margin-top:12vh;}
+  .cmdk input{width:100%; border:none !important; border-bottom:1px solid var(--hairline) !important; border-radius:0 !important;
+    background:transparent !important; box-shadow:none !important; padding:16px 18px !important; font-size:15px !important;}
+  #cmdkList{max-height:50vh; overflow:auto; padding:6px;}
+  .cmdk-item{display:flex; align-items:center; gap:12px; width:100%; padding:9px 12px; border:none; border-radius:10px; background:transparent;
+    color:var(--dim); font:inherit; font-size:13.5px; cursor:pointer; text-align:start;}
+  .cmdk-item .ic{width:18px; height:18px;}
+  .cmdk-item.sel, .cmdk-item:hover{background:color-mix(in srgb, var(--text) 8%, transparent); color:var(--text);}
+  .cmdk-item .grp{margin-inline-start:auto; font-size:11px; color:var(--faint);}
+
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation:none !important; transition:none !important;}
+  }
 </style>
 </head>
 <body>
@@ -509,32 +894,58 @@
   <symbol id="ic-plus" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></symbol>
   <symbol id="ic-chart" viewBox="0 0 24 24"><path d="M4.5 19.5h15"/><path d="M7.4 19.5V11M12 19.5V5.5M16.6 19.5v-5.6"/></symbol>
   <symbol id="ic-gauge" viewBox="0 0 24 24"><path d="M4 16.5a8 8 0 1 1 16 0"/><path d="M12 16.5 16.2 9.8"/><circle cx="12" cy="16.5" r="1.4"/></symbol>
+  <symbol id="ic-home" viewBox="0 0 24 24"><path d="M4 11 12 4.6 20 11v8.4H4z"/><path d="M10 19.4v-5h4v5"/></symbol>
+  <symbol id="ic-play" viewBox="0 0 24 24"><path d="M8.4 5.4 18 12 8.4 18.6z"/></symbol>
+  <symbol id="ic-pulse" viewBox="0 0 24 24"><path d="M3.5 12h4l2.2-5.5 4.6 11 2.2-5.5h4"/></symbol>
+  <symbol id="ic-file" viewBox="0 0 24 24"><path d="M6 3.5h8l4 4v13H6z"/><path d="M14 3.5v4h4M9 12.5h6M9 16h6"/></symbol>
+  <symbol id="ic-flow" viewBox="0 0 24 24"><rect x="3.5" y="4" width="6" height="5" rx="1.4"/><rect x="14.5" y="15" width="6" height="5" rx="1.4"/><path d="M9.5 6.5h3a2 2 0 0 1 2 2v6.5"/></symbol>
+  <symbol id="ic-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 4v2.4M12 17.6V20M4 12h2.4M17.6 12H20M6.3 6.3 8 8M16 16 17.7 17.7M17.7 6.3 16 8M8 16 6.3 17.7"/></symbol>
+  <symbol id="ic-studio" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="12" r="2.6"/><path d="M8.6 12h6.8"/></symbol>
 </defs></svg>
-<header>
-  <h1>Flow<span>Forge</span> ⚙</h1>
-  <span class="projpill">
-    <select id="projectSelect" title="project"></select>
-    <button class="iconbtn" id="btnPickTop">📂</button>
-  </span>
-  <span class="badge" id="statusBadge">—</span>
-  <span class="badge" id="flowBadge"></span>
-  <span class="spacer"></span>
-  <span class="badge" id="conn">…</span>
-  <button class="iconbtn" id="themeBtn" title="theme">🌙</button>
-  <button class="iconbtn" id="langBtn" title="language">EN</button>
-  <a class="iconbtn" id="lnkStudio" href="/studio" title="studio"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="12" r="2.6"/><path d="M8.6 12h6.8"/></svg></a>
-</header>
-<nav>
-  <div class="tab active" data-page="overview"><span data-i18n="tab_overview"></span></div>
-  <div class="tab" data-page="runs"><span data-i18n="tab_runs"></span><span class="badge running" id="runsTabBadge" style="display:none; margin-inline-start:6px; padding:0 6px"></span></div>
-  <div class="tab" data-page="activity"><span data-i18n="tab_activity"></span><span class="livedot" id="actDot" style="display:none"></span></div>
-  <div class="tab" data-page="artifacts"><span data-i18n="tab_artifacts"></span></div>
-  <div class="tab" data-page="flows"><span data-i18n="tab_flows"></span></div>
-  <div class="tab" data-page="agents"><span data-i18n="tab_agents"></span></div>
-  <div class="tab" data-page="skills"><span data-i18n="tab_skills"></span></div>
-  <div class="tab" data-page="usage"><span data-i18n="tab_usage"></span></div>
-  <div class="tab" data-page="settings"><span data-i18n="tab_settings"></span></div>
-</nav>
+<div class="shell">
+<aside class="sidebar">
+  <div class="brand"><i class="logo"><svg class="ic" viewBox="0 0 24 24"><use href="#ic-flow"/></svg></i><b style="font-weight:inherit">Flow<span>Forge</span></b></div>
+  <div class="projbox">
+    <span class="fieldlbl" data-i18n="tt_project"></span>
+    <span class="projpill">
+      <select id="projectSelect" title="project"></select>
+      <button class="iconbtn" id="btnPickTop">📂</button>
+    </span>
+    <span class="projstate">
+      <span class="badge" id="statusBadge">—</span>
+      <span class="badge" id="flowBadge"></span>
+    </span>
+  </div>
+  <button type="button" class="quickjump" id="btnQuick"><svg class="ic xs"><use href="#ic-search"/></svg><span data-i18n="cmdk_open"></span><span class="kbd">Ctrl K</span></button>
+  <nav class="sidenav" role="tablist" aria-orientation="vertical">
+    <div class="navgroup">
+      <span class="navcap" data-i18n="nav_workspace"></span>
+      <button type="button" role="tab" aria-selected="true" class="tab active" data-page="overview"><svg class="ic"><use href="#ic-home"/></svg><span data-i18n="tab_overview"></span></button>
+      <button type="button" role="tab" aria-selected="false" class="tab" data-page="runs"><svg class="ic"><use href="#ic-play"/></svg><span data-i18n="tab_runs"></span><span class="badge running" id="runsTabBadge" style="display:none; padding:0 7px"></span></button>
+      <button type="button" role="tab" aria-selected="false" class="tab" data-page="activity"><svg class="ic"><use href="#ic-pulse"/></svg><span data-i18n="tab_activity"></span><span class="livedot" id="actDot" style="display:none"></span></button>
+      <button type="button" role="tab" aria-selected="false" class="tab" data-page="artifacts"><svg class="ic"><use href="#ic-file"/></svg><span data-i18n="tab_artifacts"></span></button>
+    </div>
+    <div class="navgroup">
+      <span class="navcap" data-i18n="nav_build"></span>
+      <button type="button" role="tab" aria-selected="false" class="tab" data-page="flows"><svg class="ic"><use href="#ic-flow"/></svg><span data-i18n="tab_flows"></span></button>
+      <button type="button" role="tab" aria-selected="false" class="tab" data-page="agents"><svg class="ic"><use href="#ic-brain"/></svg><span data-i18n="tab_agents"></span></button>
+      <button type="button" role="tab" aria-selected="false" class="tab" data-page="skills"><svg class="ic"><use href="#ic-terminal"/></svg><span data-i18n="tab_skills"></span></button>
+      <a class="navlink" href="/studio"><svg class="ic"><use href="#ic-studio"/></svg><span data-i18n="nav_studio"></span></a>
+    </div>
+    <div class="navgroup">
+      <span class="navcap" data-i18n="nav_insights"></span>
+      <button type="button" role="tab" aria-selected="false" class="tab" data-page="usage"><svg class="ic"><use href="#ic-chart"/></svg><span data-i18n="tab_usage"></span></button>
+      <button type="button" role="tab" aria-selected="false" class="tab" data-page="settings"><svg class="ic"><use href="#ic-gear"/></svg><span data-i18n="tab_settings"></span></button>
+    </div>
+  </nav>
+  <div class="sidefoot">
+    <span class="badge" id="conn">…</span>
+    <span class="spacer"></span>
+    <button class="iconbtn" id="themeBtn" title="theme">🌙</button>
+    <button class="iconbtn" id="langBtn" title="language">EN</button>
+    <a class="iconbtn" id="lnkStudio" href="/studio" title="studio"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="12" r="2.6"/><path d="M8.6 12h6.8"/></svg></a>
+  </div>
+</aside>
 <main>
   <div id="gateBar" role="status">
     <span>🔔</span><span id="gateBarText"></span><span class="spacer"></span>
@@ -543,6 +954,7 @@
 
   <!-- ================ OVERVIEW ================ -->
   <div class="page active" id="page-overview">
+    <div class="hero-head"><h1 data-i18n="hero_title"></h1><p data-i18n="sub_overview"></p></div>
     <section id="gateBox">
       <h2 data-i18n="gate_title"></h2>
       <div class="q" id="gateQuestion"></div>
@@ -553,51 +965,67 @@
       </div>
     </section>
 
-    <section>
+    <div class="groupcap ov-new-cap" data-i18n="grp_new_run"></div>
+    <section class="hero">
       <h2 data-i18n="run_title"></h2>
-      <div class="runbar">
-        <div class="row">
-          <label class="hint" style="border:none; padding:0; margin:0" data-i18n="provider_label"></label>
-          <select id="runProvider"></select>
-          <select id="runFlow"></select>
+      <div class="cmd-inputwrap">
+        <textarea id="runTask" class="cmd-input" rows="3" spellcheck="false"></textarea>
+        <div class="cmd-assist">
+          <button class="btn ghost small" id="btnRefine" data-i18n="refine_btn"></button>
+          <button class="btn ghost small" id="btnOptimize" data-i18n="optimize_btn"></button>
+          <button class="btn ghost small" id="btnRefineUndo" data-i18n="refine_undo" style="display:none"></button>
         </div>
-        <div class="promptbar">
-          <textarea id="runTask" class="grow" rows="3" spellcheck="false"></textarea>
-          <div class="btncol">
-            <button class="btn" id="btnRefine" data-i18n="refine_btn"></button>
-            <button class="btn" id="btnOptimize" data-i18n="optimize_btn"></button>
-            <button class="btn small" id="btnRefineUndo" data-i18n="refine_undo" style="display:none"></button>
-          </div>
-        </div>
-        <div class="estbox" id="estBox" style="display:none"></div>
-        <div class="hint" data-i18n="prompt_hint"></div>
-        <div class="row">
-          <select id="runGates">
+      </div>
+      <!-- One row: what to run, how (folded), go. -->
+      <div class="cmd-tools">
+        <select id="runFlow" aria-label="flow"></select>
+        <button type="button" class="btn ghost small optbtn" id="btnOpts" aria-expanded="false" aria-controls="cmdOpts">
+          <svg class="ic xs"><use href="#ic-gear"/></svg><span data-i18n="opts_btn"></span><span class="optsum" id="optsSummary"></span>
+        </button>
+        <span class="badge" id="runStatus" style="display:none"></span>
+        <span class="badge done" id="daemonStatus" style="display:none"></span>
+        <span class="badge waiting_gate" id="queueBadge" style="display:none"></span>
+        <span class="badge waiting_gate" id="cliStatus" style="display:none"></span>
+        <button class="btn small" id="btnCliLogin" style="display:none"></button>
+        <span class="spacer"></span>
+        <button class="btn reject" id="btnStopRun" data-i18n="run_stop" style="display:none"></button>
+        <button class="btn primary" id="btnRun" data-i18n="run_now"></button>
+      </div>
+      <div class="cmd-opts" id="cmdOpts">
+        <label class="opt"><span data-i18n="opt_executor"></span><select id="runProvider" aria-label="executor"></select></label>
+        <label class="opt"><span data-i18n="opt_gates"></span>
+          <select id="runGates" aria-label="gates">
             <option value="" data-i18n="gates_default"></option>
             <option value="terminal" data-i18n="gates_terminal"></option>
             <option value="dashboard" data-i18n="gates_dashboard"></option>
             <option value="auto" data-i18n="gates_auto"></option>
             <option value="ai" data-i18n="gates_ai"></option>
-          </select>
-          <select id="runSpeed">
+          </select></label>
+        <label class="opt"><span data-i18n="opt_speed"></span>
+          <select id="runSpeed" aria-label="speed">
             <option value="" data-i18n="speed_flow"></option>
             <option value="fast" data-i18n="speed_fast"></option>
             <option value="balanced" data-i18n="speed_balanced"></option>
             <option value="quality" data-i18n="speed_quality"></option>
-          </select>
-          <span class="badge" id="runStatus" style="display:none"></span>
-          <span class="badge done" id="daemonStatus" style="display:none"></span>
-          <span class="badge waiting_gate" id="queueBadge" style="display:none"></span>
-          <span class="badge waiting_gate" id="cliStatus" style="display:none"></span>
-          <button class="btn" id="btnCliLogin" style="display:none"></button>
-          <span class="spacer"></span>
-          <button class="btn reject" id="btnStopRun" data-i18n="run_stop" style="display:none"></button>
-          <button class="btn primary" id="btnRun" data-i18n="run_now"></button>
-        </div>
+          </select></label>
+        <label class="opt"><span data-i18n="opt_size"></span>
+          <select id="runSize" aria-label="size">
+            <option value="" data-i18n="size_auto"></option>
+            <option value="tiny" data-i18n="size_tiny"></option>
+            <option value="small" data-i18n="size_small"></option>
+            <option value="full" data-i18n="size_full"></option>
+          </select></label>
       </div>
-      <div class="cmdline"><code id="runCmd">/flow task "..."</code><button class="btn small" id="btnCopyCmd" data-i18n="copy"></button></div>
-      <div class="hint" data-i18n="run_hint"></div>
-      <div class="hint" data-i18n="speed_hint"></div>
+      <div class="estbox" id="estBox" style="display:none"></div>
+      <div class="cmd-foot">
+        <details class="helpbox">
+          <summary data-i18n="how_it_works"></summary>
+          <div class="cmdline"><code id="runCmd">/flow task "..."</code><button class="btn small ghost" id="btnCopyCmd" data-i18n="copy"></button></div>
+          <div class="hint" data-i18n="prompt_hint"></div>
+          <div class="hint" data-i18n="run_hint"></div>
+          <div class="hint" data-i18n="speed_hint"></div>
+        </details>
+      </div>
     </section>
 
     <section id="runConsoleSec" style="display:none">
@@ -606,8 +1034,11 @@
       <div class="hint" data-i18n="auth_hint"></div>
     </section>
 
-    <div class="grid2 grid-main">
-      <section>
+    <!-- Current run: only exists once a flow has run here. The steering rail
+         (live output + inbox) only exists while the run is alive. -->
+    <div class="groupcap ov-run-cap" data-i18n="grp_current_run"></div>
+    <div class="ov-run">
+      <section id="pipelineSec">
         <h2 data-i18n="pipeline_title"></h2>
         <div class="task-line" id="taskText"></div>
         <div class="task-raw" id="taskRawText" style="display:none"></div>
@@ -616,38 +1047,44 @@
           <button class="btn primary small" id="btnResume" data-i18n="resume_btn"></button>
         </div>
         <div id="stages"><div class="empty" data-i18n="no_flow"></div></div>
+        <details class="logbox">
+          <summary data-i18n="log_title"></summary>
+          <div id="log">—</div>
+        </details>
       </section>
-      <div>
-        <section id="runsSec" style="display:none">
-          <h2 data-i18n="runs_title"></h2>
-          <div id="runsList"></div>
-        </section>
+      <div class="stack ov-side">
         <section id="liveSection">
           <h2><span data-i18n="live_output"></span> <span class="badge running" id="liveArtifactName" style="direction:ltr"></span></h2>
           <pre id="liveTail"></pre>
         </section>
-        <section>
+        <section id="inboxSec">
           <h2 data-i18n="inbox_title"></h2>
           <textarea id="inboxText" style="width:100%; min-height:64px"></textarea>
           <div class="row" style="margin-top:8px">
-            <button class="btn primary" id="btnInbox"></button>
+            <span class="hint" style="border:none; padding:0; margin:0; flex:1" data-i18n="inbox_hint"></span>
+            <button class="btn primary small" id="btnInbox"></button>
           </div>
-          <div class="hint" data-i18n="inbox_hint"></div>
-        </section>
-        <section>
-          <h2><span data-i18n="activity_feed"></span> <span class="livedot" id="homeDot" style="display:none"></span></h2>
-          <div id="actFeedHome" class="feedbox"><div class="empty" data-i18n="no_activity"></div></div>
-        </section>
-        <section>
-          <h2 data-i18n="log_title"></h2>
-          <div id="log">—</div>
         </section>
       </div>
+    </div>
+
+    <!-- Context: what happened before, and what is changing on disk. -->
+    <div class="groupcap" data-i18n="grp_recent"></div>
+    <div class="ov-context">
+      <section id="runsSec" style="display:none">
+        <h2 data-i18n="runs_title"></h2>
+        <div id="runsList"></div>
+      </section>
+      <section>
+        <h2><span data-i18n="activity_feed"></span> <span class="livedot" id="homeDot" style="display:none"></span></h2>
+        <div id="actFeedHome" class="feedbox"><div class="empty" data-i18n="no_activity"></div></div>
+      </section>
     </div>
   </div>
 
   <!-- ================ RUNS (all projects: in flight, queued, scheduled) ================ -->
   <div class="page" id="page-runs">
+    <div class="pagehead"><div class="ttl"><h1 data-i18n="tab_runs"></h1><p data-i18n="sub_runs"></p></div></div>
     <section>
       <h2><span data-i18n="board_active"></span> <span class="badge" id="boardCap"></span></h2>
       <div id="boardActive" class="boardgrid"><div class="empty" data-i18n="board_none_active"></div></div>
@@ -729,6 +1166,7 @@
 
   <!-- ================ ACTIVITY (live) ================ -->
   <div class="page" id="page-activity">
+    <div class="pagehead"><div class="ttl"><h1 data-i18n="tab_activity"></h1><p data-i18n="sub_activity"></p></div></div>
     <div class="grid2">
       <section>
         <h2><span data-i18n="activity_feed"></span></h2>
@@ -754,9 +1192,10 @@
 
   <!-- ================ ARTIFACTS ================ -->
   <div class="page" id="page-artifacts">
+    <div class="pagehead"><div class="ttl"><h1 data-i18n="tab_artifacts"></h1><p data-i18n="sub_artifacts"></p></div></div>
+    <div class="split">
+    <section class="listpane"><h2 data-i18n="list_docs"></h2><div class="filelist" id="artifactList"></div></section>
     <section>
-      <h2 data-i18n="tab_artifacts"></h2>
-      <div class="filelist" id="artifactList"></div>
       <div class="row" style="margin-bottom:8px">
         <button class="btn small" id="btnRawView" data-i18n="raw"></button>
         <span class="spacer"></span>
@@ -768,27 +1207,42 @@
       <div class="md" id="artifactView"></div>
       <pre id="artifactRaw" style="display:none"></pre>
     </section>
+    </div>
   </div>
 
   <!-- ================ FLOWS ================ -->
   <div class="page" id="page-flows">
-    <section>
-      <h2 data-i18n="tab_flows"></h2>
-      <div id="providerDetect" class="hint" style="margin-bottom:8px"></div>
-      <div class="row" style="margin-bottom:8px">
+    <div class="pagehead"><div class="ttl"><h1 data-i18n="tab_flows"></h1><p data-i18n="sub_flows"></p></div>
+      <div class="actions">
         <button class="btn small" id="btnBuildProviderFlow" data-i18n="provider_build_flow"></button>
         <button class="btn small" id="btnRetargetFlows" data-i18n="retarget_all"></button>
       </div>
+    </div>
+    <div class="split">
+    <section class="listpane">
+      <h2 data-i18n="list_flows"></h2>
       <div class="filelist" id="flowList"></div>
-      <div class="row" style="margin-bottom:8px">
-        <button class="btn small chip-active" id="btnViewCanvas" data-i18n="view_canvas"></button>
-        <button class="btn small" id="btnViewJson" data-i18n="view_json"></button>
-        <span class="spacer"></span>
-        <button class="btn" id="btnNewFlow" data-i18n="new_flow"></button>
-        <button class="btn" id="btnDeleteFlow" data-i18n="delete"></button>
+      <div class="listactions">
+        <button class="btn small" id="btnNewFlow" data-i18n="new_flow"></button>
+        <button class="btn small ghost" id="btnDeleteFlow" data-i18n="delete"></button>
+      </div>
+      <div id="providerDetect" class="hint"></div>
+    </section>
+    <section class="editor">
+      <div class="edbar">
+        <span class="seg">
+          <button class="btn small chip-active" id="btnViewCanvas" data-i18n="view_canvas"></button>
+          <button class="btn small" id="btnViewJson" data-i18n="view_json"></button>
+        </span>
       </div>
 
       <div id="canvasView">
+        <div class="edbar-actions">
+          <span class="badge done" id="canvasTotal" style="font-family:var(--mono)"></span>
+          <button class="btn small ghost" id="btnAutoLayout" data-i18n="auto_layout"></button>
+          <button class="btn small ghost" id="btnClearCanvas" data-i18n="clear_canvas"></button>
+          <button class="btn small primary" id="btnSaveCanvas" data-i18n="save"></button>
+        </div>
         <div id="flowPalette"></div>
         <div id="canvasArea">
         <div id="canvasWrap">
@@ -829,43 +1283,44 @@
         </div>
         </div>
 
-        <div class="row" style="margin-top:8px">
-          <button class="btn primary" id="btnSaveCanvas" data-i18n="save"></button>
-          <button class="btn" id="btnAutoLayout" data-i18n="auto_layout"></button>
-          <button class="btn" id="btnClearCanvas" data-i18n="clear_canvas"></button>
-          <span class="spacer"></span>
-          <span class="badge done" id="canvasTotal" style="font-family:var(--mono)"></span>
-        </div>
         <div class="hint" data-i18n="canvas_hint"></div>
       </div>
 
       <div id="jsonView" style="display:none">
-        <div class="row" style="margin-bottom:8px">
+        <div class="edbar-actions">
           <input type="text" id="newFlowName" placeholder="new-flow-name">
+          <button class="btn small primary" id="btnSaveFlow" data-i18n="save"></button>
         </div>
         <textarea class="code" id="flowEditor" rows="24" spellcheck="false"></textarea>
-        <div class="row" style="margin-top:8px">
-          <button class="btn primary" id="btnSaveFlow" data-i18n="save"></button>
-        </div>
       </div>
 
       <div class="hint" data-i18n="flows_hint"></div>
     </section>
+    </div>
   </div>
 
   <!-- ================ AGENTS ================ -->
   <div class="page" id="page-agents">
-    <section>
-      <h2 data-i18n="tab_agents"></h2>
+    <div class="pagehead"><div class="ttl"><h1 data-i18n="tab_agents"></h1><p data-i18n="sub_agents"></p></div></div>
+    <div class="split">
+    <section class="listpane">
+      <h2 data-i18n="list_roles"></h2>
       <div class="filelist" id="agentList"></div>
-      <div class="row" style="margin-bottom:8px">
-        <button class="btn small chip-active" id="btnViewAgentVisual" data-i18n="view_visual"></button>
-        <button class="btn small" id="btnViewAgentForm" data-i18n="view_form"></button>
-        <button class="btn small" id="btnViewAgentRaw" data-i18n="view_raw"></button>
-        <span class="spacer"></span>
+      <div class="listactions">
         <input type="text" id="newAgentName" placeholder="new-role-name">
-        <button class="btn" id="btnNewAgent" data-i18n="new_agent"></button>
-        <button class="btn" id="btnDeleteAgent" data-i18n="delete"></button>
+        <button class="btn small" id="btnNewAgent" data-i18n="new_agent"></button>
+        <button class="btn small ghost" id="btnDeleteAgent" data-i18n="delete"></button>
+      </div>
+    </section>
+    <section class="editor">
+      <div class="edbar">
+        <span class="seg">
+          <button class="btn small chip-active" id="btnViewAgentVisual" data-i18n="view_visual"></button>
+          <button class="btn small" id="btnViewAgentForm" data-i18n="view_form"></button>
+          <button class="btn small" id="btnViewAgentRaw" data-i18n="view_raw"></button>
+        </span>
+        <span class="spacer"></span>
+        <button class="btn small primary" id="btnSaveAgent" data-i18n="save"></button>
       </div>
 
       <div id="agentVisualView">
@@ -909,25 +1364,32 @@
       </div>
 
       <textarea class="code" id="agentEditor" rows="24" spellcheck="false" style="display:none"></textarea>
-      <div class="row" style="margin-top:8px">
-        <button class="btn primary" id="btnSaveAgent" data-i18n="save"></button>
-      </div>
       <div class="hint" data-i18n="agents_hint"></div>
     </section>
+    </div>
   </div>
 
   <!-- ================ SKILLS ================ -->
   <div class="page" id="page-skills">
-    <section>
-      <h2 data-i18n="tab_skills"></h2>
+    <div class="pagehead"><div class="ttl"><h1 data-i18n="tab_skills"></h1><p data-i18n="sub_skills"></p></div></div>
+    <div class="split">
+    <section class="listpane">
+      <h2 data-i18n="list_skills"></h2>
       <div class="filelist" id="skillList"></div>
-      <div class="row" style="margin-bottom:8px">
-        <button class="btn small chip-active" id="btnViewSkillVisual" data-i18n="view_visual"></button>
-        <button class="btn small" id="btnViewSkillForm" data-i18n="view_form"></button>
-        <button class="btn small" id="btnViewSkillRaw" data-i18n="view_raw"></button>
-        <span class="spacer"></span>
+      <div class="listactions">
         <input type="text" id="newSkillName" placeholder="new-skill-name">
-        <button class="btn" id="btnNewSkill" data-i18n="new_skill"></button>
+        <button class="btn small" id="btnNewSkill" data-i18n="new_skill"></button>
+      </div>
+    </section>
+    <section class="editor">
+      <div class="edbar">
+        <span class="seg">
+          <button class="btn small chip-active" id="btnViewSkillVisual" data-i18n="view_visual"></button>
+          <button class="btn small" id="btnViewSkillForm" data-i18n="view_form"></button>
+          <button class="btn small" id="btnViewSkillRaw" data-i18n="view_raw"></button>
+        </span>
+        <span class="spacer"></span>
+        <button class="btn small primary" id="btnSaveSkill" data-i18n="save"></button>
       </div>
 
       <div id="skillVisualView">
@@ -963,19 +1425,15 @@
       </div>
 
       <textarea class="code" id="skillEditor" rows="24" spellcheck="false" style="display:none"></textarea>
-      <div class="row" style="margin-top:8px">
-        <button class="btn primary" id="btnSaveSkill" data-i18n="save"></button>
-      </div>
       <div class="hint" data-i18n="skills_hint"></div>
     </section>
+    </div>
   </div>
 
   <!-- ================ USAGE ================ -->
   <div class="page" id="page-usage">
-    <section>
-      <div class="row">
-        <h2 style="margin:0" data-i18n="usage_title"></h2>
-        <span class="spacer"></span>
+    <div class="pagehead"><div class="ttl"><h1 data-i18n="tab_usage"></h1><p data-i18n="sub_usage"></p></div>
+      <div class="actions">
         <button class="iconbtn" id="useMonthPrev" title="‹">‹</button>
         <select id="useMonth"></select>
         <button class="iconbtn" id="useMonthNext" title="›">›</button>
@@ -986,68 +1444,92 @@
         </select>
         <button class="btn small" id="useRefresh" data-i18n="usage_refresh"></button>
       </div>
-      <div class="hint" id="useNote"></div>
+    </div>
+    <section>
+      <h2 data-i18n="usage_title"></h2>
+      <div class="hint" id="useNote" style="margin-top:0"></div>
       <div class="kpis" id="useKpis"></div>
       <div id="useBudget"></div>
       <div class="uchart" id="useChart"></div>
       <div class="uaxis" id="useAxis"></div>
     </section>
+    <div class="groupcap" data-i18n="grp_breakdown"></div>
     <div class="grid2">
       <section><h2 data-i18n="usage_by_tool"></h2><div class="uscroll" id="useTools"></div></section>
-      <section><h2 data-i18n="usage_tracking"></h2><div class="uscroll" id="useTracking"></div>
-        <div class="hint" data-i18n="usage_tracking_hint"></div></section>
-    </div>
-    <div class="grid2">
       <section><h2 data-i18n="usage_by_model"></h2><div class="uscroll" id="useModels"></div>
         <div class="hint" data-i18n="usage_rate_hint"></div></section>
-      <section><h2 data-i18n="usage_by_project"></h2><div class="uscroll" id="useProjects"></div>
-        <h2 style="margin-top:14px" data-i18n="usage_by_flow"></h2><div class="uscroll" id="useFlows"></div></section>
     </div>
+    <div class="grid2">
+      <section><h2 data-i18n="usage_by_project"></h2><div class="uscroll" id="useProjects"></div></section>
+      <section><h2 data-i18n="usage_by_flow"></h2><div class="uscroll" id="useFlows"></div></section>
+    </div>
+    <div class="groupcap" data-i18n="grp_tasks"></div>
     <section>
-      <div class="row">
-        <h2 style="margin:0" data-i18n="usage_tasks"></h2>
-        <span class="spacer"></span>
-        <select id="useSort">
-          <option value="new" data-i18n="usage_sort_new"></option>
-          <option value="cost" data-i18n="usage_sort_cost"></option>
-        </select>
-        <button class="btn small" id="useCsv" data-i18n="usage_csv"></button>
-        <select id="useReportFmt">
-          <option value="md">Markdown</option><option value="pdf">PDF</option>
-          <option value="docx">Word</option><option value="xlsx">Excel</option><option value="html">HTML</option>
-        </select>
-        <button class="btn small primary" id="useReport" data-i18n="usage_report"></button>
-      </div>
-      <div class="uscroll" id="useTasks" style="margin-top:8px"></div>
+      <h2><span data-i18n="usage_tasks"></span><span class="spacer"></span>
+        <span class="h2tools">
+          <select id="useSort">
+            <option value="new" data-i18n="usage_sort_new"></option>
+            <option value="cost" data-i18n="usage_sort_cost"></option>
+          </select>
+          <button class="btn small" id="useCsv" data-i18n="usage_csv"></button>
+          <select id="useReportFmt">
+            <option value="md">Markdown</option><option value="pdf">PDF</option>
+            <option value="docx">Word</option><option value="xlsx">Excel</option><option value="html">HTML</option>
+          </select>
+          <button class="btn small primary" id="useReport" data-i18n="usage_report"></button>
+        </span>
+      </h2>
+      <div class="uscroll" id="useTasks"></div>
     </section>
+    <div class="groupcap" data-i18n="grp_setup"></div>
     <section>
       <h2 data-i18n="usage_rates"></h2>
-      <div class="row">
+      <div class="kv">
         <label data-i18n="usage_usd_per_acu"></label>
-        <input type="number" id="useUsdAcu" step="0.01" min="0" style="width:110px; direction:ltr" placeholder="2.25">
+        <input type="number" id="useUsdAcu" step="0.01" min="0" style="width:140px; direction:ltr" placeholder="2.25">
         <label data-i18n="usage_budget"></label>
-        <input type="number" id="useBudgetIn" step="1" min="0" style="width:110px; direction:ltr" placeholder="100">
+        <input type="number" id="useBudgetIn" step="1" min="0" style="width:140px; direction:ltr" placeholder="100">
       </div>
       <div class="hint" id="useUsdNote"></div>
       <div class="hint" data-i18n="usage_hint"></div>
     </section>
+    <section><h2 data-i18n="usage_tracking"></h2><div class="uscroll" id="useTracking"></div>
+      <div class="hint" data-i18n="usage_tracking_hint"></div></section>
   </div>
 
   <!-- ================ SETTINGS ================ -->
   <div class="page" id="page-settings">
+    <div class="pagehead"><div class="ttl"><h1 data-i18n="tab_settings"></h1><p data-i18n="sub_settings"></p></div>
+      <div class="actions jumpbar">
+        <button class="btn small ghost" data-jump="setProjects" data-i18n="projects_title"></button>
+        <button class="btn small ghost" data-jump="setExecutors" data-i18n="grp_executors"></button>
+        <button class="btn small ghost" data-jump="setPrefs" data-i18n="grp_prefs"></button>
+      </div>
+    </div>
+
+    <div class="groupcap" id="setProjects" data-i18n="grp_workspace"></div>
+    <section>
+      <h2 data-i18n="projects_title"></h2>
+      <div id="projList"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn primary" id="btnPickProj" data-i18n="pick_project"></button>
+        <input type="text" id="newProjPath" style="flex:1; min-width:220px; direction:ltr" placeholder="C:\path\to\project">
+        <button class="btn" id="btnAddProj" data-i18n="add_project"></button>
+        <button class="btn ghost" id="btnCleanProj" data-i18n="clean_missing"></button>
+      </div>
+      <div class="hint" data-i18n="projects_hint"></div>
+    </section>
+
+    <div class="groupcap" id="setExecutors" data-i18n="grp_executors"></div>
+    <section>
+      <h2><span data-i18n="providers_title"></span><span class="spacer"></span>
+        <button class="btn small" id="btnProvRefresh" data-i18n="prov_recheck"></button></h2>
+      <div id="provList"></div>
+      <div class="hint" data-i18n="providers_hint"></div>
+    </section>
+
+    <div class="groupcap" id="setPrefs" data-i18n="grp_prefs"></div>
     <div class="grid2">
-      <section>
-        <h2 data-i18n="settings_ui"></h2>
-        <div class="kv">
-          <label data-i18n="lang"></label>
-          <select id="setLang"><option value="ar">العربية</option><option value="en">English</option></select>
-          <label data-i18n="theme"></label>
-          <select id="setTheme"><option value="dark" data-i18n="theme_dark"></option><option value="light" data-i18n="theme_light"></option></select>
-          <label data-i18n="poll"></label>
-          <input type="number" id="setPoll" min="500" step="250" style="width:110px">
-        </div>
-        <div class="hint" data-i18n="settings_ui_hint"></div>
-      </section>
       <section>
         <h2 data-i18n="settings_project"></h2>
         <div class="kv">
@@ -1059,42 +1541,33 @@
             <option value="auto">auto</option>
             <option value="ai" data-i18n="gates_ai_short"></option>
           </select>
+          <label data-i18n="refine_provider"></label>
+          <span class="row" style="flex-wrap:nowrap">
+            <select id="setRefineProvider" style="flex:1">
+              <option value="auto" data-i18n="refine_auto"></option>
+            </select>
+            <button class="btn" id="btnSaveRefine" data-i18n="save"></button>
+          </span>
         </div>
         <div class="hint" data-i18n="gate_mode_hint"></div>
-        <div class="kv" style="margin-top:12px">
-          <label data-i18n="refine_provider"></label>
-          <select id="setRefineProvider">
-            <option value="auto" data-i18n="refine_auto"></option>
-          </select>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <button class="btn" id="btnSaveRefine" data-i18n="save"></button>
-        </div>
         <div class="hint" data-i18n="refine_hint"></div>
       </section>
+      <section>
+        <h2 data-i18n="settings_ui"></h2>
+        <div class="kv">
+          <label data-i18n="lang"></label>
+          <select id="setLang"><option value="ar">العربية</option><option value="en">English</option></select>
+          <label data-i18n="theme"></label>
+          <select id="setTheme"><option value="dark" data-i18n="theme_dark"></option><option value="light" data-i18n="theme_light"></option></select>
+          <label data-i18n="poll"></label>
+          <input type="number" id="setPoll" min="500" step="250" style="width:120px">
+        </div>
+        <div class="hint" data-i18n="settings_ui_hint"></div>
+      </section>
     </div>
-    <section>
-      <h2 data-i18n="providers_title"></h2>
-      <div id="provList"></div>
-      <div class="row" style="margin-top:10px">
-        <button class="btn" id="btnProvRefresh" data-i18n="prov_recheck"></button>
-      </div>
-      <div class="hint" data-i18n="providers_hint"></div>
-    </section>
-    <section>
-      <h2 data-i18n="projects_title"></h2>
-      <div id="projList"></div>
-      <div class="row" style="margin-top:10px">
-        <button class="btn primary" id="btnPickProj" data-i18n="pick_project"></button>
-        <button class="btn" id="btnCleanProj" data-i18n="clean_missing"></button>
-        <span class="spacer"></span>
-        <input type="text" id="newProjPath" style="flex:1; min-width:220px; direction:ltr" placeholder="C:\path\to\project">
-        <button class="btn" id="btnAddProj" data-i18n="add_project"></button>
-      </div>
-      <div class="hint" data-i18n="projects_hint"></div>
-    </section>
   </div>
 </main>
+</div>
 <div id="pickerBack">
   <div id="picker">
     <header>
@@ -1112,7 +1585,7 @@
     </div>
   </div>
 </div>
-<div class="modalwrap" id="apiModal">
+<div class="modalwrap" id="apiModal" role="dialog" aria-modal="true">
   <div class="modal">
     <div class="modalhead"><div class="provicon">⌁</div><span data-i18n="refine_http"></span>
       <button class="x" id="apiModalX" title="close">✕</button></div>
@@ -1129,7 +1602,13 @@
     </div>
   </div>
 </div>
-<div id="toasts"></div>
+<div class="modalwrap" id="cmdk" role="dialog" aria-modal="true">
+  <div class="modal cmdk">
+    <input type="text" id="cmdkInput" autocomplete="off" spellcheck="false">
+    <div id="cmdkList"></div>
+  </div>
+</div>
+<div id="toasts" role="status" aria-live="polite"></div>
 
 <script>
 /* ============================== i18n ============================== */
@@ -1209,6 +1688,7 @@ const I18N = {
     gates_default: 'Gates: default', gates_terminal: 'Gates: terminal', gates_dashboard: 'Gates: dashboard', gates_auto: 'Gates: auto',
     gates_ai: 'Gates: AI review (the critic approves or sends back, then continues)', gates_ai_short: 'ai - the critic reviews',
     speed_flow: 'Speed: as the flow says', speed_fast: 'Speed: fast ⚡', speed_balanced: 'Speed: balanced', speed_quality: 'Speed: max quality',
+    size_auto: 'Size: auto', size_tiny: 'Size: tiny (skip planning)', size_small: 'Size: small (lean plan)', size_full: 'Size: full pipeline',
     speed_hint: 'Speed overrides the model and thinking level of every stage. Fast uses the lightning models with low thinking and one retry — minutes instead of tens of minutes; max quality pins opus at max effort.',
     run_hint: 'Run now executes the flow right here (headless Devin CLI, cwd = active project) — approvals arrive as dashboard gates, and you watch everything live below. Copy is there if you prefer pasting into a Devin chat instead.',
     run_now: '▶ Run now', run_stop: '■ Stop', run_console: 'Agent console (live)',
@@ -1232,7 +1712,7 @@ const I18N = {
     executor_acp: 'Executor ready ✓',
     run_queued: 'Sent to the daemon — watch the pipeline live below',
     no_executor: 'No executor available: log in the CLI once, or start a daemon chat (/flow-daemon)',
-    pipeline_title: 'Pipeline', no_flow: 'No flow has run on this project yet.', task_prefix: 'Task',
+    pipeline_title: 'Pipeline', no_flow: 'No flow has run on this project yet. Pick a flow above, describe the task, and press Run now.', task_prefix: 'Task',
     live_output: 'Live output (current stage)',
     inbox_title: 'Message to the agent (Inbox)', inbox_send: '📨 Send',
     inbox_ph: 'Write instructions… e.g. "support the null case", "stop after the code stage"',
@@ -1305,7 +1785,7 @@ const I18N = {
     resume_failed: 'This run failed at "{stage}". Resume retries that stage with the failure note.',
     resume_nothing: 'Nothing to resume in this project.',
     fs_running: 'running', fs_waiting_gate: 'waiting approval', fs_done: 'done', fs_failed: 'failed', fs_stopped: 'stopped',
-    conn_ok: '🟢 connected', conn_bad: '🔴 disconnected', no_state: 'no state', no_flow_badge: 'no flow',
+    conn_ok: '🟢 connected', conn_bad: '🔴 disconnected', no_state: 'Idle', no_flow_badge: 'no flow',
     script_stage: 'script', task_original: 'Original text',
     tt_project: 'Active project', tt_theme: 'Theme', tt_lang: 'Language', tt_studio: 'Studio (icon-only flow builder)',
     ph_new_flow: 'new-flow-name', ph_new_skill: 'new-skill-name', ph_proj_path: 'C:\\path\\to\\project',
@@ -1338,6 +1818,26 @@ const I18N = {
     provider_build_flow: '⚙ Build flow from detected modules',
     provider_built: 'Flow built from detected modules — review and save',
     provider_not_runnable: 'Only Devin can run flows; the other providers are for filtering and building',
+    provider_viewonly: 'view only',
+    nav_workspace: 'Workspace', nav_build: 'Build', nav_insights: 'Insights', nav_system: 'System', nav_studio: 'Studio',
+    nav_tip_title: 'Tip', nav_tip: 'Type /flow task "..." in your agent chat to run the same pipelines without the dashboard.',
+    sub_overview: 'Describe a task, launch a pipeline and steer it stage by stage.',
+    sub_runs: 'Every run in flight across projects, the queue and scheduled jobs.',
+    sub_activity: 'Live file events and Git changes in the active project.',
+    sub_artifacts: 'The document every stage wrote: read it, review it, export it.',
+    sub_flows: 'Design pipelines visually: steps, models, gates and retry loops.',
+    sub_agents: 'Role contracts for each specialist subagent: model, tools and rules.',
+    sub_skills: 'Chat commands that launch flows from inside your agent.',
+    sub_usage: 'Exact tokens, ACUs and dollars per tool, model, project and task.',
+    sub_settings: 'Interface, project defaults, projects and executors.',
+    field_flow: 'Flow', how_it_works: 'How the composer works',
+    list_roles: 'Roles', list_skills: 'Skills', list_docs: 'Documents', art_pick: 'Pick a document on the left to read it here.',
+    opts_btn: 'Options', opt_executor: 'Executor', opt_gates: 'Gates', opt_speed: 'Speed', opt_size: 'Size',
+    est_if_retry: 'if a check fails', est_stages_n: '{n} stages', est_breakdown: 'Cost by stage',
+    hero_title: 'What should FlowForge build?', cmdk_open: 'Quick jump', cmdk_ph: 'Jump to a page…',
+    grp_current_run: 'Current run', grp_recent: 'Recent', grp_new_run: 'Queue another run',
+    prov_more: 'Other supported tools, not on this machine ({n})', list_flows: 'Flows', grp_breakdown: 'Breakdown', grp_tasks: 'Tasks',
+    grp_setup: 'Setup', grp_workspace: 'Workspace', grp_executors: 'Executors', grp_prefs: 'Preferences',
     provider_flow_filtered: 'Flow list filtered by the selected executor',
   },
   ar: {
@@ -1415,6 +1915,7 @@ const I18N = {
     gates_default: 'الموافقات: الافتراضي', gates_terminal: 'الموافقات: الترمنال', gates_dashboard: 'الموافقات: الشاشة', gates_auto: 'الموافقات: أوتوماتيك',
     gates_ai: 'الموافقات: مراجعة AI (الناقد يوافق أو يرجّع، وبعدين يكمّل لوحده)', gates_ai_short: 'ai — الناقد يراجع',
     speed_flow: 'السرعة: زي ما الفلو مظبوط', speed_fast: 'السرعة: صاروخ ⚡', speed_balanced: 'السرعة: متوازن', speed_quality: 'السرعة: أعلى جودة',
+    size_auto: 'الحجم: تلقائي', size_tiny: 'الحجم: صغير جدًا (من غير تخطيط)', size_small: 'الحجم: صغير (تخطيط خفيف)', size_full: 'الحجم: الفلو كامل',
     speed_hint: 'السرعة بتغيّر موديل ومستوى تفكير كل المراحل. «صاروخ» بيستخدم موديلات اللايتنينج بتفكير منخفض ومحاولة إعادة واحدة — دقايق بدل عشرات الدقايق؛ و«أعلى جودة» بيثبّت opus على أقصى تفكير.',
     run_hint: 'زرار "شغّل دلوقتي" بينفذ الفلو من هنا مباشرة (Devin CLI بوضع headless على المشروع النشط) — الموافقات بتجيلك كبوابات على الشاشة، وبتتفرج على كل حاجة لايف تحت. زرار النسخ موجود لو تحب تلصق الأمر في شات Devin بدلًا من كده.',
     run_now: '▶ شغّل دلوقتي', run_stop: '■ إيقاف', run_console: 'كونسول الوكيل (لايف)',
@@ -1438,7 +1939,7 @@ const I18N = {
     executor_acp: 'المنفّذ جاهز ✓',
     run_queued: 'اتبعت للديمون — تابع المراحل لايف تحت',
     no_executor: 'مفيش منفّذ متاح: سجّل الـ CLI مرة واحدة، أو شغّل ديمون (‎/flow-daemon)',
-    pipeline_title: 'مراحل الفلو', no_flow: 'لسه مفيش فلو اشتغل على المشروع ده.', task_prefix: 'التاسك',
+    pipeline_title: 'مراحل الفلو', no_flow: 'لسه مفيش فلو اشتغل على المشروع ده. اختار فلو من فوق، اكتب التاسك، ودوس Run now.', task_prefix: 'التاسك',
     live_output: 'المخرج الحي (المرحلة الشغالة)',
     inbox_title: 'رسالة للوكيل (Inbox)', inbox_send: '📨 إرسال',
     inbox_ph: 'اكتب توجيهاتك… مثلا: "اهتم بحالة الـ null"، "وقّف بعد مرحلة الكود"',
@@ -1511,7 +2012,7 @@ const I18N = {
     resume_failed: 'التشغيل ده فشل عند "{stage}". التكملة بتعيد المرحلة دي ومعاها سبب الفشل.',
     resume_nothing: 'مفيش حاجة تتكمّل في المشروع ده.',
     fs_running: 'شغّال', fs_waiting_gate: 'مستني موافقة', fs_done: 'خلّص', fs_failed: 'فشل', fs_stopped: 'متوقف',
-    conn_ok: '🟢 متصل', conn_bad: '🔴 غير متصل', no_state: 'لا حالة', no_flow_badge: 'لا يوجد فلو',
+    conn_ok: '🟢 متصل', conn_bad: '🔴 غير متصل', no_state: 'خامل', no_flow_badge: 'لا يوجد فلو',
     script_stage: 'سكربت', task_original: 'النص الأصلي',
     tt_project: 'المشروع النشط', tt_theme: 'الثيم', tt_lang: 'اللغة', tt_studio: 'الاستوديو (بناء الفلو بالأيقونات)',
     ph_new_flow: 'اسم-الفلو-الجديد', ph_new_skill: 'اسم-المهارة-الجديدة', ph_proj_path: 'C:\\مسار\\المشروع',
@@ -1544,10 +2045,30 @@ const I18N = {
     provider_build_flow: '⚙ ابنِ فلو من الوحدات المكتشفة',
     provider_built: 'الفلو اتبنى من الوحدات المكتشفة — راجعه واحفظه',
     provider_not_runnable: 'ديفين بس هو اللي بيشغّل الفلوز؛ باقي المزوّدين للفلترة والبناء',
+    provider_viewonly: 'عرض فقط',
+    nav_workspace: 'مساحة العمل', nav_build: 'البناء', nav_insights: 'التحليلات', nav_system: 'النظام', nav_studio: 'الاستوديو',
+    nav_tip_title: 'نصيحة', nav_tip: 'اكتب /flow task "..." في شات الوكيل عشان تشغّل نفس الفلوز من غير الداشبورد.',
+    sub_overview: 'اوصف التاسك، شغّل الفلو، وتابعه مرحلة بمرحلة.',
+    sub_runs: 'كل التشغيلات الشغالة في كل المشاريع، الطابور، والمهام المجدولة.',
+    sub_activity: 'أحداث الملفات لايف وتغييرات Git في المشروع النشط.',
+    sub_artifacts: 'المستند اللي كتبته كل مرحلة: اقراه، راجعه، وصدّره.',
+    sub_flows: 'صمّم الفلوز بصريًا: الخطوات، الموديلات، البوابات، ومرات الإعادة.',
+    sub_agents: 'عقود الأدوار لكل وكيل متخصص: الموديل، الأدوات، والقواعد.',
+    sub_skills: 'أوامر الشات اللي بتشغّل الفلوز من جوه الوكيل.',
+    sub_usage: 'التوكنز والـ ACUs والدولارات بالظبط لكل أداة وموديل ومشروع وتاسك.',
+    sub_settings: 'الواجهة، إعدادات المشروع، المشاريع، والمنفّذين.',
+    field_flow: 'الفلو', how_it_works: 'إزاي الكومبوزر بيشتغل',
+    list_roles: 'الأدوار', list_skills: 'الأوامر', list_docs: 'المستندات', art_pick: 'اختار مستند من الجنب عشان تقراه هنا.',
+    opts_btn: 'الإعدادات', opt_executor: 'المنفّذ', opt_gates: 'البوابات', opt_speed: 'السرعة', opt_size: 'الحجم',
+    est_if_retry: 'لو فحص فشل', est_stages_n: '{n} مراحل', est_breakdown: 'التكلفة لكل مرحلة',
+    hero_title: 'عاوز FlowForge يبني إيه؟', cmdk_open: 'انتقال سريع', cmdk_ph: 'روح لصفحة…',
+    grp_current_run: 'التشغيل الحالي', grp_recent: 'الأخير', grp_new_run: 'شغّل حاجة تانية',
+    prov_more: 'أدوات تانية مدعومة، مش متسطّبة على الجهاز ({n})', list_flows: 'الفلوز', grp_breakdown: 'التفاصيل', grp_tasks: 'التاسكات',
+    grp_setup: 'الإعداد', grp_workspace: 'مساحة العمل', grp_executors: 'المنفّذين', grp_prefs: 'التفضيلات',
     provider_flow_filtered: 'قايمة الفلوز مفلترة حسب المنفّذ المختار',
   },
 };
-let LANG = localStorage.getItem('ff.lang') || 'ar';
+let LANG = localStorage.getItem('ff.lang') || 'en';
 const t = (k) => (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k;
 
 /* ============================== helpers ============================== */
@@ -1566,7 +2087,13 @@ function toast(msg, kind) {
   $('toasts').appendChild(d);
   setTimeout(() => d.remove(), 3500);
 }
-function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+// Escapes for BOTH text nodes and quoted attributes - the DOM-based
+// textContent/innerHTML trick left " and ' intact, which was injectable when
+// the result landed inside an attribute (option value, titles).
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
 function fmtDur(a, b) {
   if (!a) return '';
   const ms = (b ? Date.parse(b) : Date.now()) - Date.parse(a);
@@ -1639,6 +2166,8 @@ function applyLang() {
   document.documentElement.dir = LANG === 'ar' ? 'rtl' : 'ltr';
   $('langBtn').textContent = LANG === 'ar' ? 'EN' : 'ع';
   document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.dataset.i18n); });
+  // In the options panel each field already has its label: drop "Speed: " etc. from the choices.
+  document.querySelectorAll('#cmdOpts option').forEach((o) => { o.textContent = o.textContent.replace(/^[^:]{1,20}:\s*/, ''); });
   foldLongHints();
   $('gateNote').placeholder = t('gate_note_ph');
   $('runTask').placeholder = t('run_task_ph');
@@ -1646,6 +2175,8 @@ function applyLang() {
   $('newFlowName').placeholder = t('ph_new_flow');
   $('newSkillName').placeholder = t('ph_new_skill');
   $('newProjPath').placeholder = t('ph_proj_path');
+  $('artifactView').dataset.ph = t('art_pick');
+  $('cmdkInput').placeholder = t('cmdk_ph');
   $('runProvider').title = t('provider_flow_filtered');
   $('projectSelect').title = t('tt_project');
   $('btnPickTop').title = t('tt_pick');
@@ -1681,7 +2212,8 @@ $('setTheme').onchange = () => { THEME = $('setTheme').value; localStorage.setIt
 /* ============================== tabs ============================== */
 let activeTab = 'overview';
 document.querySelectorAll('nav .tab').forEach((tab) => tab.onclick = () => {
-  document.querySelectorAll('nav .tab').forEach((x) => x.classList.remove('active'));
+  document.querySelectorAll('nav .tab').forEach((x) => { x.classList.remove('active'); x.setAttribute('aria-selected', 'false'); });
+  tab.setAttribute('aria-selected', 'true');
   document.querySelectorAll('.page').forEach((x) => x.classList.remove('active'));
   tab.classList.add('active');
   activeTab = tab.dataset.page;
@@ -1694,6 +2226,7 @@ document.querySelectorAll('nav .tab').forEach((tab) => tab.onclick = () => {
   if (activeTab === 'settings') loadProviders(false);
   if (activeTab === 'runs') loadBoard();
   if (location.hash !== `#${activeTab}`) history.replaceState(null, '', `#${activeTab}`);
+  window.scrollTo({ top: 0 });
   if (lastData) renderGate(lastData.gate);
 });
 // Deep links: /#usage opens that tab (and the address bar follows the tabs).
@@ -1713,7 +2246,10 @@ let POLL_MS = Number(localStorage.getItem('ff.poll') || 1500);
 let pollCount = 0;
 let connOk = null;
 
+let pollBusy = false;
 async function poll() {
+  if (pollBusy || document.hidden) return; // no overlap, and nothing polls a hidden tab
+  pollBusy = true;
   pollCount++;
   try {
     const d = await api('/api/state');
@@ -1730,11 +2266,17 @@ async function poll() {
   if (activeTab === 'activity' && pollCount % 2 === 0) fetchChanges();
   if (pollCount === 1 || pollCount % 40 === 0) loadRuns();
   if (activeTab === 'runs' && pollCount % 2 === 0) loadBoard();
+  pollBusy = false;
 }
 function startPolling() {
   if (pollTimer) clearInterval(pollTimer);
   pollTimer = setInterval(poll, POLL_MS);
 }
+// Hidden tabs cost nothing; coming back triggers an immediate refresh.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } }
+  else { startPolling(); poll(); }
+});
 
 function renderAll(d) {
   renderHeader(d);
@@ -1772,9 +2314,11 @@ function stTitle(st) { return (LANG === 'ar' && st.titleAr) ? st.titleAr : (st.t
 function renderHeader(d) {
   const s = d.state;
   const badge = $('statusBadge');
+  // The layout adapts to the run: while one is live, the hero title steps aside.
+  document.body.dataset.run = s ? (s.status || 'none') : 'none';
   if (!s) {
     badge.textContent = t('no_state'); badge.className = 'badge';
-    $('flowBadge').textContent = t('no_flow_badge');
+    $('flowBadge').textContent = '';
   } else {
     badge.textContent = t('fs_' + s.status) || s.status;
     badge.className = 'badge ' + (s.status || '');
@@ -2054,7 +2598,7 @@ let lastOtherGate = null;
 function foldLongHints() {
   document.querySelectorAll('.hint').forEach((h) => {
     if (h.classList.contains('help') || h.querySelector('input,select,button,a') || h.closest('#estBox')) return;
-    if ((h.textContent || '').trim().length < 150) return;
+    if ((h.textContent || '').trim().length < 110) return;
     h.classList.add('help');
     h.onclick = (ev) => { if (ev.target.tagName !== 'A') h.classList.toggle('open'); };
   });
@@ -2072,7 +2616,7 @@ async function renderLiveTail(d) {
   sec.style.display = 'block';
   $('liveArtifactName').textContent = running.artifact;
   try {
-    const r = await api('/api/artifact?name=' + encodeURIComponent(running.artifact));
+    const r = await api('/api/artifact?name=' + encodeURIComponent(running.artifact) + '&tail=12000');
     const lines = r.content.split('\n');
     $('liveTail').textContent = lines.slice(-28).join('\n');
     $('liveTail').scrollTop = $('liveTail').scrollHeight;
@@ -2149,17 +2693,19 @@ let providerSynced = false; // settings.executorProvider wins once, on first pol
 
 function renderProviderSelect(d) {
   const list = (d.providers || []).length ? d.providers : [{ id: 'devin', installed: true }];
-  const sig = JSON.stringify(list.map((p) => [p.id, p.installed])) + '|' + LANG;
+  const sig = JSON.stringify(list.map((p) => [p.id, p.installed, !!p.runnable])) + '|' + LANG;
   const sel = $('runProvider');
   if (sel.dataset.sig !== sig) {
     sel.innerHTML = list.map((p) => {
       const label = PROVIDER_LABELS[p.id] ? PROVIDER_LABELS[p.id]() : p.id;
-      return `<option value="${esc(p.id)}">${esc((p.installed ? '✓ ' : '✗ ') + label)}</option>`;
+      const tag = p.runnable === false ? ` (${t('provider_viewonly')})` : '';
+      return `<option value="${esc(p.id)}">${esc((p.installed ? '✓ ' : '✗ ') + label + tag)}</option>`;
     }).join('');
     sel.dataset.sig = sig;
   }
   if (!list.some((p) => p.id === PROVIDER)) PROVIDER = 'devin';
   if (sel.value !== PROVIDER) sel.value = PROVIDER;
+  updateOptsSummary();
 }
 $('runProvider').onchange = async () => {
   PROVIDER = $('runProvider').value;
@@ -2200,7 +2746,10 @@ function buildCmd() {
   else cmd = `/flow ${flow} "${task || '...'}"`;
   if (gates) cmd += ` --gates=${gates}`;
   if (speed) cmd += ` --speed=${speed}`;
+  const size = $('runSize').value;
+  if (size && !(flow === 'understand' && !task)) cmd += ` --size=${size}`;
   $('runCmd').textContent = cmd;
+  if (typeof updateOptsSummary === 'function') updateOptsSummary();
   scheduleEstimate();
 }
 // The task box follows the text instead of scrolling inside three lines.
@@ -2213,6 +2762,25 @@ $('runFlow').onchange = buildCmd;
 $('runTask').oninput = () => { autoGrow(); buildCmd(); };
 $('runGates').onchange = buildCmd;
 $('runSpeed').onchange = () => { localStorage.setItem('ff.speed', $('runSpeed').value); buildCmd(); };
+$('runSize').onchange = () => { localStorage.setItem('ff.size', $('runSize').value); buildCmd(); };
+// Run options fold behind one button; the button itself says what is not on
+// its default, so a folded panel never hides a choice that changes the run.
+function updateOptsSummary() {
+  const picks = [];
+  if ($('runProvider').value && $('runProvider').value !== 'devin') picks.push($('runProvider').value);
+  if ($('runGates').value) picks.push(`${$('runGates').value} ${t('opt_gates').toLowerCase()}`);
+  if ($('runSpeed').value) picks.push($('runSpeed').value);
+  if ($('runSize').value) picks.push($('runSize').value);
+  $('optsSummary').textContent = picks.length ? ` · ${picks.join(' · ')}` : '';
+}
+function setOptsOpen(open) {
+  $('cmdOpts').classList.toggle('open', open);
+  $('btnOpts').setAttribute('aria-expanded', String(open));
+  $('btnOpts').classList.toggle('chip-active', open);
+  localStorage.setItem('ff.opts', open ? '1' : '0');
+}
+$('btnOpts').onclick = () => setOptsOpen(!$('cmdOpts').classList.contains('open'));
+['runProvider', 'runGates', 'runSpeed', 'runSize'].forEach((id) => $(id).addEventListener('change', updateOptsSummary));
 $('btnCopyCmd').onclick = async () => {
   try { await navigator.clipboard.writeText($('runCmd').textContent); toast(t('copied'), 'ok'); }
   catch { toast(t('clipboard_blocked'), 'err'); }
@@ -2313,7 +2881,7 @@ var estKey = '';
 var estSeq = 0;
 var lastEstimate = null;
 function scheduleEstimate(force) {
-  const key = `${$('runFlow').value}\u0000${$('runSpeed').value}\u0000${$('runTask').value.trim()}`;
+  const key = `${$('runFlow').value}\u0000${$('runSpeed').value}\u0000${$('runSize').value}\u0000${$('runTask').value.trim()}`;
   if (!force && key === estKey) return;
   estKey = key;
   clearTimeout(estTimer);
@@ -2324,7 +2892,7 @@ async function runEstimate() {
   if (!flow) { $('estBox').style.display = 'none'; return; }
   const seq = ++estSeq;
   try {
-    const e = await post('/api/estimate', { flow, task: $('runTask').value, speed: $('runSpeed').value });
+    const e = await post('/api/estimate', { flow, task: $('runTask').value, speed: $('runSpeed').value, size: $('runSize').value });
     if (seq !== estSeq) return;
     lastEstimate = e;
     if (e.dollars) USD = e.dollars;
@@ -2335,67 +2903,61 @@ function renderEstimate() {
   const e = lastEstimate;
   const box = $('estBox');
   if (!e) { box.style.display = 'none'; return; }
-  const sep = '<span class="sep">·</span>';
-  // Dollars first, ACUs beside them.
-  const acuUsd = (acu, usd) => {
-    if (acu === null || acu === undefined) return '—';
-    const money = contractRate() ? fmtUsd(acu) : typeof usd === 'number' ? fmtMoney(usd) : fmtUsd(acu);
-    return money ? `<span class="estusd">${money}</span> <span class="estacu">${fmtAcu(acu)} ACU</span>` : `${fmtAcu(acu)} ACU`;
-  };
   const p = e.pipeline;
-  const bits = [];
-  // Headline: what this pipeline will cost, stage by stage.
-  if (p && p.happy) {
-    const tag = p.calibration
-      ? `<span class="badge done">${esc(t('est_calibrated').replace('{n}', p.calibration.runs))}</span>`
-      : `<span class="badge">${esc(t('est_model_tag'))}</span>`;
-    const agentN = p.stages.filter((s) => s.kind === 'agent').length;
-    const upto = contractRate() ? fmtUsd(p.withRetry.acu) : typeof p.withRetry.usd === 'number' ? fmtMoney(p.withRetry.usd) : `${fmtAcu(p.withRetry.acu)} ACU`;
-    bits.push(`<div class="esthead"><span class="estbig">≈ ${acuUsd(p.happy.acu, p.happy.usd)}</span>`
-      + `<span>${esc(t('est_pipeline').replace('{n}', agentN))} ${sep} <b>${fmtTok(p.happy.tokens)}</b> tok ${sep} <b>~${p.happy.calls}</b> ${esc(t('u_calls'))}</span>`
-      + (p.retryPaths.length && p.withRetry.acu !== null
-        ? `<span>${sep} ${esc(t('est_upto'))} <b>${upto}</b> ${esc(t('est_if_fail').replace('{path}', p.retryPaths.map((r) => `${r.from} → ${r.to} → ${r.from}`).join(', ')))}</span>` : '')
-      + (p.speed ? `<span class="badge">${esc(t('est_speed'))}: ${esc(p.speed)}</span>` : '')
-      + `${tag}</div>`);
-    if (usdNote()) bits.push(`<div class="estsub">💵 ${esc(usdNote())}</div>`);
-  }
-  // What was typed and what rides along with it.
-  bits.push(`<div class="estsub">≈ <b>${fmtTok(e.promptTokens)}</b> ${esc(t('est_typed'))} ${sep} +<b>${fmtTok(e.overheadTokens)}</b> ${esc(t('est_sent'))}`
-    + (e.baselineTokens ? ` ${sep} <b>${fmtTok(e.baselineTokens)}</b> ${esc(t('est_context'))}` : '') + '</div>');
-  // Past runs, when there are any, say what really happened.
-  if (!e.available) bits.push(`<div class="estsub">${esc(t('est_unavailable'))}${e.message ? ` — ${esc(e.message)}` : ''}</div>`);
+  // One line you can read at a glance: the price, the size of the job, the
+  // risk. Everything else (pricing basis, typed vs sent tokens, past-run
+  // forecast, assumptions) lives in the tooltip and the on-demand breakdown.
+  const money = (acu, usd) => (acu === null || acu === undefined ? '—'
+    : contractRate() ? fmtUsd(acu) : typeof usd === 'number' ? fmtMoney(usd) : (fmtUsd(acu) || `${fmtAcu(acu)} ACU`));
+  const tip = [];
+  if (usdNote()) tip.push(usdNote());
+  tip.push(`≈ ${fmtTok(e.promptTokens)} ${t('est_typed')} · +${fmtTok(e.overheadTokens)} ${t('est_sent')}`
+    + (e.baselineTokens ? ` · ${fmtTok(e.baselineTokens)} ${t('est_context')}` : ''));
+  if (!e.available) tip.push(`${t('est_unavailable')}${e.message ? ` — ${e.message}` : ''}`);
   else if (e.forecast && e.forecast.acu) {
     const f = e.forecast;
     const from = t(f.basis === 'this-flow' ? 'est_from_runs' : 'est_from_other').replace('{n}', f.runs);
     const range = usdRate() ? `${fmtUsd(f.acu.p25)}–${fmtUsd(f.acu.p75)}` : `${fmtAcu(f.acu.p25)}–${fmtAcu(f.acu.p75)} ACU`;
-    bits.push(`<div class="estsub">${esc(t('est_forecast'))}: ${acuUsd(f.acu.p50)} ${sep} <b>${fmtTok(f.tokens.p50)}</b> tok ${sep} `
-      + `${esc(t('est_range'))} ${range} ${sep} ${esc(from)}</div>`);
+    tip.push(`${t('est_forecast')}: ${money(f.acu.p50)} (${t('est_range')} ${range}) — ${from}`);
   }
-  if (p && p.stages.length) {
-    const basis = { exact: t('est_measured'), family: t('est_family'), account: t('est_account_avg'), 'price-list': t('est_price_list') };
-    const priceTip = (s) => (s.price ? ` title="${esc(t('est_price_tip').replace('{in}', s.price[0]).replace('{out}', s.price[1]).replace('{cw}', s.price[2]).replace('{cr}', s.price[3]))}"` : '');
-    const row = (s, label, cls = '') => `<tr class="${cls}"><td>${label}</td>`
-      + `<td>${s.model ? `<span class="modelchip">${esc(s.model)}</span>` : ''}</td><td>${esc(s.effort || '')}</td>`
-      + `<td class="num">${s.calls || '—'}</td><td class="num" title="fresh ${fmtTok(s.fresh)} · cache ${fmtTok(s.cacheRead)} · out ${fmtTok(s.output)}">${s.tokens ? fmtTok(s.tokens) : '—'}</td>`
-      + `<td class="num">${s.calls ? acuUsd(s.acu, s.usd) : '—'}</td><td class="estdim"${priceTip(s)}>${esc(s.basis ? basis[s.basis] || s.basis : '')}</td></tr>`;
-    const rows = p.stages.map((s) => {
-      const title = esc(LANG === 'ar' ? (s.titleAr || s.title) : s.title);
-      const note = s.kind === 'script' ? ` <span class="estdim">(${esc(t('est_script'))})</span>`
-        : s.kind === 'retry-only' ? ` <span class="estdim">(${esc(t('est_retry_only'))})</span>` : '';
-      return row(s, title + note, s.kind === 'agent' ? '' : 'estmuted');
-    });
-    rows.unshift(row(p.orchestrator, `${esc(t('est_orchestrator'))}`, ''));
-    rows.push(`<tr class="esttotal"><td>${esc(t('est_total'))}</td><td></td><td></td><td class="num">${p.happy.calls}</td>`
-      + `<td class="num">${fmtTok(p.happy.tokens)}</td><td class="num">${acuUsd(p.happy.acu, p.happy.usd)}</td><td></td></tr>`);
-    const openPref = localStorage.getItem('ff.estOpen') !== '0';
-    const a = p.assumptions || {};
-    bits.push(`<details id="estDetails"${openPref ? ' open' : ''}><summary>${esc(t('est_stages'))}</summary>`
-      + utable([[t('est_stage')], [t('u_model')], [t('est_effort')], [t('u_calls'), true], [t('u_tokens_col'), true], [t('est_cost'), true], [t('est_priced_by')]], rows)
-      + `<div class="estdim" style="margin-top:4px">${esc(t('est_assume')
-        .replace('{out}', fmtTok(a.outPerCall)).replace('{growth}', fmtTok(a.growthPerCall))
-        .replace('{src}', t(a.measured ? 'est_src_measured' : 'est_src_default')))}</div></details>`);
+  if (p) tip.push(p.calibration ? t('est_calibrated').replace('{n}', p.calibration.runs) : t('est_model_tag'));
+  if (p && p.assumptions) {
+    const a = p.assumptions;
+    tip.push(t('est_assume').replace('{out}', fmtTok(a.outPerCall)).replace('{growth}', fmtTok(a.growthPerCall))
+      .replace('{src}', t(a.measured ? 'est_src_measured' : 'est_src_default')));
   }
-  box.innerHTML = bits.join('');
+  if (!p || !p.happy) {
+    box.innerHTML = `<div class="est-line"><span class="est-meta" title="${esc(tip.join('\n'))}">≈ ${fmtTok(e.promptTokens)} ${esc(t('est_typed'))} · +${fmtTok(e.overheadTokens)} ${esc(t('est_sent'))}</span></div>`;
+    box.style.display = 'flex';
+    return;
+  }
+  const agentN = p.stages.filter((s) => s.kind === 'agent').length;
+  const risk = p.retryPaths.length && p.withRetry.acu !== null
+    ? `<span class="est-risk" title="${esc(t('est_if_fail').replace('{path}', p.retryPaths.map((r) => `${r.from} → ${r.to} → ${r.from}`).join(', ')))}">${esc(t('est_upto'))} ${money(p.withRetry.acu, p.withRetry.usd)} ${esc(t('est_if_retry'))}</span>` : '';
+  const openPref = localStorage.getItem('ff.estOpen') === '1';
+  // Breakdown: a slim list - stage, model, a bar for its share, its price.
+  const all = [{ ...p.orchestrator, title: t('est_orchestrator'), kind: 'agent' }, ...p.stages];
+  const max = Math.max(...all.map((s) => Number(s.acu) || 0), 0.0001);
+  const basis = { exact: t('est_measured'), family: t('est_family'), account: t('est_account_avg'), 'price-list': t('est_price_list') };
+  const rows = all.map((s) => {
+    const name = s.title === t('est_orchestrator') ? s.title : (LANG === 'ar' ? (s.titleAr || s.title) : s.title);
+    const note = s.kind === 'script' ? t('est_script') : s.kind === 'retry-only' ? t('est_retry_only') : '';
+    const rowTip = [s.effort && `${t('est_effort')}: ${s.effort}`, s.calls && `${s.calls} ${t('u_calls')}`, s.tokens && `${fmtTok(s.tokens)} tok`,
+      s.basis && `${t('est_priced_by')}: ${basis[s.basis] || s.basis}`].filter(Boolean).join(' · ');
+    const pct = Math.max(2, Math.round(((Number(s.acu) || 0) / max) * 100));
+    return `<div class="est-row${s.kind === 'agent' ? '' : ' muted'}" title="${esc(rowTip)}">`
+      + `<span class="est-name">${esc(name)}${note ? ` <i>${esc(note)}</i>` : ''}</span>`
+      + `<span class="est-model">${s.model ? esc(s.model) : ''}</span>`
+      + `<span class="est-bar"><i style="width:${s.calls ? pct : 0}%"></i></span>`
+      + `<span class="est-price">${s.calls ? money(s.acu, s.usd) : '—'}</span></div>`;
+  }).join('');
+  box.innerHTML = `<div class="est-line">`
+    + `<span class="est-cost" title="${esc(tip.join('\n'))}">≈ ${money(p.happy.acu, p.happy.usd)}</span>`
+    + `<span class="est-meta">${esc(t('est_stages_n').replace('{n}', agentN))} · ~${p.happy.calls} ${esc(t('u_calls'))} · ${fmtTok(p.happy.tokens)} tok</span>`
+    + risk
+    + `</div>`
+    + `<details id="estDetails"${openPref ? ' open' : ''}><summary>${esc(t('est_breakdown'))}</summary>`
+    + `<div class="est-list">${rows}</div></details>`;
   box.style.display = 'flex';
   const det = $('estDetails');
   if (det) det.ontoggle = () => localStorage.setItem('ff.estOpen', det.open ? '1' : '0');
@@ -2655,9 +3217,10 @@ $('btnRun').onclick = async () => {
   const task = $('runTask').value.trim();
   const gates = $('runGates').value || 'dashboard';
   const speed = $('runSpeed').value || 'flow';
+  const size = $('runSize').value || 'auto';
   try {
     $('btnRun').disabled = true;
-    const r = await post('/api/run', { flow, task, gates, speed, permissionMode: 'dangerous', provider: PROVIDER, enqueue: runActiveHere });
+    const r = await post('/api/run', { flow, task, gates, speed, size, permissionMode: 'dangerous', provider: PROVIDER, enqueue: runActiveHere });
     if (r.mode === 'queue') {
       $('btnRun').disabled = false;
       toast(r.position ? t('run_queued_pos').replace('{n}', r.position) : t('run_queued'), 'ok');
@@ -3266,6 +3829,7 @@ function flowToGraph(flow) {
     // Optional executor restriction: carried through the canvas so saving from
     // the canvas view cannot silently strip it (no field = every provider).
     providers: Array.isArray(flow.providers) ? flow.providers.slice() : null,
+    sizes: flow.sizes && typeof flow.sizes === 'object' ? JSON.parse(JSON.stringify(flow.sizes)) : null,
   };
   G.nodes = stages.map((s, i) => {
     const p = pos[s.id] || {};
@@ -3338,6 +3902,17 @@ function graphToFlow(name) {
   };
   // Only re-emit the executor restriction when the loaded flow had one.
   if (Array.isArray(meta.providers)) flow.providers = meta.providers.slice();
+  // Task sizing (which stages a tiny/small task skips) survives the canvas,
+  // minus any stage the user deleted.
+  if (meta.sizes && typeof meta.sizes === 'object') {
+    const ids = new Set(stages.map((s) => s.id));
+    const sizes = {};
+    for (const [k, v] of Object.entries(meta.sizes)) {
+      const skip = (v && Array.isArray(v.skip) ? v.skip : []).filter((id) => ids.has(id));
+      if (skip.length) sizes[k] = { ...v, skip };
+    }
+    if (Object.keys(sizes).length) flow.sizes = sizes;
+  }
   return { flow };
 }
 
@@ -4319,6 +4894,50 @@ function closeApiModal() { $('apiModal').classList.remove('open'); }
 $('apiModalX').onclick = closeApiModal;
 $('apiModalCancel').onclick = closeApiModal;
 $('apiModal').onclick = (e) => { if (e.target === $('apiModal')) closeApiModal(); };
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $('apiModal').classList.contains('open')) closeApiModal();
+});
+
+/* ============================== quick switcher (Ctrl/Cmd+K) ============================== */
+let cmdkSel = 0;
+function cmdkItems() {
+  const q = $('cmdkInput').value.trim().toLowerCase();
+  const items = [...document.querySelectorAll('nav .tab, nav .navlink')].map((el) => ({
+    el, label: el.textContent.trim(), icon: (el.querySelector('use') || {}).getAttribute?.('href') || '',
+    group: (el.closest('.navgroup')?.querySelector('.navcap')?.textContent || ''),
+  }));
+  return q ? items.filter((i) => i.label.toLowerCase().includes(q)) : items;
+}
+function renderCmdk() {
+  const items = cmdkItems();
+  cmdkSel = Math.min(cmdkSel, Math.max(items.length - 1, 0));
+  $('cmdkList').innerHTML = items.map((i, n) => `<button type="button" class="cmdk-item${n === cmdkSel ? ' sel' : ''}" data-n="${n}">`
+    + `<svg class="ic"><use href="${esc(i.icon)}"/></svg><span>${esc(i.label)}</span><span class="grp">${esc(i.group)}</span></button>`).join('')
+    || `<div class="empty">—</div>`;
+  $('cmdkList').querySelectorAll('.cmdk-item').forEach((b) => { b.onclick = () => { cmdkSel = +b.dataset.n; runCmdk(); }; });
+}
+function openCmdk() { $('cmdk').classList.add('open'); $('cmdkInput').value = ''; cmdkSel = 0; renderCmdk(); $('cmdkInput').focus(); }
+function closeCmdk() { $('cmdk').classList.remove('open'); }
+function runCmdk() {
+  const it = cmdkItems()[cmdkSel];
+  closeCmdk();
+  if (!it) return;
+  if (it.el.tagName === 'A') location.href = it.el.getAttribute('href'); else it.el.click();
+}
+$('btnQuick').onclick = openCmdk;
+document.querySelectorAll('[data-jump]').forEach((b) => { b.onclick = () => $(b.dataset.jump).scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+$('cmdk').onclick = (e) => { if (e.target === $('cmdk')) closeCmdk(); };
+$('cmdkInput').oninput = () => { cmdkSel = 0; renderCmdk(); };
+$('cmdkInput').onkeydown = (e) => {
+  const n = cmdkItems().length;
+  if (e.key === 'ArrowDown') { e.preventDefault(); cmdkSel = (cmdkSel + 1) % Math.max(n, 1); renderCmdk(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); cmdkSel = (cmdkSel - 1 + n) % Math.max(n, 1); renderCmdk(); }
+  else if (e.key === 'Enter') { e.preventDefault(); runCmdk(); }
+  else if (e.key === 'Escape') closeCmdk();
+};
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('cmdk').classList.contains('open') ? closeCmdk() : openCmdk(); }
+});
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeApiModal(); });
 $('btnSaveApi').onclick = async () => { await saveRefine(); closeApiModal(); loadProviders(false); };
 $('setRefineHttpOnly').onchange = () => {
@@ -4452,6 +5071,25 @@ async function loadProviders(force) {
   const box = $('provList');
   if (provBusy) return;
   provBusy = true;
+  // Never an empty box: a skeleton while the list loads, then the cards
+  // right away, then each sign-in status as its (sometimes slow) probe returns.
+  if (!box.children.length) { box.className = 'provgrid'; box.innerHTML = '<div class="provcard skel"></div>'.repeat(3); }
+  const paint = (list, auths) => {
+    // What you can use now gets the room; the long tail of tools that are not
+    // on this machine folds under one line (state survives repaints).
+    const moreOpen = !!box.querySelector('details.provmore[open]');
+    const ready = [], rest = [];
+    list.forEach((p, i) => ((p.installed || p.runnable || (auths[i] && auths[i].loggedIn)) ? ready : rest).push(providerCard(p, auths[i])));
+    box.className = '';
+    box.innerHTML = `<div class="provgrid">${ready.join('')}${customApiCard()}</div>`
+      + (rest.length ? `<details class="provmore"${moreOpen ? ' open' : ''}><summary>${esc(t('prov_more').replace('{n}', rest.length))}</summary>`
+        + `<div class="provgrid">${rest.join('')}</div></details>` : '');
+    $('btnApiConfig').onclick = openApiModal;
+    box.querySelectorAll('button[data-act]').forEach((b) => {
+      b.onclick = () => (b.dataset.act === 'use' ? useProvider(b.dataset.id)
+        : providerLogin(b.dataset.id, b.dataset.act === 'altlogin'));
+    });
+  };
   try {
     const d = await api('/api/providers');
     // Simplest read first: the runnable executor, then everything actually on
@@ -4459,15 +5097,19 @@ async function loadProviders(force) {
     const list = (d.providers || []).slice().sort((a, b) =>
       (b.runnable - a.runnable) || (b.installed - a.installed)
       || String(a.label).localeCompare(String(b.label)));
-    const auths = await Promise.all(list.map((p) => api('/api/provider-auth?id='
-      + encodeURIComponent(p.id) + (force ? '&force=1' : '')).then((r) => r.auth).catch(() => null)));
-    box.className = 'provgrid';
-    box.innerHTML = list.map((p, i) => providerCard(p, auths[i])).join('') + customApiCard();
-    $('btnApiConfig').onclick = openApiModal;
-    box.querySelectorAll('button[data-act]').forEach((b) => {
-      b.onclick = () => (b.dataset.act === 'use' ? useProvider(b.dataset.id)
-        : providerLogin(b.dataset.id, b.dataset.act === 'altlogin'));
-    });
+    const auths = list.map(() => null);
+    if (box.querySelector('.skel')) paint(list, auths);
+    let pending = list.length, timer = null;
+    await Promise.all(list.map((p, i) => api('/api/provider-auth?id='
+      + encodeURIComponent(p.id) + (force ? '&force=1' : '')).then((r) => r.auth).catch(() => null)
+      .then((a) => {
+        auths[i] = a; pending -= 1;
+        // Batch repaints so a dozen fast probes don't redraw a dozen times.
+        clearTimeout(timer);
+        if (pending) timer = setTimeout(() => paint(list, auths), 120);
+      })));
+    clearTimeout(timer);
+    paint(list, auths);
   } catch (e) {
     box.className = '';
     box.textContent = e.message;
@@ -4634,6 +5276,8 @@ $('btnCleanProj').onclick = async () => {
 
 /* ============================== boot ============================== */
 $('runSpeed').value = localStorage.getItem('ff.speed') || '';
+$('runSize').value = localStorage.getItem('ff.size') || '';
+setOptsOpen(localStorage.getItem('ff.opts') === '1');
 applyTheme();
 setFlowView(localStorage.getItem('ff.flowview') === 'json' ? 'json' : 'canvas');
 applyLang();

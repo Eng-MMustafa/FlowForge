@@ -4,6 +4,19 @@
   "titleAr": "أتمتة — CI وhooks وسكربتات، متأكد منها محليًا",
   "description": "Builds or fixes developer automation: CI/CD workflows, pre-commit hooks, release or maintenance scripts, scheduled jobs. Commands are verified against the real project first, workflows follow least-privilege and supply-chain rules, and every job's commands are proven locally before anything ships.",
   "defaultGate": "dashboard",
+  "sizes": {
+    "tiny": {
+      "skip": [
+        "analyze",
+        "think"
+      ]
+    },
+    "small": {
+      "skip": [
+        "think"
+      ]
+    }
+  },
   "stages": [
     {
       "id": "analyze",

@@ -116,6 +116,7 @@ console.log('');
 console.log('  Installed at:  ' + TARGET);
 console.log('  Start later:   node "' + path.join(TARGET, 'start.mjs') + '"');
 console.log('  Uninstall:     node "' + path.join(TARGET, 'uninstall.mjs') + '"');
+console.log('  Health check:  node "' + path.join(TARGET, 'scripts', 'doctor.mjs') + '" --fix');
 console.log('');
 
 // 4. Launch the dashboard on whatever project the user is standing in.

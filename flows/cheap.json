@@ -4,6 +4,13 @@
   "titleAr": "المسار الاقتصادي — بايبلاين كامل بموديلات رخيصة",
   "description": "The full think -> code -> test -> ship shape, but every stage runs on the cheapest capable model (Luna / Gemini Flash / GLM). Deterministic scripts do the heavy scanning so the models read less.",
   "defaultGate": "auto",
+  "sizes": {
+    "tiny": {
+      "skip": [
+        "think"
+      ]
+    }
+  },
   "stages": [
     {
       "id": "think",

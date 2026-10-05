@@ -113,7 +113,7 @@ export class JobStore {
   enqueue(spec) {
     const item = {
       id: newId(), project: spec.project, flow: spec.flow, task: String(spec.task || '').trim(),
-      gates: spec.gates || 'dashboard', speed: spec.speed || '', status: 'queued',
+      gates: spec.gates || 'dashboard', speed: spec.speed || '', size: spec.size || '', status: 'queued',
       createdAt: new Date().toISOString(), scheduleId: spec.scheduleId || null,
     };
     this.queue.push(item);
@@ -144,7 +144,7 @@ export class JobStore {
     if (nextAt === null) throw new Error('repeat never fires - check the time or the days');
     const s = {
       id: newId(), project: spec.project, flow: spec.flow, task: String(spec.task || '').trim(),
-      gates: spec.gates || 'auto', speed: spec.speed || '', enabled: spec.enabled !== false, repeat,
+      gates: spec.gates || 'auto', speed: spec.speed || '', size: spec.size || '', enabled: spec.enabled !== false, repeat,
       nextAt, lastAt: null, lastStatus: null, createdAt: new Date().toISOString(),
     };
     this.schedules.push(s);

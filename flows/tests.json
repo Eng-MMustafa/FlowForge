@@ -4,6 +4,13 @@
   "titleAr": "تقوية الاختبارات — مسح التغطية ← كتابة اختبارات ← إثباتها",
   "description": "No product code changes. Maps the current test landscape, writes the missing tests for the area you name, and proves they actually run green.",
   "defaultGate": "dashboard",
+  "sizes": {
+    "tiny": {
+      "skip": [
+        "analyze"
+      ]
+    }
+  },
   "stages": [
     {
       "id": "analyze",

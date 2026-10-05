@@ -14,6 +14,8 @@ import path from 'node:path';
 // script are answered by the bin itself and load nothing else.
 export const COMMANDS = [
   { name: 'start', aliases: [], usage: '[path]', script: 'start.mjs', does: 'start the dashboard (the default)' },
+  { name: 'run', aliases: [], usage: '<flow> "<task>"', script: 'scripts/run-flow.mjs', withCwd: true, does: 'run a flow on this folder (--size --speed --gates)' },
+  { name: 'doctor', aliases: [], usage: '[--fix]', script: 'scripts/doctor.mjs', does: 'check the whole install, repair the wiring' },
   { name: 'install', aliases: [], usage: '[--force]', script: 'install.mjs', does: 'wire skills and agents into Devin' },
   { name: 'uninstall', aliases: [], script: 'uninstall.mjs', does: 'remove that wiring' },
   { name: 'test', aliases: [], script: 'dashboard/test/run-tests.mjs', does: 'run the test suite' },
@@ -97,7 +99,11 @@ export function parseCli(argv, { cwd, root, isDir = isDir0 }) {
   const cmd = argv.length ? find(argv[0]) : null;
   if (!cmd || cmd.name === 'start') return parseStart(cmd ? argv.slice(1) : argv, { cwd, root, isDir });
   if (!cmd.script) return { kind: cmd.name };
-  return { kind: 'run', script: cmd.script, args: [...(cmd.args || []), ...argv.slice(1)] };
+  const args = [...(cmd.args || []), ...argv.slice(1)];
+  // The bin moves to the install root before running the script, so a command
+  // that works on "this folder" gets the user's folder handed over explicitly.
+  if (cmd.withCwd && !args.some((a) => a.startsWith('--project='))) args.push(`--project=${cwd}`);
+  return { kind: 'run', script: cmd.script, args };
 }
 
 // One short screen, generated from COMMANDS.
@@ -112,13 +118,11 @@ export function helpText(version) {
     'Commands:',
     ...COMMANDS.map((c) => `  ${label(c).padEnd(width)}${c.does}`),
     '',
-    'Flags: --port=N | -p N   --no-open   --check',
-    'No path = this folder. Paths are relative to it; use ./<name> for a folder',
-    'named like a command.',
+    'Flags: --port=N | -p N   --no-open   --check     (no path = this folder)',
     '',
     'Examples:',
-    '  ff                   start on the current folder',
-    '  ff ../api -p 5000    start on ../api, port 5000',
-    '  ff status            is FlowForge wired into Devin?',
+    '  ff ../api -p 5000                       dashboard on ../api, port 5000',
+    '  ff run task "fix the 5MB upload" --size=tiny',
+    '  ff doctor --fix                         find and repair install problems',
   ].join('\n');
 }

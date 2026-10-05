@@ -1,10 +1,18 @@
 // collect-context.mjs - Gather deterministic project facts (no AI) into .workbench/artifacts/context.md
-// Usage: node collect-context.mjs "<path to project>"
+// Usage: node collect-context.mjs "<path to project>" [--force]
+// Cached: the file records a fingerprint of the project (git HEAD + working
+// tree status, or the top-level listing outside git). When nothing changed
+// since the last run the existing context.md is kept and the script returns
+// at once - the pipeline's first stage no longer pays for a full tree walk
+// on every run. --force rebuilds regardless.
 import { execSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const PROJECT = path.resolve(process.argv[2] || '.');
+const CACHE_VERSION = 1; // bump when the context.md layout changes
+const PROJECT = path.resolve(process.argv.slice(2).find((a) => !a.startsWith('--')) || '.');
+const FORCE = process.argv.includes('--force');
 const MAX_TREE = 400;
 const TREE_DEPTH = 4;
 const EXCLUDE = new Set(['node_modules', '.git', 'dist', 'build', 'out', 'coverage', '.workbench',
@@ -23,15 +31,47 @@ function git(cmd) {
   } catch { return null; }
 }
 
+// ---- Cache check ----
+const outFile = path.join(artifactsDir, 'context.md');
+const inGit = git('rev-parse --is-inside-work-tree') === 'true';
+function fingerprint() {
+  const h = crypto.createHash('sha1').update(`v${CACHE_VERSION}\n${PROJECT}\n`);
+  if (inGit) {
+    h.update(git('rev-parse HEAD') || 'no-head');
+    // .workbench/ is FlowForge's own scratch space - its churn is not a project change.
+    h.update((git('status --porcelain') || '').split('\n').filter((l) => !l.includes('.workbench/')).join('\n'));
+  } else {
+    try {
+      for (const e of fs.readdirSync(PROJECT, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+        if (EXCLUDE.has(e.name)) continue;
+        const st = fs.statSync(path.join(PROJECT, e.name));
+        h.update(`${e.name}:${st.size}:${Math.round(st.mtimeMs)}\n`);
+      }
+    } catch { h.update(String(Date.now())); }
+  }
+  return h.digest('hex').slice(0, 16);
+}
+const FP = fingerprint();
+if (!FORCE) {
+  try {
+    const prev = fs.readFileSync(outFile, 'utf8');
+    if (prev.includes(`- Fingerprint: ${FP}\n`)) {
+      console.log(`OK: ${outFile} is up to date (cached, fingerprint ${FP})`);
+      process.exit(0);
+    }
+  } catch { /* no previous context - build it */ }
+}
+
 put('# Project context (auto-generated)');
 put('');
 put(`- Project: ${PROJECT}`);
 put(`- Generated: ${new Date().toISOString()}`);
+put(`- Fingerprint: ${FP}`);
 put('');
 
 // ---- Git ----
 put('## Git');
-if (git('rev-parse --is-inside-work-tree') === 'true') {
+if (inGit) {
   put('```');
   put(`branch: ${git('rev-parse --abbrev-ref HEAD') || '?'}`);
   put('');
@@ -126,6 +166,5 @@ for (const name of ['README.md', 'README.txt', 'README.rst', 'readme.md', 'READM
   }
 }
 
-const outFile = path.join(artifactsDir, 'context.md');
 fs.writeFileSync(outFile, lines.join('\n') + '\n', 'utf8');
 console.log(`OK: wrote ${outFile} (${count} tree entries)`);

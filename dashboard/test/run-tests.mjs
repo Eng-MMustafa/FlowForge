@@ -665,6 +665,14 @@ let MOD_ROUNDTRIP = null; // the isolated flowToGraph/graphToFlow slice, reused 
     ov.stages[0].effort === 'high' && ov.stages[1].effort === 'low');
   ok('editor: per-step pre-scripts survive the round trip',
     JSON.stringify(ov.stages[0].pre) === JSON.stringify(['scripts/run-checks.mjs']));
+  M.flowToGraph({
+    name: 'sz', defaultGate: 'terminal', sizes: { tiny: { skip: ['a', 'gone'] } }, stages: [
+      { id: 'a', agent: 'thinker' }, { id: 'b', agent: 'coder' },
+    ],
+  });
+  const sz = M.graphToFlow('sz').flow;
+  ok('editor: task sizing survives the round trip (minus deleted stages)',
+    sz.sizes && JSON.stringify(sz.sizes.tiny.skip) === '["a"]', JSON.stringify(sz.sizes));
 
   const flowSkill = fs.readFileSync(path.join(WORKBENCH, 'skills', 'flow', 'SKILL.md'), 'utf8');
   ok('skill: honors per-stage model override', /`model`.*overrides the model pinned/.test(flowSkill));
@@ -2397,7 +2405,7 @@ try {
   // headless runner lifecycle (against the fake CLI)
   const r0 = await get('/api/run');
   ok('run: no run yet', r0.exists === false);
-  const r1 = await post('/api/run', { flow: 'task', task: 'demo run', gates: 'auto', speed: 'fast' });
+  const r1 = await post('/api/run', { flow: 'task', task: 'demo run', gates: 'auto', speed: 'fast', size: 'tiny' });
   ok('run: started', r1.ok === true && typeof r1.pid === 'number', JSON.stringify(r1));
   const r409 = await post('/api/run', { flow: 'task', task: 'second', gates: 'auto' });
   ok('run: concurrent start blocked (409)', !!r409.error);
@@ -2407,6 +2415,7 @@ try {
   ok('run: prompt carries flow+task+gates', r2.lines.some((l) => l.includes('/flow task') && l.includes('demo run') && l.includes('--gates=auto')));
   ok('run: permission mode passed', r2.lines.some((l) => l.includes('--permission-mode dangerous')));
   ok('run: speed override reaches the prompt', r2.lines.some((l) => l.includes('--speed=fast')));
+  ok('run: a forced size reaches the prompt', r2.lines.some((l) => l.includes('--size=tiny')));
   ok('run: ansi codes stripped', r2.lines.some((l) => l.includes('stream line')) && r2.lines.every((l) => !l.includes('\u001b')), JSON.stringify(r2.lines.find((l) => l.includes('stream'))));
   const rstop = await post('/api/run/stop', {});
   ok('run: stop accepted', rstop.ok === true);
@@ -2418,6 +2427,7 @@ try {
   const rFlowSpeed = await get('/api/run');
   ok('run: default speed adds no flag', rFlowSpeed.lines.every((l) => !l.includes('--speed=')),
     JSON.stringify(rFlowSpeed.lines.slice(0, 2)));
+  ok('run: auto size adds no flag (the orchestrator decides)', rFlowSpeed.lines.every((l) => !l.includes('--size=')));
   let finished = null;
   for (let i = 0; i < 30; i++) { await sleep(300); finished = await get('/api/run'); if (!finished.active) break; }
   ok('run: understand run finished cleanly', finished && finished.exitCode === 0, `exit=${finished && finished.exitCode}`);
@@ -2902,6 +2912,189 @@ console.log('# document conversion');
   ok('convert: zero external dependencies', badImports.length === 0, badImports.join(', '));
 
   fs.rmSync(dir, { recursive: true, force: true });
+}
+
+// ---------- 6. core engine: state, sizing, parallel checks, context cache, CLI ----------
+console.log('# core engine');
+{
+  const S = await import('../../scripts/lib/state.mjs');
+  const readFlow = (n) => JSON.parse(fs.readFileSync(path.join(WORKBENCH, 'flows', `${n}.json`), 'utf8'));
+  const task = readFlow('task');
+  const T0 = Date.parse('2026-01-01T00:00:00Z');
+
+  // init: the whole document from the flow file
+  const st = S.initState(task, { task: 'Add X', taskRaw: 'add x pls', project: '/p', now: T0 });
+  ok('state: init builds every stage from the flow (titles, models, loops)',
+    st.stages.length === task.stages.length && st.status === 'running' && st.taskRaw === 'add x pls'
+    && st.stages.every((s, i) => s.id === task.stages[i].id && s.titleAr === task.stages[i].titleAr)
+    && st.stages.find((s) => s.id === 'code').model === 'claude-opus-5-high'
+    && st.stages.find((s) => s.id === 'test').maxLoops === 3, JSON.stringify(st.stages[0]));
+  ok('state: jump-only stages start skipped', st.stages.find((s) => s.id === 'debug').status === 'skipped');
+
+  const fast = S.initState(task, { task: 'x', speed: 'fast' });
+  ok('state: --speed=fast resolves models once (judges on the judge model, loops capped at 1)',
+    fast.stages.find((s) => s.id === 'code').model === 'swe-1-7-lightning'
+    && fast.stages.find((s) => s.id === 'test').model === 'gemini-3-7-flash-high'
+    && fast.stages.find((s) => s.id === 'test').maxLoops === 1 && fast.stages.every((s) => !s.agent || s.effort === 'low'));
+
+  // sizing
+  const tiny = S.initState(task, { task: 'x', size: 'tiny' });
+  const status = (state, id) => state.stages.find((s) => s.id === id).status;
+  ok('sizing: tiny skips the preparation stages, never test or ship',
+    status(tiny, 'think') === 'skipped' && status(tiny, 'analyze') === 'skipped'
+    && status(tiny, 'code') === 'pending' && status(tiny, 'test') === 'pending' && status(tiny, 'ship') === 'pending'
+    && tiny.log.some((l) => l.msg.includes('sizing tiny: skipped think, analyze')));
+  const small = S.initState(task, { task: 'x', size: 'small' });
+  ok('sizing: small skips only the plan', status(small, 'think') === 'skipped' && status(small, 'analyze') === 'pending');
+  ok('sizing: full (and an unknown size) skips nothing',
+    S.initState(task, { size: 'full' }).stages.every((s) => s.status === 'pending' || s.jumpOnly)
+    && S.sizeSkips(task, 'huge').length === 0);
+  ok('sizing: a flow can never size away a judged or jump-only stage',
+    JSON.stringify(S.sizeSkips({ sizes: { tiny: { skip: ['a', 't', 'd'] } }, stages: [
+      { id: 'a' }, { id: 't', onFail: 'd' }, { id: 'd', runOnlyWhenJumpedTo: true, next: 't' }] }, 'tiny')) === '["a"]');
+  const sizeProblems = [];
+  for (const f of fs.readdirSync(path.join(WORKBENCH, 'flows')).filter((x) => x.endsWith('.json'))) {
+    const flow = JSON.parse(fs.readFileSync(path.join(WORKBENCH, 'flows', f), 'utf8'));
+    for (const [z, spec] of Object.entries(flow.sizes || {})) {
+      if (!S.SIZES.includes(z)) sizeProblems.push(`${f}: unknown size ${z}`);
+      if (S.sizeSkips(flow, z).length !== (spec.skip || []).length) sizeProblems.push(`${f}: sizes.${z} names a missing or judged stage`);
+    }
+  }
+  ok('sizing: every shipped sizes entry is valid', sizeProblems.length === 0, sizeProblems.join(' | '));
+  ok('sizing: the general-purpose flows declare sizes', ['task', 'cheap', 'tests', 'automate'].every((n) => readFlow(n).sizes));
+
+  // transitions
+  const tr = S.initState(task, { task: 'x', now: T0 });
+  S.setStage(tr, 'think', 'running', { now: T0 + 1000 });
+  ok('state: running sets currentStage and startedAt', tr.currentStage === 'think' && tr.stages[0].startedAt === new Date(T0 + 1000).toISOString());
+  S.setStage(tr, 'think', 'waiting_gate', { now: T0 + 2000 });
+  ok('state: a waiting gate is the flow status', tr.status === 'waiting_gate' && tr.currentStage === 'think'
+    && tr.stages[0].startedAt === new Date(T0 + 1000).toISOString());
+  S.setStage(tr, 'think', 'done', { note: 'plan ok', noteAr: 'الخطة تمام', now: T0 + 3000 });
+  ok('state: done ends the stage and the run keeps running between stages',
+    tr.status === 'running' && tr.currentStage === null && tr.stages[0].endedAt && tr.stages[0].noteAr === 'الخطة تمام');
+  S.setStage(tr, 'code', 'running'); S.setStage(tr, 'test', 'running');
+  ok('state: parallel stages can run at once', tr.stages.filter((s) => s.status === 'running').length === 2);
+  const l1 = S.bumpLoop(tr, 'test'); S.bumpLoop(tr, 'test'); S.bumpLoop(tr, 'test'); const l4 = S.bumpLoop(tr, 'test');
+  ok('state: loops count up and report EXCEEDED past maxLoops', l1.count === 1 && !l1.exceeded && l4.count === 4 && l4.exceeded);
+  S.setFlow(tr, 'done');
+  ok('state: flow done clears currentStage', tr.status === 'done' && tr.currentStage === null);
+  let threw = 0;
+  try { S.setStage(tr, 'nope', 'running'); } catch { threw++; }
+  try { S.setStage(tr, 'think', 'finished'); } catch { threw++; }
+  try { S.setFlow(tr, 'whatever'); } catch { threw++; }
+  try { S.setField(tr, 'stages', '[]'); } catch { threw++; }
+  ok('state: unknown stages, statuses and fields are refused', threw === 4);
+  const big = S.initState(task, {});
+  for (let i = 0; i < 150; i++) S.addLog(big, `line ${i}`);
+  ok('state: the log is capped at 100 lines (oldest dropped)', big.log.length === S.LOG_MAX && big.log.at(-1).msg === 'line 149');
+
+  // atomic I/O + CLI
+  const proj = fs.mkdtempSync(path.join(os.tmpdir(), 'ff-state-'));
+  const stateCli = path.join(WORKBENCH, 'scripts', 'state.mjs');
+  const sc = (...a) => spawnSync(process.execPath, [stateCli, proj, ...a], { encoding: 'utf8', timeout: 15000 });
+  const init = sc('init', 'task', '--task', 'Fix the upload', '--raw', 'fix upload', '--size=tiny', '--gate=dashboard', '--log', 'sized tiny: one guard');
+  const afterInit = S.readState(proj);
+  ok('state cli: init writes the full document and prints the resolved stages',
+    init.status === 0 && /code coder:claude-opus-5-high\/high/.test(init.stdout) && afterInit.size === 'tiny'
+    && afterInit.gateMode === 'dashboard' && afterInit.log.some((l) => l.msg === 'sized tiny: one guard'), init.stderr || init.stdout.slice(0, 200));
+  fs.writeFileSync(path.join(proj, '.workbench', 'inbox.md'), 'stop after code');
+  const batch = sc('inbox', '+', 'stage', 'code', 'running', '--log', 'coder started');
+  const afterBatch = S.readState(proj);
+  ok('state cli: one call chains several commands (inbox drained + logged, stage started)',
+    batch.status === 0 && batch.stdout.includes('INBOX:\nstop after code') && afterBatch.currentStage === 'code'
+    && fs.readFileSync(path.join(proj, '.workbench', 'inbox.md'), 'utf8') === ''
+    && afterBatch.log.some((l) => l.msg.startsWith('inbox: stop after code')) && afterBatch.log.at(-1).msg === 'coder started', batch.stdout);
+  const done = sc('stage', 'code', 'done', '--note', '3 files', '--note-ar', '٣ ملفات', '+', 'stage', 'test', 'running');
+  const afterDone = S.readState(proj);
+  ok('state cli: Arabic notes survive the command line',
+    done.status === 0 && afterDone.stages.find((s) => s.id === 'code').noteAr === '٣ ملفات' && afterDone.currentStage === 'test');
+  const loop = sc('loop', 'test', '+', 'stage', 'test', 'failed', '+', 'stage', 'debug', 'running');
+  ok('state cli: loop prints n/max for verdict routing', loop.status === 0 && /LOOP test 1\/3/.test(loop.stdout), loop.stdout);
+  const before = fs.readFileSync(S.statePath(proj), 'utf8');
+  const bad = sc('stage', 'debug', 'done', '+', 'stage', 'ghost', 'running');
+  ok('state cli: a failing chain writes nothing (all or nothing)',
+    bad.status === 1 && /unknown stage "ghost"/.test(bad.stderr) && fs.readFileSync(S.statePath(proj), 'utf8') === before, bad.stderr);
+  const mtime = fs.statSync(S.statePath(proj)).mtimeMs;
+  const show = sc('show');
+  ok('state cli: show is read-only and one line per stage',
+    show.status === 0 && fs.statSync(S.statePath(proj)).mtimeMs === mtime && show.stdout.trim().split('\n').length === task.stages.length + 1, show.stdout);
+  ok('state cli: atomic writes leave no temp files behind',
+    fs.readdirSync(path.join(proj, '.workbench')).every((f) => !f.endsWith('.tmp')));
+  ok('state cli: commands before init are refused', spawnSync(process.execPath, [stateCli, fs.mkdtempSync(path.join(os.tmpdir(), 'ff-empty-')), 'stage', 'a', 'running'], { encoding: 'utf8' }).status === 1);
+  fs.rmSync(proj, { recursive: true, force: true });
+
+  // orchestrator uses the engine
+  const skill = fs.readFileSync(path.join(WORKBENCH, 'skills', 'flow', 'SKILL.md'), 'utf8');
+  ok('skill: every state change goes through state.mjs (never a hand-written state.json)',
+    skill.includes('Never write state.json yourself') && skill.includes('scripts/state.mjs') && /stage <id> waiting_gate/.test(skill)
+    && skill.includes('flow done') && skill.includes('loop <id>'));
+  ok('skill: sizing step present with the judgement guarantee',
+    skill.includes('Step 0.5') && skill.includes('--size=<auto|tiny|small|full>') && /never removes judgement/.test(skill));
+  ok('skill: resume and daemon use the engine too',
+    fs.readFileSync(path.join(WORKBENCH, 'skills', 'flow-resume', 'SKILL.md'), 'utf8').includes('scripts/state.mjs')
+    && fs.readFileSync(path.join(WORKBENCH, 'skills', 'flow-daemon', 'SKILL.md'), 'utf8').includes('scripts/state.mjs'));
+  ok('ui: size picker in the composer, sent with the run and the estimate',
+    uiSrc.includes('id="runSize"') && /post\('\/api\/run', \{[^}]*size/.test(uiSrc) && /post\('\/api\/estimate', \{[^}]*size/.test(uiSrc));
+
+  // run-checks: parallel lanes
+  const chk = fs.mkdtempSync(path.join(os.tmpdir(), 'ff-checks-'));
+  fs.mkdirSync(path.join(chk, '.workbench'), { recursive: true });
+  const sleepCmd = (ms, code = 0) => `node -e "setTimeout(()=>process.exit(${code}),${ms})"`;
+  const writeK = (commands, extra = {}) => fs.writeFileSync(path.join(chk, '.workbench', 'knowledge.json'), JSON.stringify({ commands, ...extra }));
+  const runChecks = () => { const t = Date.now(); const r = spawnSync(process.execPath, [path.join(WORKBENCH, 'scripts', 'run-checks.mjs'), chk], { encoding: 'utf8', timeout: 60000 }); r.ms = Date.now() - t; return r; };
+  writeK({ build: sleepCmd(900), lint: sleepCmd(1800), test: sleepCmd(900) });
+  const par = runChecks();
+  const parMd = fs.readFileSync(path.join(chk, '.workbench', 'artifacts', 'checks.md'), 'utf8');
+  ok('checks: lint runs beside build -> test (wall time below the sum)',
+    par.status === 0 && par.ms < 3300 && parMd.includes('RESULT: PASS') && /parallel lanes/.test(parMd), `${par.ms}ms`);
+  ok('checks: report keeps build, lint, test order', parMd.indexOf('## build') < parMd.indexOf('## lint') && parMd.indexOf('## lint') < parMd.indexOf('## test'));
+  writeK({ build: sleepCmd(100, 2), lint: sleepCmd(100), test: sleepCmd(100) });
+  const brk = runChecks();
+  const brkMd = fs.readFileSync(path.join(chk, '.workbench', 'artifacts', 'checks.md'), 'utf8');
+  ok('checks: a broken build skips its tests but lint still reports',
+    brk.status === 1 && /## test[\s\S]*Status: SKIPPED \(skipped - build failed\)/.test(brkMd) && /## lint[\s\S]*?Status: PASS/.test(brkMd) && brkMd.includes('RESULT: FAIL'), brkMd.slice(0, 400));
+  writeK({ build: sleepCmd(500), lint: sleepCmd(500), test: sleepCmd(500) }, { checksSequential: true });
+  const seq = runChecks();
+  ok('checks: checksSequential keeps the old one-after-another order',
+    seq.status === 0 && seq.ms >= 1400 && /sequential/.test(fs.readFileSync(path.join(chk, '.workbench', 'artifacts', 'checks.md'), 'utf8')), `${seq.ms}ms`);
+  fs.rmSync(chk, { recursive: true, force: true });
+
+  // collect-context: fingerprint cache
+  const ctx = fs.mkdtempSync(path.join(os.tmpdir(), 'ff-ctx-'));
+  fs.writeFileSync(path.join(ctx, 'package.json'), JSON.stringify({ name: 'demo', scripts: { test: 'x' } }));
+  const collect = (...a) => spawnSync(process.execPath, [path.join(WORKBENCH, 'scripts', 'collect-context.mjs'), ctx, ...a], { encoding: 'utf8', timeout: 30000 });
+  const c1 = collect(), c2 = collect();
+  ok('context: first run writes, an unchanged project is served from cache',
+    /OK: wrote/.test(c1.stdout) && /up to date \(cached/.test(c2.stdout), `${c1.stdout} | ${c2.stdout}`);
+  fs.writeFileSync(path.join(ctx, 'new-file.txt'), 'changed');
+  ok('context: a project change invalidates the cache', /OK: wrote/.test(collect().stdout));
+  ok('context: --force always rebuilds', /OK: wrote/.test(collect('--force').stdout));
+  fs.rmSync(ctx, { recursive: true, force: true });
+
+  // CLI: run + doctor
+  const C = await import('../../scripts/lib/cli.mjs');
+  const runCmd = C.parseCli(['run', 'task', 'fix it', '--size=tiny'], { cwd: os.tmpdir(), root: WORKBENCH });
+  ok('cli: run hands the user\'s folder to the script (the bin moves to the install root)',
+    runCmd.kind === 'run' && runCmd.script === 'scripts/run-flow.mjs' && runCmd.args.includes(`--project=${os.tmpdir()}`) && runCmd.args.includes('--size=tiny'));
+  ok('cli: an explicit --project wins', C.parseCli(['run', 'task', 'x', '--project=/elsewhere'], { cwd: os.tmpdir(), root: WORKBENCH }).args.filter((a) => a.startsWith('--project=')).length === 1);
+  ok('cli: doctor is a command', C.parseCli(['doctor', '--fix'], { cwd: os.tmpdir(), root: WORKBENCH }).script === 'scripts/doctor.mjs');
+  const rf = (...a) => spawnSync(process.execPath, [path.join(WORKBENCH, 'scripts', 'run-flow.mjs'), ...a, `--project=${os.tmpdir()}`, '--port=1'], { encoding: 'utf8', timeout: 15000 });
+  const noFlow = rf('nope', 'x'), noTask = rf('task'), badSize = rf('task', 'x', '--size=huge');
+  ok('cli: run rejects unknown flows, missing tasks and bad sizes before starting anything',
+    noFlow.status === 1 && /no flow "nope"/.test(noFlow.stderr) && noTask.status === 1 && /needs a task/.test(noTask.stderr)
+    && badSize.status === 1 && /--size must be/.test(badSize.stderr), `${noFlow.stderr}|${noTask.stderr}|${badSize.stderr}`);
+  const doc = spawnSync(process.execPath, [path.join(WORKBENCH, 'scripts', 'doctor.mjs'), '--quick', '--json'], { encoding: 'utf8', timeout: 30000 });
+  let rep = null; try { rep = JSON.parse(doc.stdout); } catch {}
+  const byName = (n) => rep && rep.checks.find((c) => c.name === n);
+  ok('doctor: reports every part, with the content and engine checks passing',
+    rep && ['Node.js', 'Devin config', 'Skills', 'Agent profiles', 'Flows', 'State engine', 'Install folder'].every(byName)
+    && ['Skills', 'Agent profiles', 'Flows', 'State engine'].every((n) => byName(n).status === 'ok'),
+    rep ? JSON.stringify(rep.checks.filter((c) => c.status !== 'ok')) : doc.stdout.slice(0, 200));
+  ok('doctor: every problem comes with a fix', rep && rep.checks.filter((c) => c.status === 'fail' || c.status === 'warn').every((c) => c.fix));
+  ok('core: new scripts use node builtins only',
+    ['state.mjs', 'run-flow.mjs', 'doctor.mjs', 'lib/state.mjs'].every((f) => [...fs.readFileSync(path.join(WORKBENCH, 'scripts', f), 'utf8').matchAll(/from\s+'([^']+)'/g)]
+      .every((m) => m[1].startsWith('node:') || m[1].startsWith('./') || m[1].startsWith('../'))));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

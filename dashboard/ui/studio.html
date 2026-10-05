@@ -1,26 +1,44 @@
 ﻿<!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>·</title>
 <style>
-  /* Studio - icon-only flow builder. Pure white surface, soft elevation,
-     zero visible typography: every affordance is an inline stroke SVG. */
+  /* Studio - icon-only flow builder. Soft elevation, zero visible
+     typography: every affordance is an inline stroke SVG. It shares the
+     dashboard's design tokens and follows its theme (ff.theme). */
   :root{
-    --paper:#ffffff; --ink:#101828; --line:#eaecf0; --mute:#98a2b3;
-    --accent:#2563eb; --ok:#12b76a; --warn:#f79009; --bad:#f04438;
-    --sh-1:0 1px 2px rgba(16,24,40,.06);
-    --sh-2:0 12px 32px rgba(16,24,40,.08);
+    --bg:#07080c; --paper:rgba(22,24,33,.6); --paper2:rgba(255,255,255,.045); --ink:#f5f6f8; --line:rgba(255,255,255,.09); --mute:#8a90a5;
+    --accent:#8b97ff; --violet:#a66bff; --ok:#34d399; --warn:#fbbf24; --bad:#ff6b6b;
+    --grad:linear-gradient(135deg,#5b6cff 0%,#9b5cff 55%,#ff5fa2 100%);
+    --glass:saturate(170%) blur(22px);
+    --sh-1:0 1px 0 rgba(255,255,255,.05) inset, 0 8px 24px rgba(0,0,0,.3);
+    --sh-2:0 1px 0 rgba(255,255,255,.06) inset, 0 24px 60px rgba(0,0,0,.45);
     --r-s:16px; --r-m:20px; --r-l:28px;
     --gap:8px; --hit:44px;
+    --c-thinker:#9b85ff; --c-analyst:#5b9dff; --c-coder:#38bdf8;
+    --c-tester:#3ecc6b; --c-debugger:#f0a92e; --c-shipper:#f472b6;
+  }
+  [data-theme="light"]{
+    --bg:#eef0f6; --paper:rgba(255,255,255,.72); --paper2:rgba(15,23,42,.04); --ink:#0f1222; --line:rgba(15,23,42,.1); --mute:#8a90a2;
+    --accent:#4f5bff; --violet:#8b46ff; --ok:#0f9f6e; --warn:#b7791f; --bad:#d63c3c;
+    --grad:linear-gradient(135deg,#5b6cff 0%,#9b5cff 55%,#ff5fa2 100%);
+    --sh-1:0 1px 2px rgba(16,24,40,.06);
+    --sh-2:0 12px 32px rgba(16,24,40,.08);
     --c-thinker:#7a5af8; --c-analyst:#2563eb; --c-coder:#0ea5e9;
     --c-tester:#12b76a; --c-debugger:#f79009; --c-shipper:#ef4899;
   }
   *,*::before,*::after{box-sizing:border-box;}
   html,body{height:100%;}
   body{
-    margin:0; background:var(--paper); color:var(--ink);
+    margin:0; background:var(--bg); color:var(--ink);
+    background-image:
+      radial-gradient(38% 32% at 12% 6%, color-mix(in srgb, #5b6cff 26%, transparent), transparent 70%),
+      radial-gradient(32% 28% at 88% 10%, color-mix(in srgb, #ff5fa2 15%, transparent), transparent 70%),
+      radial-gradient(40% 36% at 72% 96%, color-mix(in srgb, #22d3ee 11%, transparent), transparent 72%),
+      radial-gradient(30% 30% at 30% 80%, color-mix(in srgb, #9b5cff 10%, transparent), transparent 70%);
+    background-attachment:fixed;
     -webkit-font-smoothing:antialiased;
   }
   svg{display:block;}
@@ -46,12 +64,19 @@
   :focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:var(--r-s);}
 
   /* ---------- top rail ---------- */
+  /* Floating glass rail, same surface as the dashboard sidebar. */
   .rail{
-    position:sticky; top:0; z-index:6;
+    position:sticky; top:12px; z-index:6; margin:12px; 
     display:flex; align-items:center; gap:var(--gap);
-    padding:calc(var(--gap)*1.5) calc(var(--gap)*3);
-    background:var(--paper); border-block-end:1px solid var(--line);
+    padding:calc(var(--gap)*1.25) calc(var(--gap)*1.5);
+    background:var(--paper); backdrop-filter:var(--glass); -webkit-backdrop-filter:var(--glass);
+    border:1px solid var(--line); border-radius:var(--r-m); box-shadow:var(--sh-2);
   }
+  .rail .logo{inline-size:32px; block-size:32px; border-radius:10px; background:var(--grad); color:#fff;
+    display:inline-flex; align-items:center; justify-content:center; flex:none;
+    box-shadow:0 4px 14px color-mix(in srgb, var(--accent) 40%, transparent);}
+  .rail .logo .ic{width:18px; height:18px;}
+  .rail .sep{inline-size:1px; block-size:24px; background:var(--line); margin:0 4px;}
   .rail .spacer{flex:1;}
   #projChips{display:flex; align-items:center; gap:var(--gap); flex-wrap:wrap;}
   .chip{
@@ -61,7 +86,7 @@
     padding:0; min-width:0; min-height:0;
   }
   .chip i{display:block; inline-size:16px; block-size:16px; border-radius:999px; background:currentColor;}
-  .chip[data-on="1"]{box-shadow:var(--sh-1),0 0 0 3px rgba(37,99,235,.18); border-color:var(--accent);}
+  .chip[data-on="1"]{box-shadow:var(--sh-1),0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); border-color:var(--accent);}
   #execDot{color:var(--mute);}
   #execDot[data-st="ready"]{color:var(--ok);}
   #execDot[data-st="queue"]{color:var(--warn);}
@@ -74,7 +99,7 @@
     display:flex; flex-direction:column; gap:calc(var(--gap)*3);
   }
   .card{
-    background:var(--paper); border:1px solid var(--line);
+    background:var(--paper); border:1px solid var(--line); backdrop-filter:var(--glass); -webkit-backdrop-filter:var(--glass);
     border-radius:var(--r-l); box-shadow:var(--sh-1);
     padding:calc(var(--gap)*3);
   }
@@ -87,8 +112,8 @@
   }
   .intent[data-on="1"]{
     color:var(--accent); border-color:var(--accent);
-    background:rgba(37,99,235,.06);
-    box-shadow:var(--sh-2),0 0 0 3px rgba(37,99,235,.14);
+    background:color-mix(in srgb, var(--accent) 9%, var(--paper));
+    box-shadow:var(--sh-2),0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
   }
   .intent .ic{width:72px; height:72px;}
 
@@ -117,14 +142,14 @@
   .node[data-hex="1"] .dot{border-radius:var(--r-s); transform:rotate(45deg);}
   .node[data-hex="1"] .dot .ic{transform:rotate(-45deg);}
   .node[data-hex="1"] .dot:hover{transform:rotate(45deg) translateY(-2px);}
-  .node[data-on="1"] .dot{color:var(--role); border-color:var(--role); background:color-mix(in srgb, var(--role) 8%, #fff);}
+  .node[data-on="1"] .dot{color:var(--role); border-color:var(--role); background:color-mix(in srgb, var(--role) 12%, var(--paper));}
   .node[data-st="running"] .dot{color:var(--accent); border-color:var(--accent); animation:pulse 1.4s ease-in-out infinite;}
   .node[data-st="waiting_gate"] .dot{color:var(--warn); border-color:var(--warn); animation:pulse 1.4s ease-in-out infinite;}
   .node[data-st="done"] .dot{color:#fff; background:var(--ok); border-color:var(--ok);}
   .node[data-st="failed"] .dot{color:#fff; background:var(--bad); border-color:var(--bad);}
   .node[data-st="skipped"] .dot{color:var(--mute); border-style:dashed;}
   .node[data-drag="1"]{opacity:.4;}
-  @keyframes pulse{0%,100%{box-shadow:var(--sh-1),0 0 0 0 rgba(37,99,235,.28);} 50%{box-shadow:var(--sh-1),0 0 0 10px rgba(37,99,235,0);}}
+  @keyframes pulse{0%,100%{box-shadow:var(--sh-1),0 0 0 0 color-mix(in srgb, var(--accent) 32%, transparent);} 50%{box-shadow:var(--sh-1),0 0 0 10px transparent;}}
   .grip{color:var(--mute); border:0; box-shadow:none; background:none; min-width:0; min-height:24px; inline-size:24px; cursor:grab;}
   .grip:hover{transform:none; box-shadow:none;}
 
@@ -138,7 +163,7 @@
      active button identically in LTR and RTL. */
   .seg .pill{
     position:absolute; inset-block:3px; left:3px; width:30px;
-    border-radius:999px; background:rgba(37,99,235,.10);
+    border-radius:999px; background:color-mix(in srgb, var(--accent) 16%, transparent);
     transition:left .2s ease, width .2s ease; pointer-events:none;
   }
   .seg button{
@@ -162,7 +187,7 @@
     inline-size:22px; block-size:22px; border-radius:999px;
     background:var(--mute); transition:transform .18s ease, background-color .18s ease;
   }
-  .sw[data-on="1"]{border-color:var(--accent); background:rgba(37,99,235,.08);}
+  .sw[data-on="1"]{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 12%, var(--paper));}
   .sw[data-on="1"] i{background:var(--accent); transform:translateX(24px);}
   html[dir="rtl"] .sw[data-on="1"] i{transform:translateX(-24px);}
   .swrow{display:flex; align-items:center; gap:calc(var(--gap)*2); min-block-size:var(--hit);}
@@ -203,12 +228,15 @@
   #runArc circle{fill:none; stroke-width:3; stroke-linecap:round;}
   #runArc .trk{stroke:var(--line);}
   #runArc .val{stroke:var(--accent); transition:stroke-dashoffset .4s ease;}
+  /* The one primary action on the page: the only gradient fill. */
   #btnRun{
-    position:absolute; inset:0; inline-size:88px; block-size:88px;
-    border-radius:999px; color:var(--accent); box-shadow:var(--sh-2);
+    position:absolute; inset:8px; inline-size:72px; block-size:72px;
+    border-radius:999px; color:#fff; background:var(--grad); border-color:transparent;
+    box-shadow:0 10px 30px color-mix(in srgb, var(--accent) 45%, transparent);
   }
+  #btnRun:hover{filter:brightness(1.1); box-shadow:0 14px 36px color-mix(in srgb, var(--accent) 55%, transparent);}
   #btnRun[data-st="active"]{color:#fff; background:var(--accent); border-color:var(--accent);}
-  #btnRun[data-st="none"]{color:var(--bad); border-color:var(--bad);}
+  #btnRun[data-st="none"]{color:var(--bad); background:var(--paper); border-color:var(--bad); box-shadow:var(--sh-1);}
   #btnRun[data-st="bad"]{animation:shake .3s ease;}
   @keyframes shake{25%{transform:translateX(-4px);} 75%{transform:translateX(4px);}}
 
@@ -225,6 +253,7 @@
 
   /* ---------- sheets ---------- */
   .sheet{
+    backdrop-filter:var(--glass); -webkit-backdrop-filter:var(--glass);
     position:fixed; inset-inline:0; inset-block-end:0; z-index:8;
     display:flex; align-items:center; justify-content:center; gap:calc(var(--gap)*2);
     flex-wrap:wrap;
@@ -292,6 +321,8 @@
 </defs></svg>
 
 <div class="rail">
+  <span class="logo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24"><rect x="3.5" y="4" width="6" height="5" rx="1.4"/><rect x="14.5" y="15" width="6" height="5" rx="1.4"/><path d="M9.5 6.5h3a2 2 0 0 1 2 2v6.5"/></svg></span>
+  <span class="sep" aria-hidden="true"></span>
   <a class="btn" id="lnkHome" href="/" aria-label="dashboard"><svg class="ic sm"><use href="#ic-home"/></svg></a>
   <span id="projChips"></span>
   <span class="spacer"></span>
@@ -577,7 +608,8 @@ function makeSeg(values, current, cls, onPick, labelPrefix) {
 
 /* ============================== language / direction ============================== */
 {
-  const lang = localStorage.getItem('ff.lang') || 'ar';
+  const lang = localStorage.getItem('ff.lang') || 'en';
+  document.documentElement.dataset.theme = localStorage.getItem('ff.theme') || 'dark';
   document.documentElement.lang = lang;
   document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
 }

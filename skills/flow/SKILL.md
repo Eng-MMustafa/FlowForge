@@ -1,7 +1,7 @@
 ---
 name: flow
 description: Run a FlowForge pipeline (staged engineering flow with specialized role subagents, gates, and live dashboard state)
-argument-hint: "<flow-name> \"<task>\" [--gates=auto|terminal|dashboard|ai] [--speed=fast|balanced|quality] [--headless=acp|cli]"
+argument-hint: "<flow-name> \"<task>\" [--gates=auto|terminal|dashboard|ai] [--speed=fast|balanced|quality] [--size=auto|tiny|small|full] [--headless=acp|cli]"
 triggers:
   - user
 ---
@@ -15,14 +15,15 @@ Project root (PROJECT): the current session's working directory, unless the user
 **You ARE the orchestrator.** Never invoke another skill (`flow-status`, `flow-resume`, `understand`…) to "handle" this run — they are separate user commands and calling one only burns a turn. Start working immediately.
 
 ## Parse the invocation
-The user invoked: `/flow <flow-name> "<task>" [--gates=<mode>] [--speed=<mode>]`
+The user invoked: `/flow <flow-name> "<task>" [--gates=<mode>] [--speed=<mode>] [--size=<size>]`
 Parse mechanically, in this order, and NEVER stop to ask about the syntax:
 1. **flow-name = the first bare token after `/flow`** — the first whitespace-delimited word that is not quoted and does not start with `--`. It is a plain identifier such as `task`, `quality`, `bugfix`, `perf`.
    Do not be fooled by flows whose name is an ordinary English word: in `/flow task "add X"` the flow-name IS `task` and the task text is `add X`. The same applies to `tests`, `design`, `fast`, `cheap`, `review`, `data` and `security`.
 2. **task = the quoted string** (or, if nothing is quoted, everything after the flow-name minus the `--flags`). May be empty for flows that need no task (e.g. understand).
 3. `--gates=<auto|terminal|dashboard|ai>` → runtime gate override (optional).
 4. `--speed=<fast|balanced|quality>` → runtime model/effort override for EVERY stage (optional).
-5. `--headless=<acp|cli>` → the dashboard started this run; **nobody reads this conversation**. Never ask a question in the chat and never wait for a typed answer. `acp` also means the dashboard can send you follow-up messages (see Gate handling); `cli` means it cannot.
+5. `--size=<auto|tiny|small|full>` → how much preparation the task needs (optional, default `auto`) - see Step 0.5.
+6. `--headless=<acp|cli>` → the dashboard started this run; **nobody reads this conversation**. Never ask a question in the chat and never wait for a typed answer. `acp` also means the dashboard can send you follow-up messages (see Gate handling); `cli` means it cannot.
 
 Resolving the flow file — **always end up running something**:
 - `WORKBENCH/flows/<flow-name>.json` exists → use it.
@@ -34,7 +35,9 @@ Listing the flows and waiting for an answer is NOT an acceptable outcome — the
 ### Speed override
 Absent → run each stage exactly as its file declares. Otherwise replace every
 stage's `model`/`effort` with the row below, and report the applied speed in the
-start summary so the user knows why it is quick or slow:
+start summary so the user knows why it is quick or slow. `state.mjs init --speed=<s>`
+applies this table for you and prints the resolved model/effort per stage — use
+what it prints, do not recompute:
 
 | speed | model for every stage | effort | extra |
 |---|---|---|---|
@@ -48,7 +51,8 @@ Never change which stages run — speed only changes model, effort and retry cap
 The models do the thinking; the orchestrator must not waste turns around them. Quality is set by `--speed` and the stage models ONLY — never silently downgrade a model to be quick. But do:
 - Read the locator and the flow file **once** each and keep them in context; never re-read a file you just wrote.
 - Run all of a stage's `pre[]` scripts in ONE command (`node a.mjs "P"; node b.mjs "P"`) instead of one call per script.
-- Write state.json **once** per transition (one merged write, not a read-modify-write per field).
+- **Never write state.json yourself.** Every change goes through `node "WORKBENCH/scripts/state.mjs" "PROJECT" ...` (see State contract), and a whole transition is ONE call: chain its parts with ` + ` (finish this stage, start the next, log it). It replaces a full JSON rewrite with a one-line command.
+- Fold the state call into the same shell command as the work it records when you can (`node .../state.mjs P stage test running + log "checks started"; node .../run-checks.mjs P`).
 - Verify done-criteria from the subagent's summary plus a single read of the artifact — do not re-open it per criterion.
 - Do not re-explain the plan to the user between stages; the dashboard already shows it.
 
@@ -57,13 +61,47 @@ The user's raw task text may contain typos, mixed languages, or vague phrasing.
 **Skip this step entirely** when the text is already a precise English task statement — typically because the dashboard's ✨ Generate / ⚡ Optimize button produced it (a full English sentence naming the concrete outcome). Then set `task` = `taskRaw` = the given text, log `task already precise - refinement skipped`, and go straight to stage 1. Re-refining costs a model round trip and can only drift from what the user approved.
 Otherwise, before running stage 1:
 1. Rewrite it into a clear, precise, English task statement: fix spelling, resolve ambiguity from context, keep the user's intent EXACTLY — never add or remove scope. Keep file paths/identifiers verbatim. Do this inline (no subagent, no extra tool calls).
-2. Store the refined text as `task` in state.json and the user's original as `taskRaw`.
-3. Log: `task refined: "<refined>" (raw kept in taskRaw)`.
+2. Pass the refined text as `--task` and the user's original as `--raw` to `state.mjs init` (state keeps them as `task` / `taskRaw`).
+3. Log (on the init call): `--log "task refined (raw kept in taskRaw)"`.
 4. If the raw text is so ambiguous that two materially different tasks are plausible, ask the user (terminal) before starting — a wrong refinement wastes the whole pipeline. With `--headless` or as a daemon never ask: pick the most plausible reading, log `task ambiguous - assumed: <reading>`, and continue.
 {TASK} in stage prompts always means the REFINED text.
 
+## Step 0.5 — Size the task (speed without skipping judgement)
+Full pipelines are right for real features and wasteful for a one-line fix. Decide the size once, inline (no subagent, no tool call), right after refinement:
+- `--size=<tiny|small|full>` given → use it as is.
+- `--size=auto` or absent → classify from the refined task and what you already know of the project:
+  - **tiny** — one obvious change in one or two files, no design choice to make (rename, typo, a config value, a guard clause, a one-function fix whose location the task names).
+  - **small** — a few files, ONE clear approach, no new module, no data-model or public-API change.
+  - **full** — everything else, and whenever you are unsure. Security, data migrations, auth, money, concurrency and public APIs are always `full`.
+- The flow decides what a size removes, in its optional `sizes` field (e.g. `"sizes": {"tiny": {"skip": ["think","analyze"]}}`). A flow without `sizes`, or without an entry for the chosen size, runs in full - say so in the log and move on.
+- Sizing never removes judgement: stages with `onFail`, jump-only stages, the test stage and the ship gate always run (`state.mjs` refuses to skip them).
+- Pass the decision to `init` as `--size=<size>`; it marks the dropped stages `skipped` and logs it. Log the reason in a few words on the same call: `--log "sized tiny: one-line guard in api/upload.ts"`.
+- Every stage that runs AFTER a skipped preparation stage gets this line appended to its task: `Sizing: <size> - the <skipped ids> stage(s) did not run, so <their artifacts> do not exist. Work from the task text and the code directly, and put a 3-line mini-plan (what, where, how to verify) at the top of your own artifact.` The tester gets: `Sizing: <size> - there is no plan.md; derive the acceptance criteria from the task text.`
+
 ## State contract (the dashboard depends on this exact shape)
-Maintain `PROJECT/.workbench/state.json` (create `.workbench/` and `artifacts/` if missing). Update it BEFORE and AFTER every stage transition, gate, loop, and completion — the dashboard polls it live:
+`PROJECT/.workbench/state.json` is written ONLY by the state engine — never by hand, never with a file-write tool:
+
+```
+node "WORKBENCH/scripts/state.mjs" "PROJECT" <command> [args] [--flags] [+ <command> ...]
+```
+
+| command | does |
+|---|---|
+| `init <flow-name> --task "<refined>" --raw "<original>" [--gate=<mode>] [--speed=<s>] [--size=<z>]` | builds the whole state from the flow file (titles, models, loops, jump-only and size-skipped stages) and prints one line per stage with the resolved model/effort |
+| `stage <id> <pending\|running\|waiting_gate\|done\|failed\|skipped> [--note "<en>"] [--note-ar "<ar>"]` | one stage transition; timestamps, `currentStage` and the flow status follow automatically |
+| `loop <id>` | counts one more onFail loop; prints `LOOP <id> <n>/<max>` and `EXCEEDED` when over `maxLoops` |
+| `flow <done\|failed\|stopped\|running>` | the run's final (or resumed) status |
+| `skip <id,id> --reason "<why>"` | marks stages skipped mid-run |
+| `set <task\|taskRaw\|gateMode\|size\|speed> <value>` | changes one top-level field |
+| `log "<line>"` / `--log "<line>"` on any command | appends to the live log (capped at 100) |
+| `inbox` | prints `.workbench/inbox.md` and empties it, logging what it held |
+| `show` | prints the run one line per stage (read-only) |
+
+Chain the parts of one transition with ` + ` so it is ONE call and ONE atomic write, e.g.
+`node "WORKBENCH/scripts/state.mjs" "PROJECT" stage code done --note "3 files changed" --note-ar "اتغيّر 3 ملفات" + stage test running --log "tester started"`.
+Writes are atomic (temp file + rename), so the dashboard never reads a half-written file. A non-zero exit means nothing was written — read the message, fix the call, retry.
+
+For reference, the shape it maintains (the dashboard polls it live):
 
 ```json
 {
@@ -81,30 +119,28 @@ Maintain `PROJECT/.workbench/state.json` (create `.workbench/` and `artifacts/` 
   "log": [ { "t": "<ISO>", "msg": "" } ]
 }
 ```
-Copy `title`/`titleAr` (and the flow's `title`/`titleAr`) from the flow file into state so the bilingual dashboard can render either language.
-If a stage carries `model` or `effort`, copy them into its state entry too (`"model"`, `"effort"`) so the dashboard can show what actually ran.
+`init` copies the bilingual titles, per-stage `model`/`effort` and `maxLoops` from the flow file and starts `runOnlyWhenJumpedTo` stages as `skipped` — you never assemble this by hand.
 
 Language rules for dynamic text:
-- Stage outcome lines are BILINGUAL: write `note` in **English** and `noteAr` in **Arabic** with the same meaning — the dashboard shows the one matching the UI language. Keep file paths/commands/identifiers verbatim in both.
+- Stage outcome lines are BILINGUAL: pass `--note` in **English** and `--note-ar` in **Arabic** with the same meaning — the dashboard shows the one matching the UI language. Keep file paths/commands/identifiers verbatim in both.
 - `log` entries — keep in **English** (technical trace rendered in an LTR pane).
-Initialize it from the flow file (all stages `pending`; `runOnlyWhenJumpedTo` stages start as `skipped`).
 
-**Live logging contract** — the dashboard renders `log` as a live feed, so append an entry (English, one line) for EVERY observable step, immediately when it happens, not batched at the end:
+**Live logging contract** — the dashboard renders `log` as a live feed, so add a `--log` (English, one line) for EVERY observable step, on the state call of the transition it belongs to, not batched at the end:
 - pre/post script start and result (`run-checks.mjs -> RESULT: FAIL (exit 1)`)
 - subagent spawn (`coder subagent started`) and completion with its one-line summary
 - done-criteria check result per stage
 - every gate: requested (mode), decision, and any user note
 - verdict routing and loop jumps (`test FAIL -> debug (loop 2/3)`)
-- inbox drains (quote the note briefly)
-Keep `log` under 100 entries (drop oldest).
+- inbox drains (`inbox` logs them for you)
+The engine caps `log` at 100 entries.
 
-If a previous unfinished run exists in state.json for a DIFFERENT task, tell the user and ask whether to overwrite or resume (/flow-resume) before proceeding.
+If a previous unfinished run exists in state.json for a DIFFERENT task (`state.mjs P show`), tell the user and ask whether to overwrite or resume (/flow-resume) before proceeding. With `--headless` never ask: a `stopped`/`failed`/`done` run is overwritten by the new `init`; a `running`/`waiting_gate` one means another run owns this project — report it and stop.
 
 ## Stage execution loop
-Process `stages` in order. Skip stages with `"runOnlyWhenJumpedTo": true` unless a jump targeted them. For each stage:
+Start with ONE call: `state.mjs P init <flow> --task ... --raw ... --gate=<effective> [--speed] --size=<z> --log "<sizing reason>"`. It prints the resolved stage list — keep it in context instead of re-reading the flow.
+Process `stages` in order. Skip stages with `"runOnlyWhenJumpedTo": true` unless a jump targeted them, and stages `init` marked size-skipped. For each stage:
 
-1. **Inbox** — read `PROJECT/.workbench/inbox.md`. If it has content: treat it as direct user instructions (they may adjust or cancel the run), append its text to the log, then clear the file to empty.
-2. **Mark running** — update state.json (`currentStage`, stage status `running`, `startedAt`).
+1–2. **Inbox + mark running (one call)** — `state.mjs P inbox + stage <id> running --log "<id> started"`. If the printed `INBOX:` has content, treat it as direct user instructions (they may adjust or cancel the run). When the previous stage just finished, this is the same call as its `done` (see step 8).
 3. **Pre-scripts** — for each entry in `pre[]`, run:
    `node "WORKBENCH/<script>" "PROJECT"`
    (Scripts are Node .mjs files — NEVER try `powershell -File`: this machine's group policy blocks unsigned .ps1.)
@@ -124,22 +160,22 @@ Process `stages` in order. Skip stages with `"runOnlyWhenJumpedTo": true` unless
      - medium → `Thinking level: MEDIUM - reason enough to be correct, no exhaustive exploration.`
      - low/minimal/none → `Thinking level: LOW - act directly, minimal deliberation, keep the output short.`
      Log it (`test: thinking level high`).
-5. **Done-criteria check** — read the produced artifact (`PROJECT/.workbench/artifacts/<artifact>`) and verify EVERY item in `done[]`. If any item fails: re-invoke the same profile ONCE listing exactly what is missing. If still failing → mark stage `failed`, set flow `status: "failed"`, report to the user, STOP.
-6. **Verdict routing** (stages with `onFail`) — determine PASS/FAIL from the subagent's `VERDICT:` line and the artifact's `Verdict:` line (artifact wins on conflict). On FAIL:
-   - increment `loops[<stageId>]`; if it now exceeds `maxLoops` → mark flow `failed`, summarize the unresolved failures to the user, STOP.
-   - otherwise mark this stage `failed` in note but flow continues: jump to the `onFail` stage (set it `pending`, then run it next).
-   A stage with `next` (e.g. debug → test) jumps back after completing; reset the target stage to `pending` first.
+5. **Done-criteria check** — read the produced artifact (`PROJECT/.workbench/artifacts/<artifact>`) and verify EVERY item in `done[]`. If any item fails: re-invoke the same profile ONCE listing exactly what is missing. If still failing → `state.mjs P stage <id> failed --note ... --note-ar ... + flow failed --log "<id>: done-criteria unmet"`, report to the user, STOP.
+6. **Verdict routing** (stages with `onFail`) — determine PASS/FAIL from the subagent's `VERDICT:` line and the artifact's `Verdict:` line (artifact wins on conflict). On FAIL, ONE call:
+   `state.mjs P loop <id> + stage <id> failed --note "<why>" --note-ar "<why>" + stage <onFail> running --log "<id> FAIL -> <onFail>"`
+   - If the output says `EXCEEDED` → `state.mjs P flow failed --log "<id>: loops exhausted"`, summarize the unresolved failures to the user, STOP.
+   - Otherwise run the `onFail` stage next. A stage with `next` (e.g. debug → test) jumps back after completing: `stage debug done --note ... + stage test running`.
 7. **Post-scripts** — run each `post[]` entry like pre-scripts.
-8. **Mark done** — stage status `done`, `endedAt`, one-line `note` from the subagent's summary.
+8. **Mark done** — `stage <id> done --note "<one-line outcome>" --note-ar "<same, Arabic>"`, chained with ` + stage <next> running` when no gate stands between them.
 9. **Gate** — see below. Then continue to the next stage per routing.
 
-On completion of all stages: `status: "done"`, `currentStage: null`, print a final summary (stages run, loops taken, artifacts produced, files changed).
+On completion of all stages: `state.mjs P flow done --log "flow complete"`, then print a final summary (stages run, loops taken, artifacts produced, files changed).
 
-If anything unexpected breaks (subagent error, script crash): record it in state.json (`status: "failed"`, log entry) BEFORE reporting to the user — never leave state.json showing `running` when nothing runs.
+If anything unexpected breaks (subagent error, script crash): `state.mjs P flow failed --log "<what broke>"` BEFORE reporting to the user — never leave state.json showing `running` when nothing runs.
 
 ## Parallel stages (optional `parallel` field)
 Consecutive stages that share the same string value in `"parallel"` (e.g. `"parallel": "review"`) are one **group** and run at the same time - each on its own agent - instead of one after another. Typical use: `test` and `review` both judging the same code, or `research` and `analyze` reading the same context.
-- Run steps 1-4 for every stage of the group **before** waiting on any of them: mark them all `running`, run their `pre[]`, then spawn each stage's subagent as a **background** subagent (`is_background=true`) with the same task text rules as above. Log `parallel group "<name>": <n> stages started`.
+- Run steps 1-4 for every stage of the group **before** waiting on any of them: mark them all `running` in ONE call (`stage a running + stage b running --log "parallel group <name>: 2 stages started"`), run their `pre[]`, then spawn each stage's subagent as a **background** subagent (`is_background=true`) with the same task text rules as above. Log `parallel group "<name>": <n> stages started`.
 - Wait for all of them to finish (read each background subagent's result), then run steps 5-9 for each stage **in file order**: done-criteria, verdict routing, post-scripts, mark done, gate. A gate inside a group is asked after the whole group finished, in order.
 - If two stages of a group both FAIL with `onFail` targets, honour the first one in file order (the other is re-run when its `next` comes back around); never jump to two places at once.
 - Stages of a group must not write the same artifact. If the flow file gives two of them the same `artifact`, treat the group as sequential and log `parallel group "<name>" downgraded: shared artifact <file>`.
@@ -153,8 +189,8 @@ Resolve the effective mode per stage in this priority order:
 3. `PROJECT/.workbench/settings.json` → `gateMode` if present and not `"default"` (the user sets this from the dashboard Settings tab; re-read it at every gate, it may change mid-flow).
 4. Flow `defaultGate`.
 - **auto** — log `gate auto-approved` and continue. Exception: shipping. In auto mode {SHIP_MODE} is "Mode 2 - commit" (never push without an explicit user instruction in the task text or inbox).
-- **terminal** — set stage & flow status `waiting_gate`, then ask the user directly in the conversation: show the stage's `gateQuestion` (or a sensible default), a 3-6 line summary of the artifact, and the artifact path. Wait for their answer. Approve → continue; reject → incorporate their feedback: re-run the stage with the feedback appended to the prompt (this does not count against maxLoops), or stop if they say stop.
-- **dashboard** — set stage & flow status `waiting_gate`, then hand the question to the dashboard. Which way depends on `--headless`:
+- **terminal** — `state.mjs P stage <id> waiting_gate --log "<id>: gate requested (terminal)"`, then ask the user directly in the conversation: show the stage's `gateQuestion` (or a sensible default), a 3-6 line summary of the artifact, and the artifact path. Wait for their answer. Approve → continue; reject → incorporate their feedback: re-run the stage with the feedback appended to the prompt (this does not count against maxLoops), or stop if they say stop.
+- **dashboard** — `state.mjs P stage <id> waiting_gate --log "<id>: gate requested (dashboard)"`, then hand the question to the dashboard. Which way depends on `--headless`:
   - **`--headless=acp`** (the dashboard drives this session and will message you): write `PROJECT/.workbench/commands.json` as `{"gate": {"stage": "<id>", "question": "<gateQuestion>", "questionAr": "<gateQuestionAr>", "requestedAt": "<ISO>"}, "response": null}`, print exactly one line `GATE_WAIT <id>`, and **end your turn** - do not run gate-wait.mjs, do not poll, do not ask anything. The decision arrives as your next message: `GATE_DECISION <id> approve|reject` with an optional `NOTE: ...` line. approve → continue with the next stage; reject → act like a terminal reject using the NOTE. A message starting `Your turn ended while the flow is still running` means you stopped without a gate - resume from the current stage at once.
   - **otherwise** (`--headless=cli`, a daemon, or an interactive session): run
     `node "WORKBENCH/scripts/gate-wait.mjs" "PROJECT" "<id>" "<gateQuestion>" "<gateQuestionAr>" 900`
@@ -165,10 +201,12 @@ Resolve the effective mode per stage in this priority order:
   - REVISE → re-run the stage's own agent once with the numbered issues appended under `Reviewer feedback to address:`, then review again. At most **2 review rounds per gate** (this never counts against `maxLoops`). If the second review still says REVISE: continue anyway, put `ai review: proceeding with <k> open issues` in the stage `note`/`noteAr`, and list the issues in the log - never stall the flow on a reviewer.
   - Ship gate in `ai` mode: {SHIP_MODE} is "Mode 2 - commit" (never push without an explicit user instruction in the task text or inbox).
   - The stage stays `running` during review (no `waiting_gate`): the dashboard shows review rounds in the log.
+- After any gate decision, record it in the call that moves on: approve → `stage <id> done --note ... + stage <next> running --log "<id>: gate approved"`; reject → `stage <id> running --log "<id>: gate rejected - <note>"` and re-run the stage with the feedback.
 - At the **ship** gate (terminal/dashboard), ask how far to go: prepare only / commit / commit+push — that answer sets {SHIP_MODE} ("Mode 1 - prepare", "Mode 2 - commit", "Mode 3 - push (user approved)"). With `--headless` and no answer available, use "Mode 2 - commit".
 
 ## Rules
 - Never do a stage's work yourself — always delegate to the stage's profile. Your job is routing, verification, state, and gates.
 - Keep your own context lean: read artifacts to verify done-criteria and to brief gates; do not re-read the whole codebase yourself.
 - `.workbench/` must be excluded from git WITHOUT using .gitignore (agent file tools refuse to touch gitignored paths, and the orchestrator must write state there). At flow start, append `.workbench/` to `PROJECT/.git/info/exclude` if not already present (verify with `git check-ignore .workbench/state.json`). Non-git projects need nothing.
-- If the user interrupts, leave state.json accurate (`stopped` if you can) — /flow-resume continues from it.
+- If the user interrupts, leave state.json accurate (`state.mjs P flow stopped` if you can) — /flow-resume continues from it.
+- `state.mjs` is the ONLY writer of state.json. If it is missing (an old install), fall back to writing the documented shape yourself in one merged write per transition, and log `state engine unavailable`.

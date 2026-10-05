@@ -5,6 +5,7 @@
 // Usage: node install.mjs [--force]
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { agentConfigDir, agentConfigCandidates, linkType, isLink, removeLink } from './scripts/lib/platform.mjs';
 
@@ -93,12 +94,22 @@ console.log('');
 installLink(path.join(DEVIN, 'skills'), path.join(REPO, 'skills'), 'skills');
 installLink(path.join(DEVIN, 'agents'), path.join(REPO, 'agents'), 'agents');
 
+// Verify instead of listing: the doctor checks the links, the locator, every
+// skill/agent/flow file and the state engine, and names the fix for anything
+// wrong. --quick skips the slow probes (CLI login, dashboard) so install stays
+// fast; `ff doctor` runs them all.
 console.log('');
-console.log('Verify:');
-for (const kind of ['skills', 'agents']) {
-  try {
-    for (const name of fs.readdirSync(path.join(DEVIN, kind))) console.log(`  ${kind.slice(0, -1)}: ${name}`);
-  } catch (e) { console.log(`  ${kind}: (unreadable: ${e.message})`); }
+const doctor = spawnSync(process.execPath, [path.join(REPO, 'scripts', 'doctor.mjs'), '--quick', '--json'], { cwd: REPO, encoding: 'utf8' });
+let checks = [];
+try { checks = JSON.parse(doctor.stdout).checks; } catch { console.log('WARN doctor could not run - check with: ff doctor'); }
+const mark = { ok: 'OK  ', warn: 'WARN', fail: 'FAIL', info: '    ' };
+for (const c of checks) console.log(`${mark[c.status] || '    '} ${c.name}: ${c.detail}${c.status !== 'ok' && c.fix ? `  -> ${c.fix}` : ''}`);
+console.log('');
+// Only broken wiring fails the install; a damaged custom flow is reported but
+// must not make start.mjs believe Devin was never wired.
+if (checks.some((c) => c.status === 'fail' && /^(Locator|Link:)/.test(c.name))) {
+  console.log('Wiring is incomplete (see above). Re-check any time with: ff doctor');
+  process.exit(1);
 }
-console.log('');
 console.log('Done. Start a NEW Devin session and try: /flow, /understand, /flow-status, /flow-resume');
+console.log('From a terminal: ff run task "<what to do>"   ·   health check: ff doctor');

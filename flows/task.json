@@ -3,6 +3,19 @@
   "title": "Task pipeline - think, analyze, code, test, debug, ship",
   "description": "Full engineering pipeline for one task. Quality-first: nothing ships unless the tester issues PASS.",
   "defaultGate": "terminal",
+  "sizes": {
+    "tiny": {
+      "skip": [
+        "think",
+        "analyze"
+      ]
+    },
+    "small": {
+      "skip": [
+        "think"
+      ]
+    }
+  },
   "stages": [
     {
       "id": "think",

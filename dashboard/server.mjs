@@ -19,6 +19,7 @@ import { startAcp, readStoredKey } from './acp-client.mjs';
 // /export skill use - one converter, three front doors.
 import { convert as convertDoc } from '../scripts/convert-doc.mjs';
 import { FORMATS, FORMAT_IDS, extensionFor } from '../scripts/lib/formats.mjs';
+import { sizeSkips } from '../scripts/lib/state.mjs';
 // Every OS difference (paths, openers, terminals, kill) lives in one place.
 import {
   openAppCommand, terminalCommand, killTreeCommand, loginScriptFormat, loginScriptLines,
@@ -76,6 +77,11 @@ const REFINE_MODES = ['generate', 'optimize'];
 // orchestrator to override them (see the mapping table in skills/flow/SKILL.md).
 const SPEEDS = ['flow', 'fast', 'balanced', 'quality'];
 const speedSuffix = (s) => (SPEEDS.includes(s) && s !== 'flow' ? ` --speed=${s}` : '');
+// Task size: 'auto' lets the orchestrator decide (skills/flow/SKILL.md, Step
+// 0.5); the others force it. A resume keeps the size it was started with.
+const SIZES = ['auto', 'tiny', 'small', 'full'];
+const sizeSuffix = (z, flow) => (SIZES.includes(z) && z !== 'auto' && flow !== 'resume' ? ` --size=${z}` : '');
+const cleanSize = (z) => (SIZES.includes(z) ? z : '');
 let refining = false; // one prompt-refine request at a time
 
 // ---------- registry ----------
@@ -576,10 +582,10 @@ function refineLocally(raw, flow, project, mode = 'generate') {
     + 'and state the acceptance criteria that prove it works.';
 }
 
-function startRun(project, { flow, task, gates, speed, permissionMode }) {
+function startRun(project, { flow, task, gates, speed, size, permissionMode }) {
   const safeTask = String(task || '').replace(/"/g, "'").trim();
   const gateMode = ['auto', 'terminal', 'dashboard', 'ai'].includes(gates) ? gates : 'dashboard';
-  const speedFlag = speedSuffix(speed);
+  const speedFlag = speedSuffix(speed) + sizeSuffix(size, flow);
   // `--headless=cli`: nobody reads this terminal - the skill keeps waiting on
   // the dashboard gate instead of ever asking in the conversation.
   const prompt = flowPrompt(flow, safeTask, gateMode, speedFlag, 'cli');
@@ -681,10 +687,10 @@ function stateBelongsToRun(st, r) {
   if (!want) return String(st.flow || '') === r.flow;
   return [st.taskRaw, st.task].some((x) => norm(x).startsWith(want.slice(0, 40)));
 }
-function startRunAcp(project, { flow, task, gates, speed }) {
+function startRunAcp(project, { flow, task, gates, speed, size }) {
   const safeTask = String(task || '').replace(/"/g, "'").trim();
   const gateMode = ['auto', 'terminal', 'dashboard', 'ai'].includes(gates) ? gates : 'dashboard';
-  const speedFlag = speedSuffix(speed);
+  const speedFlag = speedSuffix(speed) + sizeSuffix(size, flow);
   const prompt = flowPrompt(flow, safeTask, gateMode, speedFlag, 'acp');
   const thisRun = registerRun({
     proc: null, pid: null, flow, task: safeTask, gates: gateMode, mode: 'acp', project, sessionId: null,
@@ -974,10 +980,37 @@ function requireProject() {
   return p;
 }
 
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'no-referrer',
+  // Everything is inline in the single-file UI, so 'unsafe-inline' for
+  // style/script is structural, not optional.
+  'Content-Security-Policy': "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'",
+};
+
 function send(res, status, body, type = 'application/json; charset=utf-8') {
   const data = type.startsWith('application/json') ? JSON.stringify(body) : body;
-  res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+  res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store', ...SECURITY_HEADERS });
   res.end(data);
+}
+
+// The dashboard binds to 127.0.0.1, but browsers will still send requests to it
+// from any web page the user visits (DNS rebinding / cross-site POSTs). Only
+// accept requests whose Host is this very listener, and reject cross-origin
+// mutating requests entirely - no legitimate page ever sends us an Origin that
+// isn't us.
+function requestAllowed(req, url) {
+  const host = String(req.headers.host || '').toLowerCase();
+  const ours = host === `127.0.0.1:${PORT}` || host === `localhost:${PORT}` || host === `[::1]:${PORT}`;
+  if (!ours) return false;
+  const origin = req.headers.origin;
+  if (origin) {
+    let o;
+    try { o = new URL(origin).hostname; } catch { return false; }
+    if (o !== '127.0.0.1' && o !== 'localhost' && o !== '[::1]' && o !== '::1') return false;
+  }
+  return true;
 }
 
 function readBody(req, limit = 1024 * 1024) {
@@ -1114,7 +1147,12 @@ const handlers = {
   'GET /api/diff': async (_req, url) => {
     const project = requireProject();
     const file = url.searchParams.get('file') || '';
-    if (!file || file.includes('..')) throw httpError(400, 'bad file');
+    if (!file || file.includes('..') || path.isAbsolute(file)) throw httpError(400, 'bad file');
+    // --no-index diffing an untracked file reads it from disk, so the path must
+    // stay inside the project.
+    const root = path.resolve(project);
+    const target = path.resolve(root, file);
+    if (target !== root && !target.startsWith(root + path.sep)) throw httpError(400, 'bad file');
     const diff = await git(project, ['diff', '--', file]);
     const untracked = diff === '' ? await git(project, ['diff', '--no-index', '--', os.devNull, file]) : null;
     return { file, diff: diff || untracked || '(no diff)' };
@@ -1126,6 +1164,10 @@ const handlers = {
     if (!SAFE_NAME.test(name)) throw httpError(400, 'bad artifact name');
     const content = await readTextSafe(path.join(projectPaths(project).artifacts, name));
     if (content === null) throw httpError(404, 'artifact not found');
+    // ?tail=N returns only the last N characters - the live tail reads this
+    // every poll and never needs the whole file.
+    const tail = Math.min(Math.max(Number(url.searchParams.get('tail')) || 0, 0), 200000);
+    if (tail > 0 && content.length > tail) return { name, content: content.slice(-tail), truncated: true };
     return { name, content };
   },
 
@@ -1384,6 +1426,7 @@ const handlers = {
   'POST /api/run': async (req) => {
     const body = JSON.parse(await readBody(req));
     const { flow, task, gates, speed, permissionMode, provider, enqueue } = body;
+    const size = cleanSize(body.size);
     const project = body.project ? path.resolve(String(body.project)) : requireProject();
     if (typeof flow !== 'string' || !SAFE_NAME.test(flow)) throw httpError(400, 'bad flow name');
     if (flow !== 'understand' && flow !== 'resume' && (typeof task !== 'string' || !task.trim())) throw httpError(400, 'task required');
@@ -1402,23 +1445,23 @@ const handlers = {
     if (activeRunOf(project)) {
       if (!enqueue) throw httpError(409, 'a run is already active - stop it first');
       await JOBS.load();
-      const item = JOBS.enqueue({ project, flow, task, gates, speed: SPEEDS.includes(speed) ? speed : '' });
+      const item = JOBS.enqueue({ project, flow, task, gates, speed: SPEEDS.includes(speed) ? speed : '', size });
       await JOBS.save();
       return { ok: true, mode: 'queue', id: item.id, position: JOBS.queue.filter((q) => q.status === 'queued').length };
     }
     if (activeRuns().length >= MAX_PARALLEL) {
       await JOBS.load();
-      const item = JOBS.enqueue({ project, flow, task, gates, speed: SPEEDS.includes(speed) ? speed : '' });
+      const item = JOBS.enqueue({ project, flow, task, gates, speed: SPEEDS.includes(speed) ? speed : '', size });
       await JOBS.save();
       return { ok: true, mode: 'queue', id: item.id, position: JOBS.queue.filter((q) => q.status === 'queued').length };
     }
     if (process.env.FF_NO_ACP !== '1' && (readStoredKey() || process.env.WINDSURF_API_KEY)) {
-      const r = startRunAcp(project, { flow, task, gates, speed });
+      const r = startRunAcp(project, { flow, task, gates, speed, size });
       return { ok: true, mode: 'acp', id: r.id, pid: r.pid, cmd: r.cmd, startedAt: r.startedAt };
     }
     const cli = await checkCli();
     if (cli.found && cli.authenticated) {
-      const r = startRun(project, { flow, task, gates, speed, permissionMode });
+      const r = startRun(project, { flow, task, gates, speed, size, permissionMode });
       return { ok: true, mode: 'cli', id: r.id, pid: r.pid, cmd: r.cmd, startedAt: r.startedAt };
     }
     const daemon = await daemonStatus(project);
@@ -1428,7 +1471,7 @@ const handlers = {
     const pending = {
       id: Date.now().toString(36),
       flow, task: String(task || '').trim(), gates: gates || 'dashboard',
-      speed: SPEEDS.includes(speed) ? speed : 'flow',
+      speed: SPEEDS.includes(speed) ? speed : 'flow', size,
       requestedAt: new Date().toISOString(),
     };
     await fs.writeFile(projectPaths(project).queue, JSON.stringify({ pending, stop: false }, null, 2), 'utf8');
@@ -1657,7 +1700,7 @@ const handlers = {
       if (flow !== 'understand' && !String(it.task || '').trim()) throw httpError(400, 'task required');
       added.push(JOBS.enqueue({
         project, flow, task: it.task, gates: ['auto', 'terminal', 'dashboard', 'ai'].includes(it.gates) ? it.gates : 'dashboard',
-        speed: SPEEDS.includes(it.speed) ? it.speed : '',
+        speed: SPEEDS.includes(it.speed) ? it.speed : '', size: cleanSize(it.size),
       }));
     }
     await JOBS.save();
@@ -1700,7 +1743,7 @@ const handlers = {
     const s = JOBS.addSchedule({
       project, flow, task: it.task, repeat: it.repeat,
       gates: ['auto', 'terminal', 'dashboard', 'ai'].includes(it.gates) ? it.gates : 'auto',
-      speed: SPEEDS.includes(it.speed) ? it.speed : '',
+      speed: SPEEDS.includes(it.speed) ? it.speed : '', size: cleanSize(it.size),
     });
     await JOBS.save();
     return { ok: true, schedule: s };
@@ -1851,11 +1894,15 @@ const handlers = {
   // `flowDef` inline (the canvas, unsaved) wins over the saved flow file, so the
   // price of a model change shows before it is saved.
   'POST /api/estimate': async (req) => {
-    const { flow, task, speed, flowDef: inline } = JSON.parse(await readBody(req) || '{}');
+    const { flow, task, speed, size, flowDef: inline } = JSON.parse(await readBody(req) || '{}');
     const name = SAFE_NAME.test(String(flow || '')) ? String(flow) : 'task';
     let flowDef = {};
     if (inline && typeof inline === 'object' && Array.isArray(inline.stages)) flowDef = inline;
     else { try { flowDef = JSON.parse(await readTextSafe(path.join(FLOWS_DIR, `${name}.json`)) || '{}'); } catch { flowDef = {}; } }
+    // A forced tiny/small size drops the flow's preparation stages - price
+    // exactly what will run (the same rule the state engine applies).
+    const dropped = ['tiny', 'small'].includes(size) ? new Set(sizeSkips(flowDef, size)) : null;
+    if (dropped && dropped.size) flowDef = { ...flowDef, stages: flowDef.stages.filter((s) => !dropped.has(s.id)) };
     const stages = Array.isArray(flowDef.stages) ? flowDef.stages : [];
     const skill = await readTextSafe(path.join(SKILLS_DIR, name === 'understand' ? 'understand' : 'flow', 'SKILL.md'));
     const parts = [{ name: 'skill', text: skill || '' }];
@@ -1963,6 +2010,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://127.0.0.1:${PORT}`);
   const key = `${req.method} ${url.pathname}`;
   try {
+    if (!requestAllowed(req, url)) return send(res, 403, { error: 'forbidden origin' });
     if (key === 'GET /' || key === 'GET /index.html') {
       const html = await readTextSafe(UI_FILE);
       if (html === null) return send(res, 500, 'UI file missing', 'text/plain; charset=utf-8');
